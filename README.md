@@ -2,7 +2,9 @@
 Adblock for the purple website using server side signature
 
 
-## Development setup
+i think that it could run all in client side. but anyway need translate the python for js and try.
+
+## Development
 The project was builded in python3.8.
 For run you server side you need a proxy + Client_ID of the purple site. <br>
 for run the client side you need changer the host on background.js.
