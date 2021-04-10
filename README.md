@@ -16,5 +16,5 @@ for run the client side you need changer the host on background.js.
 
 ## Contributing
 
-1. i dont find reference for *_live_url.py
+1. i dont finded reference for *_live_url.py
 2. https://github.com/pixeltris/TwitchAdSolutions/issues/8
