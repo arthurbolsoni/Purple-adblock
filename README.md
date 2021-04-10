@@ -2,7 +2,7 @@
 Adblock for the purple website using server side signature
 
 
-i think that it could run all in client side. but anyway need translate the python for js and try.
+I think that it could run all in client side. but anyway need translate the python for js and try.
 
 ## Development
 The project was builded in python3.8.
