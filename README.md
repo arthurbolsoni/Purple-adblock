@@ -4,6 +4,11 @@ Adblock for the purple website using server side signature
 
 I think that it could run all in client side. but anyway need translate the python for js and try.
 
+# WARNING!
+This project has no intention of harming anyone.
+anyway use at your own risk.
+
+
 ## Installation
 
 Extension: [Firefox](https://addons.mozilla.org/de/firefox/addon//) and [Google Chrome](https://chrome.google.com/webstore/detail/).
@@ -22,3 +27,6 @@ for run the client side you need changer the host on background.js.
 
 1. i dont finded reference for *_live_url.py
 2. https://github.com/pixeltris/TwitchAdSolutions/issues/8
+
+#WARNING!
+This project has no intention of harming anyone. 
