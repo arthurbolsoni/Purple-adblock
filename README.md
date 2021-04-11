@@ -11,7 +11,7 @@ anyway use at your own risk.
 
 ## Installation
 
-Extension: [Firefox](https://addons.mozilla.org/de/firefox/addon//) and [Google Chrome](https://chrome.google.com/webstore/detail/).
+Free proxy on Extension: [Firefox](https://addons.mozilla.org/de/firefox/addon//) and [Google Chrome](https://chrome.google.com/webstore/detail/).
 
 ## Development
 The project was builded in python3.8.
