@@ -29,6 +29,7 @@ for run the client side you need changer the host on background.js.
 1. i dont finded reference for *_live_url
 2. https://github.com/pixeltris/TwitchAdSolutions/issues/8
 3. https://www.pngkit.com/bigpic/u2t4y3y3a9e6r5e6/
+4. https://twitter.com/ChoosenEye
 
 #WARNING!
 This project has no intention of harming anyone. 
