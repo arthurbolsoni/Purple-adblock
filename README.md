@@ -13,8 +13,8 @@ anyway, use at your own risk.
 Free proxy on Extension: [Firefox](https://addons.mozilla.org/de/firefox/addon//) and [Google Chrome](https://chrome.google.com/webstore/detail/).
 
 ## Development
-The project was builded in python3.8 and NodeJS.
-For run you server side you need a proxy + Client_ID of the purple site. <br>
+The project was builded in python3.8 and NodeJS. <br>
+For run you server side you need a proxy + Client_ID of the purple site on server file. <br>
 for run the client side you need changer the host on background.js.
 
 ## IF YOU WANT HELP ME WITH THE SERVER
@@ -26,7 +26,7 @@ for run the client side you need changer the host on background.js.
 
 ## Contributing
 
-1. i dont finded reference for *_live_url
+1. i dont finded reference for live_url file.
 2. https://github.com/pixeltris/TwitchAdSolutions/issues/8
 3. https://www.pngkit.com/bigpic/u2t4y3y3a9e6r5e6/
 4. https://twitter.com/ChoosenEye
