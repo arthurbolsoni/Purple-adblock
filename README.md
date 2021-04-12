@@ -21,7 +21,8 @@ for run the client side you need changer the host on background.js.
 ## IF YOU WANT HELP ME WITH THE SERVER
 
 **#BTC DONATE:** 12NXXqNKTKD8nv89pdvHotF6JqX5CWfyZk <br>
-**#LTC DONATE:** LYagnjToA6SZjAnEttdJEtp61bfvAN2xYU
+**#LTC DONATE:** LYagnjToA6SZjAnEttdJEtp61bfvAN2xYU <br>
+**#DOGECOIN DONATE:** DR3AdZD5gr2WBkyKZUuxLfxK26QQ6RHsvR
 
 ## Contributing
 
