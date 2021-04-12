@@ -14,7 +14,7 @@ Free proxy on Extension: [Firefox](https://addons.mozilla.org/de/firefox/addon//
 
 ## Development
 The project was builded in python3.8 and NodeJS. <br>
-For run you server side you need a proxy + Client_ID of the purple site on server file. <br>
+For run you server side you need a proxy + Client_ID of the purple site. <br>
 for run the client side you need changer the host on background.js.
 
 ## IF YOU WANT HELP ME WITH THE SERVER
