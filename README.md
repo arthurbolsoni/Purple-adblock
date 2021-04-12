@@ -5,7 +5,7 @@ Have two version, the old in python3.8, i translate for NodeJS for put on server
 
 # WARNING!
 This project has no intention of harming anyone.
-anyway use at your own risk.
+anyway, use at your own risk.
 
 
 ## Installation
