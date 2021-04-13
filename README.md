@@ -1,6 +1,6 @@
 
 <p align="center">
-    <img src="images/banner.png" alt="Logo" height="400">
+    <img src="images/banner.png" alt="Logo" height="300">
 </p>
 
 # About The Project
