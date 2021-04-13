@@ -1,3 +1,8 @@
+
+<p align="center">
+    <img src="images/banner2.png" alt="Logo" height="128">
+</p>
+
 # Purple-adblock
 Adblock for the purple website using server side signature
 
