@@ -1,6 +1,6 @@
 
 <p align="center">
-    <img src="images/128-icon.png" alt="Logo" width="250" height="128">
+    <img src="images/icon_128px2.png" alt="Logo" height="128">
     <img src="images/9cb1b09047e43458cf25b044d1579fd6.png" alt="Logo" height="128">
 </p>
 
