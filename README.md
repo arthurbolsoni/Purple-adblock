@@ -1,7 +1,6 @@
 
 <p align="center">
     <img src="images/icon_128px2.png" alt="Logo" height="128">
-    <img src="images/9cb1b09047e43458cf25b044d1579fd6.png" alt="Logo" height="128">
 </p>
 
 # Purple-adblock
