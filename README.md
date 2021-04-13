@@ -1,7 +1,7 @@
 
 <p align="center">
     <img src="images/128-icon.png" alt="Logo" width="128" height="128">
-    <img src="images/4d7130701d5c562863da86518dcbee7e.png" alt="Logo" width="128" height="128">
+    <img src="images/4d7130701d5c562863da86518dcbee7e.png" alt="Logo" width="128">
     <img src="images/128-icon.png" alt="Logo" width="128" height="128">
 </p>
 
