@@ -1,8 +1,6 @@
 
 <p align="center">
-  <a href="https://github.com/othneildrew/Best-README-Template">
-    <img src="images/https://raw.githubusercontent.com/arthurbolsoni/Purple-adblock/main/images/128-icon.png" alt="Logo" width="80" height="80">
-  </a>
+    <img src="images/128-icon.png" alt="Logo" width="128" height="128">
 </p>
 # Purple-adblock
 Adblock for the purple website using server side signature
