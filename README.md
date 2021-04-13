@@ -1,6 +1,8 @@
 
 <p align="center">
     <img src="images/128-icon.png" alt="Logo" width="128" height="128">
+    <img src="images/128-icon.png" alt="Logo" width="128" height="128">
+    <img src="images/128-icon.png" alt="Logo" width="128" height="128">
 </p>
 
 # Purple-adblock
