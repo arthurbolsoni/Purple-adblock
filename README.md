@@ -3,6 +3,8 @@ Adblock for the purple website using server side signature
 
 Have two version, the old in python3.8, i translate for NodeJS for put on server.
 
+Please, help us to develop the extension ou report bugs. [Discord](https://discord.gg/WuV9ECeB)
+
 # WARNING!
 This project has no intention of harming anyone.
 anyway, use at your own risk.
@@ -10,7 +12,7 @@ anyway, use at your own risk.
 
 ## Installation
 
-Free proxy on Extension: [Firefox](https://addons.mozilla.org/de/firefox/addon//) and [Google Chrome](https://chrome.google.com/webstore/detail/).
+Free proxy on Extension: [Firefox](https://addons.mozilla.org/pt-BR/firefox/addon/purpleadblock/) and [Google Chrome](https://chrome.google.com/webstore/detail/).
 
 ## Development
 The project was builded in python3.8 and NodeJS. <br>
