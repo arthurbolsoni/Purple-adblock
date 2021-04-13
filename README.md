@@ -3,7 +3,7 @@
     <img src="images/banner.png" alt="Logo" height="400">
 </p>
 
-# Purple-adblock
+# About The Project
 Adblock for the purple website using server side signature
 
 Have two version, the old in python3.8, i translate for NodeJS for put on server.
