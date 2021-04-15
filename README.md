@@ -17,7 +17,7 @@ anyway, use at your own risk.
 
 ## Installation
 
-Free proxy on Extension: [Firefox](https://addons.mozilla.org/pt-BR/firefox/addon/purpleadblock/) and [Google Chrome](https://chrome.google.com/webstore/detail/).
+Free proxy on Extension: [Firefox](https://addons.mozilla.org/pt-BR/firefox/addon/purpleadblock/) and [Google Chrome](https://chrome.google.com/webstore/detail/purple-adblock/lkgcfobnmghhbhgekffaadadhmeoindg).
 
 ## Development
 The project was builded in python3.8 and NodeJS. <br>
