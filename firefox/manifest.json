@@ -1,0 +1,27 @@
+{
+  "background": {
+    "scripts": [
+      "js/background.js"
+    ],
+    "persistent": true
+  },
+  "browser_action": {
+    "default_title": "Purple AdBlock",
+    "default_icon": "images/128-icon.png",
+    "default_popup": "common/html/popup.html"
+  },
+  "icons": {
+    "128": "images/128-icon.png"
+  },
+  "description": "Purple AdBlock",
+  "manifest_version": 2,
+  "name": "Purple AdBlock",
+  "version": "1.1",
+  "permissions": [
+    "webRequest",
+    "webRequestBlocking",
+    "https://*.twitch.tv/*",
+    "https://usher.ttvnw.net/*",
+    "https://much.ga/*"
+  ]
+}
