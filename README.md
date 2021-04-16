@@ -4,15 +4,15 @@
 </p>
 
 # About The Project
-Adblock for the purple website using server side signature
+Adblock for the purple website using server side signature.
 
-Have two version, the old in python3.8, i translate for NodeJS for put on server.
+There are two version, the old one in python3.8, I translated it in NodeJS to put it on the server.
 
 Please, help us to develop the extension ou report bugs. [Discord](https://discord.gg/WuV9ECeB)
 
 # WARNING!
 This project has no intention of harming anyone.
-anyway, use at your own risk.
+Anyway, use at your own risk.
 
 
 ## Installation
@@ -20,9 +20,9 @@ anyway, use at your own risk.
 Free proxy on Extension: [Firefox](https://addons.mozilla.org/pt-BR/firefox/addon/purpleadblock/) and [Google Chrome](https://chrome.google.com/webstore/detail/purple-adblock/lkgcfobnmghhbhgekffaadadhmeoindg).
 
 ## Development
-The project was builded in python3.8 and NodeJS. <br>
-For run you server side you need a proxy + Client_ID of the purple site. <br>
-for run the client side you need changer the host on background.js.
+The project was built in python3.8 and NodeJS. <br>
+To run the server side you need a proxy + Client_ID of the purple site. <br>
+To run the client side you need to change the host on background.js.
 
 ## IF YOU WANT HELP ME WITH THE SERVER
 
@@ -33,10 +33,10 @@ for run the client side you need changer the host on background.js.
 
 ## Contributing
 
-1. i dont finded reference for live_url file.
+1. I didn't find references for live_url file.
 2. https://github.com/pixeltris/TwitchAdSolutions/issues/8
 3. https://www.pngkit.com/bigpic/u2t4y3y3a9e6r5e6/
 4. https://twitter.com/ChoosenEye
 
-#WARNING!
+# WARNING!
 This project has no intention of harming anyone. 
