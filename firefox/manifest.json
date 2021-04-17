@@ -22,6 +22,8 @@
     "webRequestBlocking",
     "https://*.twitch.tv/*",
     "https://usher.ttvnw.net/*",
-    "https://much.ga/*"
+    "https://much.ga/*",
+    "tabs",
+    "storage"
   ]
 }
