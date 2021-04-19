@@ -57,5 +57,9 @@ browser.tabs.query({'active': true, 'currentWindow': true}, function
         });
 
         document.getElementById("watching").textContent = "Actived on : " + channel;
+    }else{
+        document.getElementById('adblockbutton').onclick = null;
+        document.getElementById("adblocktext").classList.add("disable");
+        document.getElementById("watching").textContent = "Waiting channel";
     }
 });
