@@ -47,11 +47,15 @@ browser.tabs.query({'active': true, 'currentWindow': true}, function
               if(isActive){
                   document.getElementById("adblocktext").classList.remove("disable");
                   document.getElementById("watching").textContent = "Actived on : " + channel;
+                  return;
               }else{
                   document.getElementById("adblocktext").classList.add("disable");
                   document.getElementById("watching").textContent = "Disactived on : " + channel;
+                  return;
               }
             }
         });
+
+        document.getElementById("watching").textContent = "Actived on : " + channel;
     }
 });
