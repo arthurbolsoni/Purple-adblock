@@ -49,7 +49,7 @@ async function get_live_stream(channel){
 	var sig = json['data']['streamPlaybackAccessToken']['signature']
 	var token = json['data']['streamPlaybackAccessToken']['value']
 
-	const str = `http://usher.twitch.tv/api/channel/hls/${channel}.m3u8?player=twitchweb&token=${token}&sig=${sig}&$allow_audio_only=true&allow_source=true&type=any&p=${rr}`;
+	const str = `http://usher.ttvnw.net/api/channel/hls/${channel}.m3u8?player=twitchweb&fast_bread=true&token=${token}&sig=${sig}&$allow_audio_only=true&allow_source=true&type=any&p=${rr}`;
 	console.log(str);
 
 	var r = await fetch(str, {
