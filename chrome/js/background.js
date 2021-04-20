@@ -1,4 +1,5 @@
 var whiteList = [];
+
 function onBeforeRequest(details) {
     
     const match = /hls\/(\w+)\.m3u8/gim.exec(details.url);
@@ -35,6 +36,7 @@ chrome.storage.local.get(/* String or Array */["whiteList"], function(items){
     console.log(whiteList);
   }
 });
+
 chrome.webRequest.onBeforeRequest.addListener(
   onBeforeRequest,
   { urls: ["https://usher.ttvnw.net/api/channel/hls/*"] },

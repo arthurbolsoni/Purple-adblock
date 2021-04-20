@@ -38,6 +38,7 @@ chrome.tabs.query({'active': true, 'lastFocusedWindow': true}, function
         chrome.storage.local.get(/* String or Array */["whiteList"], function(items){
             if(items.whiteList !== undefined){
               whiteList = items.whiteList;
+              
               console.log(channel);
               console.log(whiteList);
         
@@ -47,11 +48,19 @@ chrome.tabs.query({'active': true, 'lastFocusedWindow': true}, function
               if(isActive){
                   document.getElementById("adblocktext").classList.remove("disable");
                   document.getElementById("watching").textContent = "Actived on : " + channel;
+                  return;
               }else{
                   document.getElementById("adblocktext").classList.add("disable");
                   document.getElementById("watching").textContent = "Disactived on : " + channel;
+                  return;
               }
             }
         });
+
+        document.getElementById("watching").textContent = "Actived on : " + channel;
+    }else{
+        document.getElementById('adblockbutton').onclick = null;
+        document.getElementById("adblocktext").classList.add("disable");
+        document.getElementById("watching").textContent = "Waiting channel";
     }
 });
