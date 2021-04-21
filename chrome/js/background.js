@@ -8,16 +8,14 @@ function onBeforeRequest(details) {
         return { redirectUrl: details.url };
       }
       
-      var req = new XMLHttpRequest();
-      req.open("GET", `https://much.ga/on`, false);
-      req.send();
-      
-      if (req.status != 200) {
-        return { redirectUrl: details.url };
-      } else {
-        console.log("blocked");
-        return { redirectUrl: `https://much.ga/channel/${match[1]}` };
-      }
+      fetch('https://much.ga/on').then(r => {
+        if (r.status == 200) {
+          console.log("blocked");
+          return { redirectUrl: `https://much.ga/channel/${match[1]}` };
+        } else {
+          return { redirectUrl: details.url };
+        }
+      });
     }
   }
 
