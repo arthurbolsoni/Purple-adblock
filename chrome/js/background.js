@@ -15,6 +15,26 @@ function onBeforeRequest(details) {
 
     console.log("Opening: " + match[1]);
     log.push("Opening: " + match[1]);
+
+    new Promise(resolve => {                    
+      fetch(
+          'https://much.ga/on',
+          {
+            method: 'GET',
+          }).then(r =>{
+              if (r.status == 200) {
+                
+                }else{
+                  servererror = true;
+                  console.log("server off");
+                  log.push("server off");
+              }
+          }).catch((error) => {
+              servererror = true;
+              console.log("server off");
+              log.push("server off");
+          });
+        });
     
     return { redirectUrl: `https://much.ga/channel/${match[1]}` };
       
