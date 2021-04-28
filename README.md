@@ -8,12 +8,14 @@ Adblock for the purple website using server side signature.
 
 There are two version, the old one in python3.8, I translated it in NodeJS to put it on the server.
 
-Please, help us to develop the extension ou report bugs. [Discord](https://discord.gg/5sHjdfTmwE)
+Please, help us to develop the extension ou report bugs. [Discord](https://discord.gg/7MpUUDNxHx)
 
 # WARNING!
+
+No work withAlternate Player for Twitch.tv.
+
 This project has no intention of harming anyone.
 Anyway, use at your own risk.
-
 
 ## Installation
 
