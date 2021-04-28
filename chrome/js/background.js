@@ -1,22 +1,52 @@
 var whiteList = [];
+var log = [];
+var servererror = false;
 
 function onBeforeRequest(details) {
+  
+  const match = /hls\/(\w+)\.m3u8/gim.exec(details.url);
+  if(servererror == true){return;}
+  
+  if (match !== null && match.length > 1) {
     
-    const match = /hls\/(\w+)\.m3u8/gim.exec(details.url);
-    if (match !== null && match.length > 1) {
-      if(whiteList.includes(match[1])){
-        return { redirectUrl: details.url };
+    if(whiteList.includes(match[1])){
+      return { redirectUrl: details.url };
+    }
+
+    console.log("Opening: " + match[1]);
+    log.push("Opening: " + match[1]);
+    
+    return { redirectUrl: `https://much.ga/channel/${match[1]}` };
+      
+    }
+  }
+
+  function onCompleted(details) {
+    console.log("url: " + details.url + "   " + details.statusCode);
+    if(details.url.includes("much.ga/channel")){
+
+      if(details.statusCode == 200){
+        console.log("blocking success: " + details.statusCode);
+        log.push("blocking success: " + details.statusCode);
       }
-      
-      var req = new XMLHttpRequest();
-      req.open("GET", `https://much.ga/on`, false);
-      req.send();
-      
-      if (req.status != 200) {
-        return { redirectUrl: details.url };
-      } else {
-        console.log("blocked");
-        return { redirectUrl: `https://much.ga/channel/${match[1]}` };
+      if(details.statusCode == 404){
+        console.log("blocking error: " + details.statusCode);
+        log.push("blocking error: " + details.statusCode);
+        log.push("url: " + details.url);
+        servererror = true;
+      }
+
+    }else if(details.url.includes("usher.ttvnw.net/api/channel/")){
+      const match = /hls\/(\w+)\.m3u8/gim.exec(details.url);
+
+      if (match !== null && match.length > 1) {
+        if(whiteList.includes(match[1])){
+          console.log("blocking desabled: running native");
+          log.push("blocking desabled: running native");
+        }else{
+          console.log("blocking error: running native" + "url: " + details.url);
+          log.push("blocking error: running native" + "url: " + detail.url);
+        }
       }
     }
   }
@@ -37,8 +67,16 @@ chrome.storage.local.get(/* String or Array */["whiteList"], function(items){
   }
 });
 
+chrome.runtime.onMessage.addListener(
+  function(request, sender, sendResponse) {
+      sendResponse(log);
+  }
+);
+
 chrome.webRequest.onBeforeRequest.addListener(
   onBeforeRequest,
   { urls: ["https://usher.ttvnw.net/api/channel/hls/*"] },
   ["blocking", "extraHeaders"]
 );
+
+chrome.webRequest.onCompleted.addListener(onCompleted, {urls: [ "https://much.ga/*","https://usher.ttvnw.net/api/channel/*"] },["responseHeaders"]);

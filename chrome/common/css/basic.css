@@ -44,3 +44,29 @@ a {
   .disable{
     background-color: grey;
   }
+  
+.textarea {
+  width: 100%;
+  max-width: 100%;
+  height: 150px;
+  background-color: grey;
+  outline: none;
+}
+
+.buttonlog{
+  color: white;
+  height: 25px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  cursor: pointer;
+}
+
+#content {
+  background: #06c;
+}
+
+.buttonlog:hover{
+  background-color: #363636;
+  text-align: center;
+}

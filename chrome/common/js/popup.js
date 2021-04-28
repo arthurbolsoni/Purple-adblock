@@ -1,5 +1,16 @@
 var whiteList = [];
 document.getElementById('adblockbutton').onclick = inputChange;
+
+document.getElementsByClassName('buttonlog')[0].onclick = function(e) {
+    console.log("aaaa")
+  var x = document.getElementsByClassName("log")[0];
+  if (x.style.display === "none") {
+    x.style.display = "block";
+  } else {
+    x.style.display = "none";
+  }
+};
+
 var isActive = true;
 var channel = "";
 function inputChange(e) {
@@ -64,3 +75,12 @@ chrome.tabs.query({'active': true, 'lastFocusedWindow': true}, function
         document.getElementById("watching").textContent = "Waiting channel";
     }
 });
+
+
+chrome.runtime.sendMessage(
+    "log",
+    function (response) {
+        text = (""+ response);
+        document.getElementsByClassName("textarea")[0].value = response.join("\n");
+    }
+  );
