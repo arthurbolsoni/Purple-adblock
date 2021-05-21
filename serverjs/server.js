@@ -37,13 +37,15 @@ app.use(session({
 app.get('/channel/:id', function (req, res, next) {
     res.set('Content-Type', 'application/json');
     res.set('Access-Control-Allow-Origin', '*');
+    res.set('proxystatus', '200');
     if(req.params.id != null){
-        LU.get_live_stream(req.params.id).then((x)=>{res.send(x);})
+        LU.get_live_stream(req.params.id).then((x)=>{res.status(x[1]).send(x[0]);})
     }
 });
 app.get('/on', function (req, res, next) {
 	res.set('Content-Type', 'application/json');
     res.set('Access-Control-Allow-Origin', '*');
+    res.set('proxystatus', '200');
     res.send("ok");
 });
 
@@ -51,13 +53,15 @@ var http = express();
 http.get('/channel/:id', function(req, res) {
 	res.set('Content-Type', 'application/json');
     res.set('Access-Control-Allow-Origin', '*');
+    res.set('proxystatus', '200');
     if(req.params.id != null){
-        LU.get_live_stream(req.params.id).then((x)=>{res.send(x);})
+        LU.get_live_stream(req.params.id).then((x)=>{res.status(x[1]).send(x[0]);})
     }
 })
 http.get('/on', function(req, res) {
 	res.set('Content-Type', 'application/json');
     res.set('Access-Control-Allow-Origin', '*');
+    res.set('proxystatus', '200');
     res.send("ok");
 })
 

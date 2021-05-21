@@ -40,7 +40,7 @@ function onBeforeRequest(details) {
       
     }
   }
-
+  
   function onCompleted(details) {
     console.log("url: " + details.url + "   " + details.statusCode);
     if(details.url.includes("much.ga/channel")){
@@ -48,7 +48,15 @@ function onBeforeRequest(details) {
       if(details.statusCode == 200){
         console.log("blocking success: " + details.statusCode);
         log.push("blocking success: " + details.statusCode);
+        return;
       }
+      //if the return not 200, see if exist the proxystatus. if not exist the proxystatus the server has offline.
+      if(details.responseHeaders.find(x => x.name == "proxystatus").value == 200){
+        console.log("Stream Offline: " + details.statusCode);
+        log.push("Stream offline: " + details.statusCode);
+        return;
+      }
+
       if(details.statusCode == 404){
         console.log("blocking error: " + details.statusCode);
         log.push("blocking error: " + details.statusCode);
@@ -65,7 +73,7 @@ function onBeforeRequest(details) {
           log.push("blocking desabled: running native");
         }else{
           console.log("blocking error: running native" + "url: " + details.url);
-          log.push("blocking error: running native" + "url: " + detail.url);
+          log.push("blocking error: running native" + "url: " + details.url);
         }
       }
     }

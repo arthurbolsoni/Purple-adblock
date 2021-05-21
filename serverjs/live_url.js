@@ -22,7 +22,7 @@ async function get_token_and_signature(channel) {
 	request = '{"operationName":"PlaybackAccessToken","extensions":{"persistedQuery":{"version":1,"sha256Hash":"0828119ded1c13477966434e15800ff57ddacf13ba1911c129dc2200705b0712"}},"variables":{"isLive":true,"login":"' + channel + '","isVod":false,"vodID":"","playerType":"site"}}';
 	
 	//proxy
-    const proxyAgent = new HttpsProxyAgent('http://?????:?????');
+    const proxyAgent = new HttpsProxyAgent('http://aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa');
 	
 	 var r = await fetch("https://gql.twitch.tv/gql", {
 		 agent: proxyAgent,
@@ -39,7 +39,7 @@ async function get_token_and_signature(channel) {
 
 async function get_live_stream(channel){
 	//proxy
-    const proxyAgent = new HttpsProxyAgent('http://?????:?????');
+    const proxyAgent = new HttpsProxyAgent('http://aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa');
 
 	//i think that call is not necessary
 	var json = await get_token_and_signature(channel);
@@ -57,7 +57,7 @@ async function get_live_stream(channel){
 		  method: 'GET'
 		});
 
-		return await r.text();
+		return [await r.text(), r.status];
 
 	return str
 }
