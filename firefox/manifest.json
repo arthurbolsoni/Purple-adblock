@@ -16,7 +16,7 @@
   "description": "Purple AdBlock",
   "manifest_version": 2,
   "name": "Purple AdBlock",
-  "version": "1.1",
+  "version": "1.5",
   "permissions": [
     "webRequest",
     "webRequestBlocking",
@@ -24,6 +24,7 @@
     "https://usher.ttvnw.net/*",
     "https://much.ga/*",
     "tabs",
+    "activeTab",
     "storage"
   ]
 }

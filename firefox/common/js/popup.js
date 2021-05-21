@@ -1,5 +1,15 @@
 var whiteList = [];
 document.getElementById('adblockbutton').onclick = inputChange;
+
+document.getElementsByClassName('buttonlog')[0].onclick = function(e) {
+  var x = document.getElementsByClassName("log")[0];
+  if (x.style.display === "none") {
+    x.style.display = "block";
+  } else {
+    x.style.display = "none";
+  }
+};
+
 var isActive = true;
 var channel = "";
 function inputChange(e) {
@@ -29,12 +39,13 @@ function inputChange(e) {
     }
 }
 
-browser.tabs.query({'active': true, 'currentWindow': true}, function 
+browser.tabs.query({'active': true, 'lastFocusedWindow': true}, function 
 (tabs) {
     var url = tabs[0].url;
     if(url.includes("https://www.twitch.tv/")){
         channel = url.replace("https://www.twitch.tv/","").split('/')[0].split('?')[0];
-        browser.storage.local.get("whiteList").then(function(items){
+        
+        browser.storage.local.get(/* String or Array */["whiteList"], function(items){
             if(items.whiteList !== undefined){
               whiteList = items.whiteList;
               
@@ -63,3 +74,12 @@ browser.tabs.query({'active': true, 'currentWindow': true}, function
         document.getElementById("watching").textContent = "Waiting channel";
     }
 });
+
+
+browser.runtime.sendMessage(
+    "log",
+    function (response) {
+        text = (""+ response);
+        document.getElementsByClassName("textarea")[0].value = response.join("\n");
+    }
+  );
