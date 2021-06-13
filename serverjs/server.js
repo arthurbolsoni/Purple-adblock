@@ -46,9 +46,16 @@ async function hostping(host) {
 app.get('/channel/:id', function (req, res, next) {
     res.set('Content-Type', 'application/json');
     res.set('Access-Control-Allow-Origin', '*');
-    res.set('proxystatus', '200');
     if(req.params.id != null){
-        LU.get_live_stream(req.params.id).then((x)=>{ res.status(x[1]).send(x[0]);})
+        LU.get_live_stream(req.params.id).then((x)=>{
+            if(x[2]){
+                res.set('proxystatus', '200');
+                res.status(x[1]).send(x[0]);
+            }else{
+                res.set('proxystatus', '404');
+                res.status(x[1]).send(x[0]);
+            }
+        })
     }
 });
 app.get('/on', function (req, res, next) {

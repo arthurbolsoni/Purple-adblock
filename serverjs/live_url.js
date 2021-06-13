@@ -23,7 +23,7 @@ async function get_token_and_signature(channel) {
 	
 	//proxy
     const proxyAgent = new HttpsProxyAgent('http://');
-	
+8000
 	 var r = await fetch("https://gql.twitch.tv/gql", {
 		 agent: proxyAgent,
 		 timeout: 4000,
@@ -59,9 +59,9 @@ async function get_live_stream(channel){
 			method: 'GET'
 		});
 		
-		return [await r.text(), r.status];
+		return [await r.text(), r.status, true];
 	}catch{
-		return [await "offline :(", 404];
+		return [await "offline :(", 500, false];
 	}
 }
 
