@@ -8,6 +8,7 @@
 var fs = require('fs');
 var http = require('http');
 var https = require('https');
+const ping = require('ping');
 var express = require('express');
 var session = require('express-session');
 var LU = require('./live_url');
@@ -23,6 +24,7 @@ var app = express();
 
 app.locals.pretty = true;
 app.set('port', process.env.PORT || 80);
+app.set('server', "193.7.197.62");
 
 app.use(session({
 	secret: '5894765tyehuirgb34r58otgy23h49ftubn3fgui9op34rfthy23dfujxcnm',
@@ -34,19 +36,32 @@ app.use(session({
 	})
 );
 
+async function hostping(host) {
+    let status = true;
+    const res = await ping.promise.probe(host);
+    if (!res.alive) { status = false; }
+    return await status;
+}
+
 app.get('/channel/:id', function (req, res, next) {
     res.set('Content-Type', 'application/json');
     res.set('Access-Control-Allow-Origin', '*');
     res.set('proxystatus', '200');
     if(req.params.id != null){
-        LU.get_live_stream(req.params.id).then((x)=>{res.status(x[1]).send(x[0]);})
+        LU.get_live_stream(req.params.id).then((x)=>{ res.status(x[1]).send(x[0]);})
     }
 });
 app.get('/on', function (req, res, next) {
 	res.set('Content-Type', 'application/json');
     res.set('Access-Control-Allow-Origin', '*');
-    res.set('proxystatus', '200');
-    res.send("ok");
+    status = true;
+    if(status){
+        res.set('proxystatus', '200');
+        res.send("ok");
+    }else{
+        res.set('proxystatus', '500');
+        res.send("Server proxy Offline :(");
+    }
 });
 
 var http = express();
@@ -55,14 +70,21 @@ http.get('/channel/:id', function(req, res) {
     res.set('Access-Control-Allow-Origin', '*');
     res.set('proxystatus', '200');
     if(req.params.id != null){
-        LU.get_live_stream(req.params.id).then((x)=>{res.status(x[1]).send(x[0]);})
+        LU.get_live_stream(req.params.id).then((x)=>{ res.status(x[1]).send(x[0]);})
     }
 })
 http.get('/on', function(req, res) {
 	res.set('Content-Type', 'application/json');
     res.set('Access-Control-Allow-Origin', '*');
-    res.set('proxystatus', '200');
-    res.send("ok");
+    status = true;
+    if(status){
+        res.set('proxystatus', '200');
+        res.send("ok");
+    }else{
+        res.set('proxystatus', '500');
+        res.send("Server proxy Offline :(");
+    }
+    
 })
 
 http.listen(app.get('port'));
