@@ -40,6 +40,9 @@ To run the client side you need to change the host on background.js.
 3. https://www.pngkit.com/bigpic/u2t4y3y3a9e6r5e6/
 4. https://twitter.com/ChoosenEye
 5. https://github.com/pixeltris/TwitchAdSolutions/issues/25#issuecomment-822883576
+6. ads list block https://github.com/saucettv/VideoAdBlockForTwitch/
 
 # WARNING!
-This project has no intention of harming anyone. 
+This project has no intention of harming anyone.
+We use the pre listed link to block posibles ads come through.
+The app call somes permissions to manager configs. see on manifest.json
