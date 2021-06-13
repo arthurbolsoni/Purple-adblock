@@ -3,10 +3,16 @@ var log = [];
 var servererror = false;
 
 function onBeforeRequest(details) {
-  
+  if(!details.url.includes("usher.ttvnw.net/api/channel/hls/")){
+    return {
+      cancel: true
+    };
+  }
+
+  if(servererror == true){return { redirectUrl: details.url };}
+
   const match = /hls\/(\w+)\.m3u8/gim.exec(details.url);
-  if(servererror == true){return;}
-  
+
   if (match !== null && match.length > 1) {
     
     if(whiteList.includes(match[1])){
@@ -54,7 +60,7 @@ function onBeforeRequest(details) {
       if(!servertwitch.includes(match)){
         console.log("twitch server: " + match);
         log.push("twitch server: " + match);
-        servertwitch = match;
+        servertwitch += match;
       }
       return;
     }
@@ -66,18 +72,23 @@ function onBeforeRequest(details) {
         log.push("blocking success: " + details.statusCode);
         return;
       }
-      //if the return of the twitch is 404 the stream is offline or not found
-      if(details.statusCode == 404){
-        console.log("Stream Offline: " + details.statusCode);
-        log.push("Stream offline: " + details.statusCode);
-        return;
-      }
+      
       //if the proxystatus if 404, the server proxy is offline so the extension turn off
       if(details.responseHeaders.find(x => x.name == "proxystatus").value == 404){
         console.log("blocking error: " + details.statusCode);
         log.push("blocking error: " + details.statusCode);
         log.push("url: " + details.url);
         servererror = true;
+        return {
+          cancel: true
+        };
+      }
+
+      //if the return of the twitch is 404 the stream is offline or not found
+      if(details.statusCode == 404){
+        console.log("Stream Offline: " + details.statusCode);
+        log.push("Stream offline: " + details.statusCode);
+        return;
       }
 
     }else if(details.url.includes("usher.ttvnw.net/api/channel/")){
@@ -94,7 +105,7 @@ function onBeforeRequest(details) {
       }
     }
     
-    log.push("ads blocked" + details.url);
+    log.push("ads blocked: " + details.url);
     return {
       cancel: true
     };

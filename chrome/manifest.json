@@ -23,6 +23,7 @@
         "webRequestBlocking",
         "https://*.twitch.tv/*",
         "https://much.ga/*",
+        "https://localhost/*",
         "https://*.ttvnw.net/*",
         "tabs",
         "storage",
@@ -39,5 +40,5 @@
         "*://*.branch.io/*",
         "*://comscore.com/*"
     ],
-    "version" : "1.5.3"
+    "version" : "1.5.4"
 }
