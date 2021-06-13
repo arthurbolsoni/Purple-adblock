@@ -41,7 +41,23 @@ function onBeforeRequest(details) {
     }
   }
   
+  var servertwitch = "";
+  
   function onCompleted(details) {
+    if(details.url.includes("abs.hls.ttvnw.net/")){return;}
+    if(details.url.includes("much.ga/on")){return;}
+
+    if(details.url.includes("hls.ttvnw.net/")){
+      var regex = /(?:^https?:\/\/([^\/]+)(?:[\/,]|$)|^(.*)$)/
+      const match = regex.exec(details.url)[1];
+
+      if(!servertwitch.includes(match)){
+        console.log("twitch server: " + match);
+        log.push("twitch server: " + match);
+        servertwitch = match;
+      }
+      return;
+    }
     console.log("url: " + details.url + "   " + details.statusCode);
     if(details.url.includes("much.ga/channel")){
 
@@ -50,14 +66,14 @@ function onBeforeRequest(details) {
         log.push("blocking success: " + details.statusCode);
         return;
       }
-      //if the return not 200, see if exist the proxystatus. if not exist the proxystatus the server has offline.
-      if(details.responseHeaders.find(x => x.name == "proxystatus").value == 200){
+      //if the return of the twitch is 404 the stream is offline or not found
+      if(details.statusCode == 404){
         console.log("Stream Offline: " + details.statusCode);
         log.push("Stream offline: " + details.statusCode);
         return;
       }
-
-      if(details.statusCode == 404){
+      //if the proxystatus if 404, the server proxy is offline so the extension turn off
+      if(details.responseHeaders.find(x => x.name == "proxystatus").value == 404){
         console.log("blocking error: " + details.statusCode);
         log.push("blocking error: " + details.statusCode);
         log.push("url: " + details.url);
@@ -77,6 +93,12 @@ function onBeforeRequest(details) {
         }
       }
     }
+    
+    log.push("ads blocked" + details.url);
+    return {
+      cancel: true
+    };
+
   }
 
   chrome.storage.onChanged.addListener(function (changes, namespace) {
@@ -103,8 +125,8 @@ chrome.runtime.onMessage.addListener(
 
 chrome.webRequest.onBeforeRequest.addListener(
   onBeforeRequest,
-  { urls: ["https://usher.ttvnw.net/api/channel/hls/*"] },
+  { urls: ["https://*.amazon-adsystem.com/*","https://cdn.krxd.net/*","https://script.ioam.de/iam.js","https://edge.quantserve.com/quant.js","https://ddacn6pr5v0tl.cloudfront.net/*","https://d2v02itv0y9u9t.cloudfront.net/dist/1.0.5/v6s.js","https://*.imrworldwide.com/*","https://countess.twitch.tv/*","https://*.scorecardresearch.com/*","https://www.googletagservices.com/tag/js/gpt.js","*://*.branch.io/*","*://comscore.com/*","https://usher.ttvnw.net/api/channel/hls/*"] },
   ["blocking", "extraHeaders"]
 );
 
-chrome.webRequest.onCompleted.addListener(onCompleted, {urls: [ "https://much.ga/*","https://usher.ttvnw.net/api/channel/*"] },["responseHeaders"]);
+chrome.webRequest.onCompleted.addListener(onCompleted, {urls: [ "https://much.ga/*","https://*.hls.ttvnw.net/*","https://usher.ttvnw.net/api/channel/*"] },["responseHeaders"]);
