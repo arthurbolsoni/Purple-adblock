@@ -13,6 +13,7 @@ Please, help us to develop the extension ou report bugs. [Discord](https://disco
 # WARNING!
 
 No work withAlternate Player for Twitch.tv.
+I'm using https://proxy6.net/ a few times it turned off so we just need to wait, I'm open for another solution. 
 
 This project has no intention of harming anyone.
 Anyway, use at your own risk.
