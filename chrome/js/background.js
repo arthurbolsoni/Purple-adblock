@@ -95,6 +95,7 @@ function onBeforeRequest(details) {
       const match = /hls\/(\w+)\.m3u8/gim.exec(details.url);
 
       if (match !== null && match.length > 1) {
+        log.push(whiteList)
         if(whiteList.includes(match[1])){
           console.log("blocking desabled: running native");
           log.push("blocking desabled: running native");
@@ -102,14 +103,11 @@ function onBeforeRequest(details) {
           console.log("blocking error: running native" + "url: " + details.url);
           log.push("blocking error: running native" + "url: " + details.url);
         }
+      }else{
+      console.log("blocking error: running native" + "url: " + details.url);
+      log.push("blocking error: running native" + "url: " + details.url);
       }
     }
-    
-    log.push("ads blocked: " + details.url);
-    return {
-      cancel: true
-    };
-
   }
 
   chrome.storage.onChanged.addListener(function (changes, namespace) {
