@@ -8,12 +8,12 @@
     "browser_action": {
         "default_title": "Purple AdBlock",
         "default_icon": {
-            "128": "images/128-icon.png"
+            "128": "images/logov2-128.png"
         },
         "default_popup": "common/html/popup.html"
     },
     "icons": {
-        "128": "images/128-icon.png"
+        "128": "images/logov2-128.png"
     },
     "description": "Purple AdBlock",
     "manifest_version": 2,
@@ -39,5 +39,5 @@
         "*://*.branch.io/*",
         "*://comscore.com/*"
     ],
-    "version" : "1.5.5"
+    "version" : "1.5.6"
 }
