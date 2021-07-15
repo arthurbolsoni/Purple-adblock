@@ -6,7 +6,7 @@
         "persistent": true
     },
     "browser_action": {
-        "default_title": "Purple AdBlock",
+        "default_title": "Purple Ads-Blocker",
         "default_icon": {
             "128": "images/logov2-128.png"
         },
@@ -15,9 +15,9 @@
     "icons": {
         "128": "images/logov2-128.png"
     },
-    "description": "Purple AdBlock",
+    "description": "Purple Ads-Blocker",
     "manifest_version": 2,
-    "name" : "Purple AdBlock",
+    "name" : "Purple Ads-Blocker is a video ad-blocker for Twitch.tv and some other url",
     "permissions": [
         "webRequest",
         "webRequestBlocking",
@@ -39,5 +39,5 @@
         "*://*.branch.io/*",
         "*://comscore.com/*"
     ],
-    "version" : "1.5.6"
+    "version" : "1.5.7"
 }
