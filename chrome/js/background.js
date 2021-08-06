@@ -1,12 +1,19 @@
 var whiteList = [];
 var log = [];
 var servererror = false;
+var version1 = true;
 
 function onBeforeRequest(details) {
   if(!details.url.includes("usher.ttvnw.net/api/channel/hls/")){
     return {
       cancel: true
     };
+  }
+
+  if(!version1){
+    console.log("v1 = false");
+    log.push("v1 = false");
+    return;
   }
 
   if(servererror == true){return { redirectUrl: details.url };}
@@ -22,7 +29,7 @@ function onBeforeRequest(details) {
     console.log("Opening: " + match[1]);
     log.push("Opening: " + match[1]);
 
-    new Promise(resolve => {                    
+    new Promise(resolve => {
       fetch(
           'https://much.ga/on',
           {
@@ -50,6 +57,9 @@ function onBeforeRequest(details) {
   var servertwitch = "";
   
   function onCompleted(details) {
+    if(!version1){
+      return;
+    }
     if(details.url.includes("abs.hls.ttvnw.net/")){return;}
     if(details.url.includes("much.ga/on")){return;}
 
@@ -111,19 +121,33 @@ function onBeforeRequest(details) {
   }
 
   chrome.storage.onChanged.addListener(function (changes, namespace) {
-    for (let [key, { oldValue, newValue }] of Object.entries(changes)) {
-      if(newValue !== undefined){
+    for (let [key, { oldValue, newValue }] of Object.entries(changes)){
+      if(key == "whiteList"){
         whiteList = newValue;
         console.log(whiteList);
+      }
+
+      if(key == "settings"){
+        version1 = newValue[0];
+        console.log(newValue);
       }
     }
   });
 
-chrome.storage.local.get(/* String or Array */["whiteList"], function(items){  
+chrome.storage.local.get(["whiteList","settings"], function(items){
   if(items.whiteList !== undefined){
     whiteList = items.whiteList;
     console.log(whiteList);
   }
+  log.push(items.settings);
+  if(items.settings !== undefined){
+    settings = items.settings;
+    version1 = settings[0];
+
+  }else{
+    version1 = false;
+  }
+
 });
 
 chrome.runtime.onMessage.addListener(

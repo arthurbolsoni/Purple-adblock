@@ -62,11 +62,7 @@ a {
   cursor: pointer;
 }
 
-#content {
-  background: #06c;
-}
-
-.buttonlog:hover{
+.hover:hover{
   background-color: #363636;
   text-align: center;
 }
