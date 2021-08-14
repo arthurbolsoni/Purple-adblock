@@ -1,26 +1,17 @@
 # About The Project
 Adblock for the purple website using server side signature.
 
-There are two version, the old one in python3.8, I translated it in NodeJS to put it on the server.
-
-Please, help us to develop the extension ou report bugs. [Discord](https://discord.gg/7MpUUDNxHx)
+Please, help us to develop the extension donate and report bugs. [Discord](https://discord.gg/7MpUUDNxHx)
 
 # WARNING!
-
-No work withAlternate Player for Twitch.tv.
-I'm using https://proxy6.net/ a few times it turned off so we just need to wait, I'm open for another solution. 
-
-This project has no intention of harming anyone.
-Anyway, use at your own risk.
+No work with Alternate Player for Twitch.tv, or another "twitch adblocker". But you can use generics ads blockers like "uBlock Origin".
 
 ## Installation
 
 Free proxy on Extension: [Firefox](https://addons.mozilla.org/pt-BR/firefox/addon/purpleadblock/) and [Google Chrome](https://chrome.google.com/webstore/detail/purple-adblock/lkgcfobnmghhbhgekffaadadhmeoindg).
 
 ## Development
-The project was built in python3.8 and NodeJS. <br>
-To run the server side you need a proxy + Client_ID of the purple site. <br>
-To run the client side you need to change the host on background.js.
+If you wanna build youself server, just run the nodejs server and change the host on background.js
 
 ## IF YOU WANT HELP ME WITH THE SERVER
 
@@ -31,12 +22,10 @@ To run the client side you need to change the host on background.js.
 
 ## Contributing
 
-1. I didn't find references for live_url file.
-2. https://github.com/pixeltris/TwitchAdSolutions/issues/8
-3. https://www.pngkit.com/bigpic/u2t4y3y3a9e6r5e6/
-4. https://twitter.com/ChoosenEye
-5. https://github.com/pixeltris/TwitchAdSolutions/issues/25#issuecomment-822883576
-6. ads list block https://github.com/saucettv/VideoAdBlockForTwitch/
+1. https://github.com/pixeltris/TwitchAdSolutions/issues/8
+2. https://twitter.com/ChoosenEye
+3. https://github.com/pixeltris/TwitchAdSolutions/issues/25#issuecomment-822883576
+4. ads list block https://github.com/saucettv/VideoAdBlockForTwitch/
 
 # WARNING!
 This project has no intention of harming anyone.
