@@ -19,6 +19,8 @@ If you wanna build youself server, just run the nodejs server and change the hos
 **#LTC DONATE:** LYagnjToA6SZjAnEttdJEtp61bfvAN2xYU <br>
 **#DOGECOIN DONATE:** DR3AdZD5gr2WBkyKZUuxLfxK26QQ6RHsvR <br>
 **#BUY ME A COFFE :)** https://www.buymeacoffee.com/arthurbolsoni
+**#Paypal :)** https://www.paypal.com/donate/?business=7KG5ZT4AVJ2D6&no_recurring=0&currency_code=USD
+
 
 ## Contributing
 
