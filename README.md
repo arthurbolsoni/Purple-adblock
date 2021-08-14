@@ -1,8 +1,3 @@
-
-<p align="center">
-    <img src="images/banner.png" alt="Logo" height="400">
-</p>
-
 # About The Project
 Adblock for the purple website using server side signature.
 
