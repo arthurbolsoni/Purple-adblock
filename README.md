@@ -18,8 +18,8 @@ If you wanna build youself server, just run the nodejs server and change the hos
 **#BTC DONATE:** 12NXXqNKTKD8nv89pdvHotF6JqX5CWfyZk <br>
 **#LTC DONATE:** LYagnjToA6SZjAnEttdJEtp61bfvAN2xYU <br>
 **#DOGECOIN DONATE:** DR3AdZD5gr2WBkyKZUuxLfxK26QQ6RHsvR <br>
-**#BUY ME A COFFE :)** https://www.buymeacoffee.com/arthurbolsoni <br>
-**#Paypal :)** https://www.paypal.com/donate/?business=7KG5ZT4AVJ2D6&no_recurring=0&currency_code=USD
+**#BUY ME A COFFE :)** [BuyMeaCoffe](https://www.buymeacoffee.com/arthurbolsoni) <br>
+**#Paypal :)** [PayPal](https://www.paypal.com/donate/?business=7KG5ZT4AVJ2D6&no_recurring=0&currency_code=USD)
 
 
 ## Contributing
