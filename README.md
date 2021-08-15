@@ -29,6 +29,4 @@ If you wanna build youself server, just run the nodejs server and change the hos
 4. ads list block https://github.com/saucettv/VideoAdBlockForTwitch/
 
 # License
-This project has no intention of harming anyone.
-We use the pre listed link to block posibles ads come through.
-The app call somes permissions to manager configs. see on manifest.json
+GNU General Public License v3.0
