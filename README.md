@@ -9,10 +9,10 @@ Free proxy on Extension: [Firefox](https://addons.mozilla.org/pt-BR/firefox/addo
 
 No work with Alternate Player for Twitch.tv, or another "twitch adblocker". But you can use generics ads blockers like "uBlock Origin".
 
-## Only user Tunnel
+### Only user Tunnel
 The Purple get a direct request withot ads flow from the proxy.
 
-## Tunnel and Local requests - BETA
+### Tunnel and Local requests - BETA
 Purple takes a request with no ad stream from the server and a local request and just calls the proxy stream when ads show. doing so a mix of the stream. Avoiding Bufferring problem in sames connection.
 it is on beta. i am making the script to do as generic as possible. You can help sending pull requests if you now code :)
 
