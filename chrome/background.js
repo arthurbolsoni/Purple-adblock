@@ -31,7 +31,7 @@ function onBeforeRequest(details) {
 
     new Promise(resolve => {
       fetch(
-          'https://much.ga/on',
+          'https://jupter.ga/on',
           {
             method: 'GET',
           }).then(r =>{
@@ -49,7 +49,7 @@ function onBeforeRequest(details) {
           });
         });
     
-    return { redirectUrl: `https://much.ga/channel/${match[1]}` };
+    return { redirectUrl: `https://jupter.ga/channel/${match[1]}` };
       
     }
   }
@@ -61,7 +61,7 @@ function onBeforeRequest(details) {
       return;
     }
     if(details.url.includes("abs.hls.ttvnw.net/")){return;}
-    if(details.url.includes("much.ga/on")){return;}
+    if(details.url.includes("jupter.ga/on")){return;}
 
     if(details.url.includes("hls.ttvnw.net/")){
       var regex = /(?:^https?:\/\/([^\/]+)(?:[\/,]|$)|^(.*)$)/
@@ -75,7 +75,7 @@ function onBeforeRequest(details) {
       return;
     }
     console.log("url: " + details.url + "   " + details.statusCode);
-    if(details.url.includes("much.ga/channel")){
+    if(details.url.includes("jupter.ga/channel")){
 
       if(details.statusCode == 200){
         console.log("blocking success: " + details.statusCode);
@@ -162,7 +162,7 @@ chrome.webRequest.onBeforeRequest.addListener(
   ["blocking", "extraHeaders"]
 );
 
-chrome.webRequest.onCompleted.addListener(onCompleted, {urls: [ "https://much.ga/*","https://*.hls.ttvnw.net/*","https://usher.ttvnw.net/api/channel/*"] },["responseHeaders"]);
+chrome.webRequest.onCompleted.addListener(onCompleted, {urls: [ "https://jupter.ga/*","https://*.hls.ttvnw.net/*","https://usher.ttvnw.net/api/channel/*"] },["responseHeaders"]);
 
 chrome.runtime.onInstalled.addListener( function(details) {
   switch(details.reason) {
