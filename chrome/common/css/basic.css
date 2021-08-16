@@ -1,8 +1,12 @@
 html {
-    width: 300PX;
-    background: rgba(30, 30, 30, 1);
-    color: white;
-    font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  width: 258PX;
+  background: rgba(30, 30, 30, 1);
+  color: white;
+  font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+}
+
+body{
+  margin: 0;
 }
 
 h1 {

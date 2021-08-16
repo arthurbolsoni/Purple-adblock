@@ -1,0 +1,11 @@
+{
+  "lockfileVersion": 1,
+  "dependencies": {
+    "express": "^4.17.1",
+    "express-session": "^1.17.1",
+    "https-proxy-agent": "^5.0.0",
+    "node-fetch": "^2.6.1",
+    "ping": "^0.4.1",
+    "random": "^3.0.3"
+  }
+}

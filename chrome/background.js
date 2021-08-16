@@ -163,3 +163,14 @@ chrome.webRequest.onBeforeRequest.addListener(
 );
 
 chrome.webRequest.onCompleted.addListener(onCompleted, {urls: [ "https://much.ga/*","https://*.hls.ttvnw.net/*","https://usher.ttvnw.net/api/channel/*"] },["responseHeaders"]);
+
+chrome.runtime.onInstalled.addListener( function(details) {
+  switch(details.reason) {
+    case "install":
+      chrome.storage.local.set({["settings"]: [true, false]});
+      break;
+    case "update":
+      // First run after an update
+      break;
+  }
+});

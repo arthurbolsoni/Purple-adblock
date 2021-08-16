@@ -92,7 +92,7 @@ chrome.tabs.query({'active': true, 'lastFocusedWindow': true}, function
                     return;
                 }else{
                     document.getElementById("adblocktext").classList.add("disable");
-                    document.getElementById("watching").textContent = "Disactived on : " + channel;
+                    document.getElementById("watching").textContent = "Disabled on : " + channel;
                     return;
                 }
             }
