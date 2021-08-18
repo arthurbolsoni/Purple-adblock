@@ -18,7 +18,7 @@
     "name": "Purple Ads Blocker",
     "description": "Purple Ads Blocker is a video ad-blocker for Twitch.tv and some other url",
     "manifest_version": 2,
-    "version": "2.0.0",
+    "version": "2.0.1",
     "permissions": [
         "webRequest",
         "webRequestBlocking",
