@@ -127,9 +127,9 @@
     }
     
     async function onAfterFetch(response, realFetch, url) {
-          if (Math.random() < 0.5 ){
-              response += "twitch-client-ad";
-          }
+        //   if (Math.random() < 0.5 ){
+        //       response += "twitch-client-ad";
+        //   }
 
         var quality = channel.find(x => x.name === actualChannel).hls.StreamServerList.map(x => x.urlList.find(a => a.url == url)).find(x => x != undefined).quality;
 
