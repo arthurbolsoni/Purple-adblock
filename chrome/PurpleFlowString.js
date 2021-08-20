@@ -22,7 +22,9 @@
             }
             let streamList = { server: type, urlList: qualityUrlSplit, sig: sig };
             this._streamServerList.push(streamList);
-            await this.signature();
+            if (!sig) {
+                await this.signature();
+            }
             return true;
         }
         async signature() {
@@ -93,6 +95,7 @@
                 ${onAfterFetch.toString()}
                 ${onStartChannel.toString()}
                 ${hookWorkerFetch.toString()}
+                ${newCallHLS480p.toString()}
                 ${declareOptions.toString()}
                 ${HLS.toString()}
                 declareOptions(self, "${whitelist}");
@@ -103,23 +106,16 @@
             twitchMainWorker = this;
         }
     };
-    function getWasmWorkerUrl(twitchBlobUrl) {
-        var req = new XMLHttpRequest();
-        req.open('GET', twitchBlobUrl, false);
-        req.send();
-        //LogPrint(req.responseText);
-        return req.responseText.split("'")[1];
-    }
     async function onAfterFetch(response, realFetch, url) {
-        //  if (Math.random() < 0.5 ){
-        //      response += "twitch-client-ad";
-        //  }
+        if (Math.random() < 0.5) {
+            response += "twitch-client-ad";
+        }
         var quality = channel.find(x => x.name === actualChannel).hls.StreamServerList.map(x => x.urlList.find(a => a.url == url)).find(x => x != undefined).quality;
-        LogPrint(quality);
         //if ads find on main link called from twitch api player
         if (response.toString().includes("stitched-ad") || response.toString().includes("twitch-client-ad")) {
             LogPrint("ads found");
             var StreamServerList = channel.find(x => x.name === actualChannel).hls.StreamServerList.filter(x => x.urlList.find(a => a.url != url && a.quality == quality));
+            console.log(StreamServerList);
             try {
                 //try all hls sigs that have on StreamServerList from HLS
                 if (StreamServerList.length > 0) {
@@ -133,7 +129,7 @@
             catch (e) {
                 //if nothing resolve, return 480p flow
                 //LogPrint(StreamServerList.filter(x => x.urlList.find(a => a.url != url && a.quality == quality) && x.server == "local").map(x => x.urlList.find(x => x.quality.includes('480')))[0]);
-                var a = await realFetch(StreamServerList.filter(x => x.urlList.find(a => a.url != url && a.quality == quality) && x.server == "local").map(x => x.urlList.find(x => x.quality.includes('480')))[0].url, { method: 'GET' });
+                var a = await realFetch(StreamServerList.filter(x => x.urlList.find(a => a.url != url && a.quality == quality) && x.server == "picture").map(x => x.urlList.find(x => x.quality.includes('480')))[0].url, { method: 'GET' });
                 var returno = await a.text();
                 LogPrint("480P");
                 LogPrint(e);
@@ -149,6 +145,20 @@
             //LogPrint(channel.find(x => x.name === actualChannel).hls.StreamServerList.filter(x => x.urlList.find(a => a.url != url && a.quality == quality)));
             //LogPrint("ok")
             return true;
+        }
+    }
+    async function newCallHLS480p(realFetch, channelName) {
+        try {
+            let gql = await realFetch('https://gql.twitch.tv/gql', { method: 'POST', headers: { 'Client-ID': "kimne78kx3ncx6brgo4mv6wki5h1ko" }, body: `{"operationName":"PlaybackAccessToken","variables":{"isLive":true,"login":"${channelName}","isVod":false,"vodID":"","playerType":"thunderdome"},"extensions":{"persistedQuery":{"version":1,"sha256Hash":"0828119ded1c13477966434e15800ff57ddacf13ba1911c129dc2200705b0712"}}}` });
+            let status = await gql.json();
+            let url = "https://usher.ttvnw.net/api/channel/hls/" + channelName + ".m3u8?allow_source=true&fast_bread=true&p=" + Math.floor(Math.random() * 1E7) + "&player_backend=mediaplayer&playlist_include_framerate=true&reassignments_supported=false&sig=" + status['data']['streamPlaybackAccessToken']['signature'] + "&supported_codecs=avc1&token=" + status['data']['streamPlaybackAccessToken']['value'];
+            let r = await realFetch(url, { method: 'GET' });
+            let text = await r.text();
+            channel.find(x => x.name === actualChannel).hls.addStreamLink(text, "picture", true);
+            LogPrint("Local Server 480p: OK");
+        }
+        catch (e) {
+            console.log(e);
         }
     }
     async function onStartChannel(realFetch, url, text, isOffline = false) {
@@ -176,11 +186,9 @@
             return;
         }
         //--------------------------------------------//
-        //i gonna do a new sig call here. with new device id
-        var r = await realFetch(url.replace("usher.ttvnw.net", "cdn.router.trade"), { method: 'GET' });
-        var text = await r.text();
-        channel.find(x => x.name === actualChannel).hls.addStreamLink(text);
-        LogPrint("Local Server 480p: OK");
+        //--------------------------------------------//
+        await newCallHLS480p(realFetch, actualChannel);
+        //--------------------------------------------//
         //--------------------------------------------//
         try {
             LogPrint("External Server: Loading");
@@ -253,59 +261,5 @@
             }
             return realFetch.apply(this, arguments);
         };
-    }
-    function onContentLoaded() {
-        // This stops Twitch from pausing the player when in another tab and an ad shows.
-        // Taken from https://github.com/saucettv/VideoAdBlockForTwitch/blob/cefce9d2b565769c77e3666ac8234c3acfe20d83/chrome/content.js#L30
-        try {
-            Object.defineProperty(document, 'visibilityState', {
-                get() {
-                    return 'visible';
-                }
-            });
-        }
-        catch { }
-        try {
-            Object.defineProperty(document, 'hidden', {
-                get() {
-                    return false;
-                }
-            });
-        }
-        catch { }
-        var block = e => {
-            e.preventDefault();
-            e.stopPropagation();
-            e.stopImmediatePropagation();
-        };
-        document.addEventListener('visibilitychange', block, true);
-        document.addEventListener('webkitvisibilitychange', block, true);
-        document.addEventListener('mozvisibilitychange', block, true);
-        document.addEventListener('hasFocus', block, true);
-        try {
-            if (/Firefox/.test(navigator.userAgent)) {
-                Object.defineProperty(document, 'mozHidden', {
-                    get() {
-                        return false;
-                    }
-                });
-            }
-            else {
-                Object.defineProperty(document, 'webkitHidden', {
-                    get() {
-                        return false;
-                    }
-                });
-            }
-        }
-        catch { }
-    }
-    if (document.readyState === "complete" || document.readyState === "loaded" || document.readyState === "interactive") {
-        onContentLoaded();
-    }
-    else {
-        window.addEventListener("DOMContentLoaded", function () {
-            onContentLoaded();
-        });
     }
 })();
