@@ -13,16 +13,34 @@
             this._sequence = 0;
             this._streamServerList = [];
         }
-        addStreamLink(text, type = "local") {
+        async addStreamLink(text, type = "local", sig = false) {
             let qualityUrlSplit = [];
             let m = [];
             let REGEX = /RESOLUTION=(\S+),C(?:^|\S+\s+)(https:\/\/video(\S+).m3u8)/gs;
             while ((m = REGEX.exec(text)) !== null) {
                 qualityUrlSplit.push({ quality: (qualityUrlSplit.some(x => x.quality == m[1]) ? m[1] + "p30" : m[1]), url: m[2] });
             }
-            let streamList = { server: type, urlList: qualityUrlSplit };
+            let streamList = { server: type, urlList: qualityUrlSplit, sig: sig };
             this._streamServerList.push(streamList);
+            await this.signature();
             return true;
+        }
+        async signature() {
+            let REGEX = /video-weaver.(.*).hls.ttvnw.net\/v1\/playlist\/(.*).m3u8$/gm;
+            await new Promise(resolve => this._streamServerList.filter((x) => x.sig == false).forEach(async (x) => {
+                let match = REGEX.exec(x.urlList[0].url);
+                try {
+                    var a = await fetch(`https://jupter.ga/hls/v2/sig/${match[2]}/${match[1]}`, {
+                        method: 'GET'
+                    });
+                    LogPrint("Server signature: " + a.ok);
+                    x.sig = true;
+                    resolve(true);
+                }
+                catch {
+                    resolve(false);
+                }
+            }));
         }
         get StreamServerList() {
             return this._streamServerList;
@@ -34,7 +52,7 @@
             if (playlist === null) {
                 return false;
             }
-            var changed = false;
+            let changed = false;
             var lines = playlist.toString().split(/[\r\n]/);
             this._header[4] = (lines[4]);
             this._header[5] = (lines[5]);
@@ -61,9 +79,6 @@
             return this._header[0] + "\n" + this._header[1] + "\n" + this._header[2] + "\n" + this._header[3] + this._sequence + "\n" + this._header[4] + "\n" + this._header[5] + "\n" +
                 this._playlist.map(x => { return x.time + "\n" + x.info + "\n" + x.url + "\n"; });
         }
-        getPlaylistByUrl(url) {
-            return this._playlist.filter(x => { return x.url == url; });
-        }
     }
     var twitchMainWorker = null;
     let oldWorker = window.Worker;
@@ -75,7 +90,6 @@
             }
             var newBlobStr = `
                 const LogPrint = (x => {console.log("[Purple]: " + x)});
-                ${onBeforeFetch.toString()}
                 ${onAfterFetch.toString()}
                 ${onStartChannel.toString()}
                 ${hookWorkerFetch.toString()}
@@ -96,30 +110,10 @@
         //LogPrint(req.responseText);
         return req.responseText.split("'")[1];
     }
-    async function onBeforeFetch(url) {
-        if (channel.find(x => x.name === actualChannel).flowSig.find(c => c === url)) {
-            return true;
-        }
-        let regex = /video-weaver.(.*).hls.ttvnw.net\/v1\/playlist\/(.*).m3u8$/gm;
-        var match = regex.exec(url);
-        //LogPrint(match);
-        try {
-            var a = await fetch('https://jupter.ga/hls/v2/sig/' + match[2] + '/' + match[1], {
-                method: 'GET'
-            });
-            LogPrint("Server signature: " + a.ok);
-            channel.find(x => x.name === actualChannel).flowSig.push(url);
-            return true;
-        }
-        catch {
-            channel.find(x => x.name === actualChannel).flowSig.push(url);
-            return false;
-        }
-    }
     async function onAfterFetch(response, realFetch, url) {
-        if (Math.random() < 0.5) {
-            response += "twitch-client-ad";
-        }
+        //  if (Math.random() < 0.5 ){
+        //      response += "twitch-client-ad";
+        //  }
         var quality = channel.find(x => x.name === actualChannel).hls.StreamServerList.map(x => x.urlList.find(a => a.url == url)).find(x => x != undefined).quality;
         LogPrint(quality);
         //if ads find on main link called from twitch api player
@@ -131,7 +125,7 @@
                 if (StreamServerList.length > 0) {
                     var a = await realFetch(StreamServerList.find(x => x.server == "proxy").urlList.find(a => a.quality == quality).url, { method: 'GET' });
                     var returno = await a.text();
-                    return channel.find(x => x.name === actualChannel).hls.addPlaylist(returno);
+                    return channel.find(x => x.name === actualChannel).hls.addPlaylist(returno, true);
                     //gera erro se nao tiver link
                 }
                 throw new Error("No m3u8 valid url found on StreamServerList");
@@ -175,11 +169,9 @@
             }
         }
         //--------------------------------------------//
-        let REGEX = /RESOLUTION=(\S+),C(?:^|\S+\s+)(https:\/\/video(\S+).m3u8)/gs;
-        var qualityUrlSplit = [];
         LogPrint("Local Server: Loading");
-        channel.find(x => x.name === actualChannel).hls.addStreamLink(text);
-        LogPrint("Local Server: OKk");
+        await channel.find(x => x.name === actualChannel).hls.addStreamLink(text);
+        LogPrint("Local Server: OK");
         if (existe) {
             return;
         }
@@ -188,7 +180,7 @@
         var r = await realFetch(url.replace("usher.ttvnw.net", "cdn.router.trade"), { method: 'GET' });
         var text = await r.text();
         channel.find(x => x.name === actualChannel).hls.addStreamLink(text);
-        LogPrint("Local Server 480p: OKK");
+        LogPrint("Local Server 480p: OK");
         //--------------------------------------------//
         try {
             LogPrint("External Server: Loading");
@@ -224,7 +216,7 @@
                 if (url.endsWith('m3u8') && url.includes('ttvnw.net') && !whitelist.includes(actualChannel)) {
                     return new Promise(function (resolve, reject) {
                         var processFetch = async function (url) {
-                            await onBeforeFetch(url);
+                            // await onBeforeFetch(url);
                             await realFetch(url, options).then(function (response) {
                                 response.text().then(function (text) {
                                     onAfterFetch(text, realFetch, url).then(function (r) {
@@ -242,8 +234,8 @@
                         var processFetch = async function (url) {
                             await realFetch(url, options).then(function (response) {
                                 if (response.ok) {
-                                    response.text().then(function (text) {
-                                        onStartChannel(realFetch, url, text);
+                                    response.text().then(async function (text) {
+                                        await onStartChannel(realFetch, url, text);
                                         resolve(new Response(text));
                                     });
                                 }

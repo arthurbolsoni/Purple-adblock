@@ -45,16 +45,9 @@ app.get('/hls/v2/channel/:channelName', function (req, res, next) {
     if (req.params.channelName != null) {
         LU.getNewHLS((req.params.channelName).toString(), '').then((x) => {
             if (x[2]) {
-                let c = "";
                 if (x[1] == "200") {
                     let REGEX = /RESOLUTION=(\S+),C(?:^|\S+\s+\S+)video-weaver.(\S+).hls.ttvnw.net\/v1\/playlist\/(\S+).m3u8/g;
                     while ((m = REGEX.exec(x[0])) !== null) {
-                        if (m[1].substr(m[1].indexOf('x') + 1, m[1].length) <= 480) {
-                            break;
-                        }
-
-                        c = c ? c + "." + m[1] + "." + m[3] : c + m[2] + "." + m[1] + "." + m[3];
-
                         PC.requestUrlByProxy(m[3], m[1]).then((r) => {
                         });
                     }
@@ -63,7 +56,7 @@ app.get('/hls/v2/channel/:channelName', function (req, res, next) {
                 }
 
                 res.set('proxystatus', '200');
-                res.status(x[1]).send(c);
+                res.status(x[1]).send(x[0]);
 
             } else {
                 res.set('proxystatus', '404');
