@@ -23,6 +23,10 @@ If you wanna build youself server, just run the nodejs server and change the hos
 
 ## IF YOU WANT HELP ME WITH THE SERVER
 
+<h3 align="center">
+   <a href="https://www.buymeacoffee.com/arthurbolsoni" target="_blank"><img src="https://cdn.buymeacoffee.com/buttons/lato-blue.png" alt="Buy Me A Coffee" style="height: 21px !important;width: 187px !important;" ></a>
+</h3>
+
 **#BTC DONATE:** 12NXXqNKTKD8nv89pdvHotF6JqX5CWfyZk <br>
 **#LTC DONATE:** LYagnjToA6SZjAnEttdJEtp61bfvAN2xYU <br>
 **#DOGECOIN DONATE:** DR3AdZD5gr2WBkyKZUuxLfxK26QQ6RHsvR <br>
