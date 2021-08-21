@@ -99,13 +99,11 @@
         }
     }
 
-    var twitchMainWorker = null;
-    let oldWorker = window.Worker;
-    window.Worker = class Worker extends oldWorker {
+    let twitchMainWorker: boolean = false;
+    window.Worker = class WorkerInjector extends Worker {
         constructor(twitchBlobUrl: string | URL) {
             if (twitchMainWorker) {
                 super(twitchBlobUrl);
-                return;
             }
 
             var newBlobStr = `
@@ -122,7 +120,7 @@
             `
 
             super(URL.createObjectURL(new Blob([newBlobStr])));
-            twitchMainWorker = this;
+            twitchMainWorker = true;
         }
     }
     
@@ -136,7 +134,7 @@
         //if ads find on main link called from twitch api player
         if (response.toString().includes("stitched-ad") || response.toString().includes("twitch-client-ad")) {
             LogPrint("ads found");
-            var StreamServerList = channel.find(x => x.name === actualChannel).hls.StreamServerList.filter(x => x.urlList.find(a => a.url != url && a.quality == quality));
+            var StreamServerList = channel.find(x => x.name === actualChannel).hls.StreamServerList;
             console.log(StreamServerList);
 
             try {
@@ -144,6 +142,9 @@
                 if (StreamServerList.length > 0) {
                     var a = await realFetch(StreamServerList.find(x => x.server == "proxy").urlList.find(a => a.quality == quality).url, { method: 'GET' });
                     var returno = await a.text();
+                    if (returno.toString().includes("stitched-ad") || returno.toString().includes("twitch-client-ad")) {
+                        LogPrint("ads on proxy");
+                    }
 
                     return channel.find(x => x.name === actualChannel).hls.addPlaylist(returno, true);
 
@@ -220,36 +221,41 @@
 
 
         //--------------------------------------------//
-        await newCallHLS480p(realFetch, actualChannel);
+        newCallHLS480p(realFetch, actualChannel);
         //--------------------------------------------//
         
         //--------------------------------------------//
-        
-        try {
-            LogPrint("External Server: Loading");
-            var a = await realFetch('https://jupter.ga/hls/v2/channel/' + actualChannel, { method: 'GET' });
 
-            let text = await a.text();
-
-            if (!a.ok) {
-                throw new Error("server proxy return error or not found");
+        new Promise(async resolve => {
+            try {
+                LogPrint("External Server: Loading");
+                var a = await realFetch('https://jupter.ga/hls/v2/channel/' + actualChannel, { method: 'GET' });
+    
+                let text = await a.text();
+    
+                if (!a.ok) {
+                    throw new Error("server proxy return error or not found");
+                }
+    
+    
+                var qualityUrlSplit = text.split('.');
+                var server = qualityUrlSplit.shift();
+    
+                var streamList = { server: "proxy", urlList: [] };
+                qualityUrlSplit.forEach((element, index, array) => { if (!(index % 2)) { streamList.urlList.push({ quality: (streamList.urlList.some(x => x.quality == element) ? element + "p30" : element), url: "https://video-weaver." + server + ".hls.ttvnw.net/v1/playlist/" + array[index + 1] + ".m3u8" }) } });
+    
+                channel.find(x => x.name === actualChannel).hls.StreamServerListSet(streamList);
+                console.log(channel.find(x => x.name === actualChannel).hls.StreamServerList);
+    
+                //channel.find(x => x.name === actualChannel).hls.addStreamLink(text);
+                LogPrint("External Server: OK");
+                LogPrint("External Server: OK");
+                resolve();
+            } catch (e) {
+                LogPrint(e);
+                resolve();
             }
-
-
-            var qualityUrlSplit = text.split('.');
-            var server = qualityUrlSplit.shift();
-
-            var streamList = { server: "proxy", urlList: [] };
-            qualityUrlSplit.forEach((element, index, array) => { if (!(index % 2)) { streamList.urlList.push({ quality: (streamList.urlList.some(x => x.quality == element) ? element + "p30" : element), url: "https://video-weaver." + server + ".hls.ttvnw.net/v1/playlist/" + array[index + 1] + ".m3u8" }) } });
-
-            channel.find(x => x.name === actualChannel).hls.StreamServerListSet(streamList);
-            console.log(channel.find(x => x.name === actualChannel).hls.StreamServerList);
-
-            //channel.find(x => x.name === actualChannel).hls.addStreamLink(text);
-            LogPrint("External Server: OK");
-        } catch (e) {
-            LogPrint(e);
-        }
+        });
 
     }
     function hookWorkerFetch() {
