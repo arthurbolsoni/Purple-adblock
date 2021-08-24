@@ -1,6 +1,22 @@
 (function () {
-    function declareOptions(scope, whitelist) {
-        // Options / globals
+    function declare(scope, whitelist,twitchMainWorker){
+        scope.LogPrint = ((x: any) => { console.log("[Purple]: ", x) });
+        scope.realFetch = fetch;
+        scope.quality = "";
+        scope.abc = null;
+            scope.addEventListener('message', function (e) {
+            switch (e.data.funcName) {
+                case 'setQuality': {
+                    quality = e.data.args[0].name;
+                    LogPrint(quality);
+                    break;
+                }
+                default: {
+                    break;
+                }
+            }
+        });
+        
         scope.channel = [];
         scope.actualChannel = "";
         scope.whitelist = whitelist;
@@ -24,7 +40,7 @@
             let streamList = { server: type, urlList: qualityUrlSplit, sig: sig };
             this._streamServerList.push(streamList);
 
-            if(!sig){
+            if (!sig) {
                 await this.signature();
             }
             return true;
@@ -32,7 +48,7 @@
 
         async signature() {
             let REGEX = /video-weaver.(.*).hls.ttvnw.net\/v1\/playlist\/(.*).m3u8$/gm;
-            
+
             await new Promise(resolve =>
                 this._streamServerList.filter((x: any) => x.sig == false).forEach(async (x: any) => {
                     let match: RegExpExecArray | null = REGEX.exec(x.urlList[0].url);
@@ -98,8 +114,7 @@
                 this._playlist.map(x => { return x.time + "\n" + x.info + "\n" + x.url + "\n" });
         }
     }
-
-    let twitchMainWorker: boolean = false;
+    let twitchMainWorker: any;
     window.Worker = class WorkerInjector extends Worker {
         constructor(twitchBlobUrl: string | URL) {
             if (twitchMainWorker) {
@@ -107,24 +122,23 @@
             }
 
             var newBlobStr = `
-                const LogPrint = (x => {console.log("[Purple]: " + x)});
                 ${onAfterFetch.toString()}
                 ${onStartChannel.toString()}
-                ${hookWorkerFetch.toString()}
+                ${inflateFetch.toString()}
                 ${newCallHLS480p.toString()}
-                ${declareOptions.toString()}
+                ${declare.toString()}
                 ${HLS.toString()}
-                declareOptions(self, "${whitelist}");
-                hookWorkerFetch();
+                declare(self, "${whitelist}", ${twitchMainWorker});
+                inflateFetch();
                 importScripts('${twitchBlobUrl}');
-            `
+                `
 
             super(URL.createObjectURL(new Blob([newBlobStr])));
-            twitchMainWorker = true;
+            twitchMainWorker = this;
+            //this.addEventListener('message', function (e) {console.log(e.data)});
         }
     }
-    
-    async function onAfterFetch(response, realFetch, url) {
+    async function onAfterFetch(response, url) {
         //   if (Math.random() < 0.5 ){
         //       response += "twitch-client-ad";
         //   }
@@ -175,23 +189,23 @@
             return true;
         }
     }
-    async function newCallHLS480p(realFetch, channelName: String){
-        try{
-            let gql = await realFetch('https://gql.twitch.tv/gql', { method: 'POST',headers: { 'Client-ID': "kimne78kx3ncx6brgo4mv6wki5h1ko" }, body: `{"operationName":"PlaybackAccessToken","variables":{"isLive":true,"login":"${channelName}","isVod":false,"vodID":"","playerType":"thunderdome"},"extensions":{"persistedQuery":{"version":1,"sha256Hash":"0828119ded1c13477966434e15800ff57ddacf13ba1911c129dc2200705b0712"}}}` });
+    async function newCallHLS480p(channelName: String) {
+        try {
+            let gql = await realFetch('https://gql.twitch.tv/gql', { method: 'POST', headers: { 'Client-ID': "kimne78kx3ncx6brgo4mv6wki5h1ko" }, body: `{"operationName":"PlaybackAccessToken","variables":{"isLive":true,"login":"${channelName}","isVod":false,"vodID":"","playerType":"thunderdome"},"extensions":{"persistedQuery":{"version":1,"sha256Hash":"0828119ded1c13477966434e15800ff57ddacf13ba1911c129dc2200705b0712"}}}` });
             let status: String = await gql.json();
-            let url = "https://usher.ttvnw.net/api/channel/hls/"+channelName+".m3u8?allow_source=true&fast_bread=true&p="+Math.floor(Math.random() * 1E7)+"&player_backend=mediaplayer&playlist_include_framerate=true&reassignments_supported=false&sig="+status['data']['streamPlaybackAccessToken']['signature']+"&supported_codecs=avc1&token="+status['data']['streamPlaybackAccessToken']['value'];
-            
+            let url = "https://usher.ttvnw.net/api/channel/hls/" + channelName + ".m3u8?allow_source=true&fast_bread=true&p=" + Math.floor(Math.random() * 1E7) + "&player_backend=mediaplayer&playlist_include_framerate=true&reassignments_supported=false&sig=" + status['data']['streamPlaybackAccessToken']['signature'] + "&supported_codecs=avc1&token=" + status['data']['streamPlaybackAccessToken']['value'];
+
             let r = await realFetch(url, { method: 'GET' });
             let text = await r.text();
 
             channel.find(x => x.name === actualChannel).hls.addStreamLink(text, "picture", true);
             LogPrint("Local Server 480p: OK");
-        
-        }catch(e){
+
+        } catch (e) {
             console.log(e);
         }
     }
-    async function onStartChannel(realFetch, url, text, isOffline = false) {
+    async function onStartChannel(url, text, isOffline = false) {
         let regex = /hls\/(.*).m3u8/gm;
         var match = regex.exec(url);
         var existe = false;
@@ -221,32 +235,32 @@
 
 
         //--------------------------------------------//
-        newCallHLS480p(realFetch, actualChannel);
+        newCallHLS480p(actualChannel);
         //--------------------------------------------//
-        
+
         //--------------------------------------------//
 
         new Promise(async resolve => {
             try {
                 LogPrint("External Server: Loading");
                 var a = await realFetch('https://jupter.ga/hls/v2/channel/' + actualChannel, { method: 'GET' });
-    
+
                 let text = await a.text();
-    
+
                 if (!a.ok) {
                     throw new Error("server proxy return error or not found");
                 }
-    
-    
+
+
                 var qualityUrlSplit = text.split('.');
                 var server = qualityUrlSplit.shift();
-    
+
                 var streamList = { server: "proxy", urlList: [] };
                 qualityUrlSplit.forEach((element, index, array) => { if (!(index % 2)) { streamList.urlList.push({ quality: (streamList.urlList.some(x => x.quality == element) ? element + "p30" : element), url: "https://video-weaver." + server + ".hls.ttvnw.net/v1/playlist/" + array[index + 1] + ".m3u8" }) } });
-    
+
                 channel.find(x => x.name === actualChannel).hls.StreamServerListSet(streamList);
                 console.log(channel.find(x => x.name === actualChannel).hls.StreamServerList);
-    
+
                 //channel.find(x => x.name === actualChannel).hls.addStreamLink(text);
                 LogPrint("External Server: OK");
                 LogPrint("External Server: OK");
@@ -258,8 +272,7 @@
         });
 
     }
-    function hookWorkerFetch() {
-        var realFetch = fetch;
+    function inflateFetch() {
         fetch = async function (url, options) {
             if (typeof url === 'string') {
                 if (url.endsWith('.ts')) {
@@ -275,7 +288,7 @@
                             // await onBeforeFetch(url);
                             await realFetch(url, options).then(function (response) {
                                 response.text().then(function (text) {
-                                    onAfterFetch(text, realFetch, url).then(function (r) {
+                                    onAfterFetch(text, url).then(function (r) {
                                         var p = channel.find(x => x.name === actualChannel).hls.getAllPlaylist();
                                         resolve(new Response(p));
                                     });
@@ -292,7 +305,7 @@
                             await realFetch(url, options).then(function (response) {
                                 if (response.ok) {
                                     response.text().then(async function (text) {
-                                        await onStartChannel(realFetch, url, text);
+                                        await onStartChannel(url, text);
                                         resolve(new Response(text));
                                     });
                                 } else {
