@@ -19,7 +19,7 @@ it is on beta. i am making the script to do as generic as possible. You can help
 No work with Alternate Player for Twitch.tv, or another "twitch adblocker". But you can use generics ads blockers like "uBlock Origin".
 
 ## Development
-If you wanna build youself server, just run the nodejs server and change the host on background.js
+If you wanna build youself server, just run the nodejs server and change the host on .ts file.
 
 ## IF YOU WANT HELP ME WITH THE SERVER
 
