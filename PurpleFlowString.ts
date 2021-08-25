@@ -1,5 +1,5 @@
 (function () {
-    function declare(scope, whitelist,twitchMainWorker){
+    function declare(scope, whitelist){
         scope.LogPrint = ((x: any) => { console.log("[Purple]: ", x) });
         scope.realFetch = fetch;
         scope.quality = "";
@@ -8,7 +8,6 @@
             switch (e.data.funcName) {
                 case 'setQuality': {
                     quality = e.data.args[0].name;
-                    LogPrint(quality);
                     break;
                 }
                 default: {
@@ -128,7 +127,7 @@
                 ${newCallHLS480p.toString()}
                 ${declare.toString()}
                 ${HLS.toString()}
-                declare(self, "${whitelist}", ${twitchMainWorker});
+                declare(self, "${whitelist}");
                 inflateFetch();
                 importScripts('${twitchBlobUrl}');
                 `
