@@ -1,0 +1,26 @@
+* text=auto
+
+LICENSE text eol=lf
+*.bat text eol=crlf
+*.css text eol=lf
+*.eslintrc text eol=lf
+*.ejs text eol=lf
+*.gitattributes text eol=lf
+*.gitignore text eol=lf
+*.html text eol=lf
+*.js text eol=lf
+*.json text eol=lf
+*.prettierrc text eol=lf
+*.sh text eol=lf
+*.ts text eol=lf
+*.md text eol=lf
+*.yml text eol=lf
+
+*.bmp binary
+*.gif binary
+*.jpeg binary
+*.jpg binary
+*.map binary
+*.png binary
+*.tar.gz binary
+*.zip binary

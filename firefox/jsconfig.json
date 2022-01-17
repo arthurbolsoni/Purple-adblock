@@ -1,0 +1,9 @@
+{
+  "compilerOptions": {
+    "allowJs": true,
+    "lib": [
+      "dom",
+      "webworker"
+    ]
+  }
+}
