@@ -1,4 +1,5 @@
 // Contributors Note: my eyes and brain hurt from trying to understand this code - Flleeppyy
+// :)
 
 declare let LogPrint: (x: any) => void;
 
@@ -38,8 +39,11 @@ declare let whitelist: string[];
     scope.channel = [];
     scope.actualChannel = "";
     scope.whitelist = whitelist;
+
   }
 
+  //class where the app format all pieces of the "hls" stream to a object.
+  //merge local hls with external hls
   class HLS {
     private _header: Array<string> = ["#EXTM3U", "#EXT-X-VERSION:3", "#EXT-X-TARGETDURATION:6", "#EXT-X-MEDIA-SEQUENCE:6"];
     private _playlist: playlistItem[] = [];

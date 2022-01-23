@@ -13,7 +13,7 @@ export default async function requestUrlByProxy(id: string, server: string) {
         },
         4000,
       );
-      return returning.status == 200;
+      return (await returning.status) == 200 ? true : false;
     } catch (e) {
       return false;
     }

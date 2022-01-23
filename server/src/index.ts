@@ -57,6 +57,7 @@ const init = async () => {
     next();
   });
 
+  //receive the first request on twitch stream to be done proxy/vps.
   app.get("/hls/v2/sig/:links/:server", async (req, res) => {
     if (req.params.links == null) {
       res.status(400).send({
@@ -74,7 +75,7 @@ const init = async () => {
       return;
     }
 
-    // this does nothing apparently?
+    //receive the first request on twitch stream to be done proxy/vps.
     const url = await requestUrlByProxy(req.params.links.toString(), req.params.server.toString());
     if (url) {
       res.status(200).send();
@@ -92,6 +93,7 @@ const init = async () => {
       return;
     }
 
+    //I thought about reducing all the unnecessary content of the requests to increase the speed, but I don't know if it was really worth it
     const hls = await getNewHLS(req.params.channelName.toString(), "");
     if (hls.valid) {
       if (hls.status == 200) {
@@ -109,7 +111,7 @@ const init = async () => {
       res.status(hls.status).send(hls.content);
     }
   });
-
+  
   app.get("/channel/:channelName", async (req, res) => {
     if (req.params.channelName == null) {
       res.status(400).send({
@@ -133,6 +135,7 @@ const init = async () => {
     }
   });
 
+  //old, need to run on firefox and chrome "browser code"
   app.get("/on", (_req, res) => {
     const status = true;
     if (status) {

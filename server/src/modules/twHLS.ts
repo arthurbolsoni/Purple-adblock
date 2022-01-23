@@ -6,7 +6,10 @@ import HttpsProxyAgent from "https-proxy-agent";
 import { logger } from "../utils/logger";
 import fetchClientId from "./fetchClientId";
 
-export async function tokenSignature(channelName: string, proxy: any) {
+async function tokenSignature(
+  channelName: string,
+  proxy: any,
+): Promise<{ token?: string; sig?: string; status?: number; content?: unknown }> {
   const requestBody = {
     operationName: "PlaybackAccessToken",
     variables: {
@@ -26,13 +29,15 @@ export async function tokenSignature(channelName: string, proxy: any) {
 
   let clientId = process.env.TWITCH_CLIENT_ID;
 
+  //maybe call .js from twitch is not a good idea because the url changes. no better change randomly?
+  //default Client-ID from twitch app kimne78kx3ncx6brgo4mv6wki5h1ko
   if (!clientId) {
     logger.error("Failed to fetch client id, trying again then giving up");
     clientId = await fetchClientId();
     if (!clientId) {
       logger.error("Failed to fetch client id, giving up");
       return {
-        s: 500,
+        status: 500,
         content: "Failed to fetch client id",
       };
     }
@@ -69,7 +74,7 @@ export async function tokenSignature(channelName: string, proxy: any) {
     const returning: {
       token?: string;
       sig?: string;
-      s?: number;
+      status?: number;
       content?: unknown;
     } = {};
 
@@ -77,19 +82,20 @@ export async function tokenSignature(channelName: string, proxy: any) {
       returning.token = requestJson.data.streamPlaybackAccessToken?.value;
       returning.sig = requestJson.data.streamPlaybackAccessToken?.signature;
     } else {
-      returning.s = status;
+      returning.status = status;
       returning.content = requestJson;
     }
     return returning;
   } catch (error) {
     logger.error(error);
     return {
-      s: 500,
+      status: 500,
       content: (error as Response).json(),
     };
   }
 }
 
+//method to work in method 1
 export async function readm3u8(channelName: any, proxyUrl: string | null | HttpsProxyAgent.HttpsProxyAgentOptions) {
   const proxy = proxyUrl ? HttpsProxyAgent(proxyUrl) : null;
 
@@ -97,8 +103,8 @@ export async function readm3u8(channelName: any, proxyUrl: string | null | Https
   const signature = await tokenSignature(channelName, proxy);
   if (signature.content != undefined) {
     return {
-      status: signature.s || 404,
-      content: signature.s === 404 ? "Channel not found" : signature.content,
+      status: signature.status || 404,
+      content: signature.status === 404 ? "Channel not found" : signature.content,
       valid: false,
     };
   }
@@ -106,40 +112,40 @@ export async function readm3u8(channelName: any, proxyUrl: string | null | Https
   //twitch request on twitch server
   const r = await getStream(channelName, proxy, signature.token, signature.sig);
 
-  if (r.status != 500) {
-    try {
-      const regex = /(\S+).m3u8/g;
-      const list = r.content.match(regex);
+  if (r.status == 500) return r;
 
-      if (list != null) {
-        // Unsure what this does
-        const returning = await fetch(
-          list[0],
-          {
-            method: "GET",
-          },
-          4000,
-        );
+  try {
+    const regex = /(\S+).m3u8/g;
+    const list = r.content.match(regex);
 
-        return {
-          status: returning.status,
-          content: await returning.text(),
-          valid: true,
-        };
-      }
-    } catch {}
+    if (list != null) {
+      // call the twitch stream before the user to sign it as withot ads.
+      const returning = await fetch(
+        list[0],
+        {
+          method: "GET",
+        },
+        4000,
+      );
 
-    return r;
-  }
+      return {
+        status: returning.status,
+        content: await returning.text(),
+        valid: true,
+      };
+    }
+  } catch {}
+
   return r;
 }
 
+//method to work on method 2
 export async function getNewHLS(channelName: any, proxyUrl: string | HttpsProxyAgent.HttpsProxyAgentOptions) {
   const proxy = proxyUrl ? HttpsProxyAgent(proxyUrl) : null;
 
   // get token and signature
-  const values = await tokenSignature(channelName, proxy);
-  if (values.content != undefined) {
+  const signature = await tokenSignature(channelName, proxy);
+  if (signature.content != undefined) {
     return {
       status: 404,
       content: "Can't find channel",
@@ -147,19 +153,19 @@ export async function getNewHLS(channelName: any, proxyUrl: string | HttpsProxyA
     };
   }
 
-  logger.log(values);
+  logger.log(signature);
 
-  // get stream
-  return await getStream(channelName, proxy, values.token, values.sig);
+  // get stream from twitch server
+  return await getStream(channelName, proxy, signature.token, signature.sig);
 }
 
 async function getStream(channelName: any, proxy: any, token?: string, sig?: string) {
   try {
     // random number 0 to 1e7 to avoid cache
-    const rr = Math.floor(Math.random() * 1e7);
+    const random = Math.floor(Math.random() * 1e7);
 
     const request = await fetch(
-      `http://usher.ttvnw.net/api/channel/hls/${channelName}.m3u8?player=twitchweb&fast_bread=true&token=${token}&sig=${sig}&$allow_audio_only=true&allow_source=true&type=any&p=${rr}`,
+      `http://usher.ttvnw.net/api/channel/hls/${channelName}.m3u8?player=twitchweb&fast_bread=true&token=${token}&sig=${sig}&$allow_audio_only=true&allow_source=true&type=any&p=${random}`,
       {
         // agent: proxy,
         method: "GET",
