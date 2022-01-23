@@ -13,7 +13,7 @@ const logger = {
 
 logger.log("Initializing..");
 // const server = "http://127.0.0.1:8080";
-const server = "https://much.ga"
+const server = "https://much.ga";
 browser.storage.onChanged.addListener(function (changes, namespace) {
   for (let [key, { oldValue, newValue }] of Object.entries(changes)) {
     if (newValue !== undefined) {

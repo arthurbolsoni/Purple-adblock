@@ -159,4 +159,4 @@ dist
 
 # End of https://www.toptal.com/developers/gitignore/api/node,git
 
-PurpleServiceWorker/PurpleServiceWorker.js
+purpleServiceWorker/dist/purpleServiceWorker.js

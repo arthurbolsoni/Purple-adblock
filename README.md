@@ -1,12 +1,8 @@
-<center>
+<div align="center">
 
 <img src="https://github.com/arthurbolsoni/Purple-adblock/raw/main/chrome/images/logov2-128.png">
 
 # Purple Adblock
-
-</center>
-
-<div align="center">
 
 ![GitHub Repo stars](https://img.shields.io/github/stars/arthurbolsoni/Purple-adblock?label=Stars)
 [![Discord](https://img.shields.io/discord/829993555820019773?label=Discord)](https://discord.gg/7MpUUDNxHx)
@@ -16,9 +12,7 @@
 
 </div>
 
-## About the project
-
-An adblocker for Twitch using server side signature.
+An adblocker for Twitch using an external proxy server.
 
 ## Installation
 
@@ -30,37 +24,9 @@ It doesn't work with "Alternate Player for Twitch.tv", or other "twitch adblocke
 
 Purple proxies all streams through a proxy server, and if it detects an advertisement, it continue streaming from the channel you're watching, therefore avoiding buffering problems in the same connection. This is basically a MITM attack.
 
-## Development
-
-Install dependencies:
-
-```bash
-npm install
-```
-
-### Proxy server
-
-#### Building
-
-```bash
-npm run server:build
-```
-
-#### Running
-
-```bash
-npm run server:start
-```
-
-To run in development:
-
-```bash
-npm run server:dev
-```
-
 ## Contributing & Support
 
-Please consider contributing to the project to keep it alive.
+Please consider contributing to the project to keep it alive. Read up on the [CONTRIBUTING.md](https://github.com/arthurbolsoni/Purple-adblock/blob/main/CONTRIBUTING.md "CONTRIBUTING.md") file for more information.
 
 As long as you have good code practice and a good attitude, you're welcome to contribute.
 
@@ -88,8 +54,10 @@ If you're looking for some help, create an issue or come join us in the [Discord
 
 4. ads list block <https://github.com/saucettv/VideoAdBlockForTwitch/>
 
-5. Issue templates <https://github.com/sysdotini/hibiki>
+5. Issues and Pull Request templates, and some inspiration for CONTRIBUTING.md <https://github.com/sysdotini/hibiki>
 
 ## License
 
 GNU General Public License v3.0
+
+[how-to-contribute]: https://github.com/arthurbolsoni/Purple-adblock/blob/main/CONTRIBUTING.md "How to contribute"

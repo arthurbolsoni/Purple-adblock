@@ -2,7 +2,6 @@
 import express from "express";
 import helmet from "helmet";
 import cors from "cors";
-import ratelimit from "express-rate-limit";
 
 import { logger } from "./utils/logger";
 import expressPino from "express-pino-logger";
@@ -26,7 +25,9 @@ const port = process.env.PORT || 8080;
 const app = express();
 
 const init = async () => {
-  app.use(expressPino({ logger }));
+  if (process.env.NODE_ENV === "development") {
+    app.use(expressPino({ logger }));
+  }
   app.use(helmet());
   app.use(express.json());
   app.use(express.urlencoded({ extended: true }));
@@ -35,12 +36,6 @@ const init = async () => {
       origin: "*",
       allowedHeaders: "*",
       exposedHeaders: "*",
-    }),
-  );
-  app.use(
-    ratelimit({
-      windowMs: 1 * 60 * 1000, // 15 minutes
-      max: 100, // limit each IP to 100 requests per windowMs
     }),
   );
 
@@ -81,7 +76,6 @@ const init = async () => {
 
     // this does nothing apparently?
     const url = await requestUrlByProxy(req.params.links.toString(), req.params.server.toString());
-    console.log("true");
     if (url) {
       res.status(200).send();
     } else {
@@ -135,7 +129,6 @@ const init = async () => {
         res.status(result.status).send(result);
       }
     } catch (e) {
-      logger.log("what the fuck");
       logger.error(e);
     }
   });
@@ -158,7 +151,7 @@ const start = async () => {
   logger.info("Starting server...");
   await init();
   app.listen(port);
-  logger.info(`Server listening on port ${port}`);
+  logger.info(`Server listening on port ${port} - https://127.0.0.1:${port}`);
 };
 
 start();
