@@ -113,7 +113,7 @@ export async function readm3u8(channelName: any, proxyUrl: string | null | Https
 
       if (list != null) {
         // Unsure what this does
-        const ritorno = await fetch(
+        const returning = await fetch(
           list[0],
           {
             method: "GET",
@@ -122,8 +122,8 @@ export async function readm3u8(channelName: any, proxyUrl: string | null | Https
         );
 
         return {
-          status: ritorno.status,
-          content: await ritorno.text(),
+          status: returning.status,
+          content: await returning.text(),
           valid: true,
         };
       }
@@ -158,7 +158,7 @@ async function getStream(channelName: any, proxy: any, token?: string, sig?: str
     // random number 0 to 1e7 to avoid cache
     const rr = Math.floor(Math.random() * 1e7);
 
-    const r = await fetch(
+    const request = await fetch(
       `http://usher.ttvnw.net/api/channel/hls/${channelName}.m3u8?player=twitchweb&fast_bread=true&token=${token}&sig=${sig}&$allow_audio_only=true&allow_source=true&type=any&p=${rr}`,
       {
         // agent: proxy,
@@ -167,8 +167,8 @@ async function getStream(channelName: any, proxy: any, token?: string, sig?: str
     );
 
     return {
-      content: await r.text(),
-      status: r.status,
+      content: await request.text(),
+      status: request.status,
       valid: true,
     };
   } catch {
@@ -179,9 +179,3 @@ async function getStream(channelName: any, proxy: any, token?: string, sig?: str
     };
   }
 }
-
-// export default {
-//   readm3u8,
-//   getNewHLS,
-//   tokenSignature,
-// };

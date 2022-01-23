@@ -22,6 +22,7 @@ module.exports = {
     "@typescript-eslint/no-var-requires": "off",
     "quotes": ["error", "double"],
     "semi": ["error", "always"],
+    "no-empty": "off",
   },
   /*
   "overrides": [

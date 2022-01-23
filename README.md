@@ -4,6 +4,8 @@
 
 # Purple Adblock
 
+An adblocker for Twitch
+
 ![GitHub Repo stars](https://img.shields.io/github/stars/arthurbolsoni/Purple-adblock?label=Stars)
 [![Discord](https://img.shields.io/discord/829993555820019773?label=Discord)](https://discord.gg/7MpUUDNxHx)
 ![License](https://img.shields.io/badge/license-GPLv3-blue.svg?label=License)
@@ -12,7 +14,9 @@
 
 </div>
 
-An adblocker for Twitch using an external proxy server.
+# Information
+
+Purple Adblock is an adblocker for Twitch which is available on [Firefox](firefox) and [Chrome](chrome). It works by getting the stream from a proxy server, which gives the extension the original stream that doesn't include ads.
 
 ## Installation
 
@@ -61,3 +65,5 @@ If you're looking for some help, create an issue or come join us in the [Discord
 GNU General Public License v3.0
 
 [how-to-contribute]: https://github.com/arthurbolsoni/Purple-adblock/blob/main/CONTRIBUTING.md "How to contribute"
+[firefox]: https://addons.mozilla.org/en-US/firefox/addon/purpleadblock/ "Firefox"
+[chrome]: https://chrome.google.com/webstore/detail/purple-ads-blocker/lkgcfobnmghhbhgekffaadadhmeoindg "Chrome"
