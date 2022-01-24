@@ -1,6 +1,5 @@
 export class fetchService{
-  private realFetch = fetch;
-  constructor(){
+  constructor(private realFetch = fetch){
     this.inflateFetch();
   }
 
@@ -13,7 +12,7 @@ export class fetchService{
     const quality = channel
       .find((x) => x.name === actualChannel)
       .hls.StreamServerList.map((x) => x.urlList.find((a) => a.url == url))
-      .find((x) => x != undefined).quality;
+      .find((x) => x != undefined).quality; 
 
     //if ads find on main link called from twitch api player
     if (response.toString().includes("stitched-ad") || response.toString().includes("twitch-client-ad")) {
@@ -82,6 +81,7 @@ export class fetchService{
             realFetch(url, options).then(response => {
               response.text().then(async text => {
                 //on m3u8 request from twitch app. so send requst to channelService and return current stream.
+                //TODO: use the retorn of the onFetch to return getAllPlaylist;
                 await this.onFetch(text, url);
                 const p = channel.find((x) => x.name === actualChannel).hls.getAllPlaylist();
                 resolve(new Response(p));

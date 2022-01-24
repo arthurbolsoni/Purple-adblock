@@ -1,9 +1,9 @@
 /* eslint-disable linebreak-style */
 
-import { ChannelService } from "./channel/channelService";
-import { fetchService } from "./fetch/fetchService";
+import { App } from "./app.service";
+import { ChannelService } from "./channel/channel.service";
+import { fetchService } from "./fetch/fetch.service";
 import { HLS } from "./HLS";
-import { _construct } from "./_construct";
 
 let twitchMainWorker: any;
 window.Worker = class WorkerInjector extends Worker {
@@ -13,12 +13,8 @@ window.Worker = class WorkerInjector extends Worker {
     }
 
     const newBlobStr = `
-                ${fetchService.toString()};
-                ${ChannelService.toString()};
-                ${_construct.toString()};
-                ${HLS.toString()}
-                declare(self, "${whitelist}");
-                fetchService();
+                ${App.toString()};
+                new App("${whitelist}");
                 importScripts('${twitchBlobUrl}');
                 `;
 

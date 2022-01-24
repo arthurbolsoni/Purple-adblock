@@ -1,5 +1,5 @@
 export class ChannelService {
-  constructor(private channelName: string) {
+  constructor(private channelName: string, private realFetch = fetch) {
     console.log(channel);
   }
 
