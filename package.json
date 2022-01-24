@@ -1,0 +1,47 @@
+{
+  "name": "purple-adblock",
+  "version": "2.0.0",
+  "description": "An adblocker for the \"purple website\" using server side signature.",
+  "scripts": {
+    "preinstall": "node cli/preinstall.js",
+    "server:build": "cd server && npm run build",
+    "server:start": "cd server && npm run start",
+    "server:dev": "cd server && npm run dev",
+    "worker:build": "cd purpleServiceWorker && npm run build",
+    "worker:build:nocopy": "cd purpleServiceWorker && npm run build:nocopy",
+    "lint-staged": "lint-staged",
+    "lint": "eslint --ext .js,.ts && prettier --write **/*.{js,ts,css,html} --ignore-path .gitignore"
+  },
+  "repository": "https://github.com/arthurbolsoni/Purple-adblock.git",
+  "author": "arthurbolsoni",
+  "license": "GPLv3",
+  "bugs": {
+    "url": "https://github.com/arthurbolsoni/Purple-adblock/issues"
+  },
+  "homepage": "https://github.com/arthurbolsoni/Purple-adblock#readme",
+  "pre-commit": [
+    "pre-commit"
+  ],
+  "lint-staged": {
+    "*.{ts,js,html,css}": [
+      "prettier --write",
+      "eslint --fix"
+    ]
+  },
+  "devDependencies": {
+    "@types/node": "^17.0.8",
+    "@typescript-eslint/eslint-plugin": "^5.9.1",
+    "@typescript-eslint/parser": "^5.9.1",
+    "cross-env": "^7.0.3",
+    "eslint": "^7.9.0",
+    "eslint-config-prettier": "^8.3.0",
+    "eslint-plugin-prettier": "^4.0.0",
+    "prettier": "^2.5.1",
+    "ts-node": "^10.4.0",
+    "typescript": "^4.5.4"
+  },
+  "dependencies": {
+    "express-rate-limit": "^6.1.0",
+    "lint-staged": "^12.2.2"
+  }
+}

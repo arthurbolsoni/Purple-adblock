@@ -1,7 +1,7 @@
 html {
   background: rgba(30, 30, 30, 1);
   color: white;
-  font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
 }
 
 h1 {
@@ -15,14 +15,13 @@ a {
   color: white;
 }
 
-
-.container { 
+.container {
   height: 150px;
   position: relative;
 }
 
 .center {
-    font-size:small;
+  font-size: small;
   margin: 0;
   position: absolute;
   top: 50%;
@@ -31,43 +30,43 @@ a {
   transform: translate(-50%, -50%);
 }
 .icon {
-    background-color: green;
-    -webkit-mask: url("../img/power-off.svg" ) no-repeat center;
-    mask: url("../img/power-off.svg") no-repeat center;
-    width: 100px;
-    height: 100px;
+  background-color: green;
+  -webkit-mask: url("../img/power-off.svg") no-repeat center;
+  mask: url("../img/power-off.svg") no-repeat center;
+  width: 100px;
+  height: 100px;
 }
-.center:hover{
+.center:hover {
   background-color: #363636;
 }
-.disable{
+.disable {
   background-color: grey;
 }
 
 .textarea {
-width: 100%;
-max-width: 100%;
-height: 150px;
-background-color: grey;
-outline: none;
-border: none;
-resize: none;
+  width: 100%;
+  max-width: 100%;
+  height: 150px;
+  background-color: grey;
+  outline: none;
+  border: none;
+  resize: none;
 }
 
-.buttonlog{
-color: white;
-height: 25px;
-display: flex;
-justify-content: center;
-align-items: center;
-cursor: pointer;
+.buttonlog {
+  color: white;
+  height: 25px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  cursor: pointer;
 }
 
 #content {
-background: #06c;
+  background: #06c;
 }
 
-.buttonlog:hover{
-background-color: #363636;
-text-align: center;
+.buttonlog:hover {
+  background-color: #363636;
+  text-align: center;
 }

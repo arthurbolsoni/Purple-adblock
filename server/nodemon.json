@@ -1,0 +1,7 @@
+{
+  "delay": 2000,
+  "ignore": ["node_modules/", "dist/"],
+  "watch": ["src"],
+  "exec": "cross-env NODE_ENV=development ts-node --files ./src/index.ts",
+  "ext": "ts"
+}

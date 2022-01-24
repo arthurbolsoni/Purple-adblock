@@ -13,7 +13,7 @@
   "icons": {
     "128": "images/logov2-128.png"
   },
-  "description": "Purple Ads Blocker is a video ad-blocker for Twitch and some other url",
+  "description": "Purple AdBlocker is an ad-blocker for Twitch",
   "manifest_version": 2,
   "name": "Purple Ads Blocker",
   "version": "1.5.0.2",
@@ -23,6 +23,7 @@
     "https://*.twitch.tv/*",
     "https://usher.ttvnw.net/*",
     "https://much.ga/*",
+    "http://127.0.0.1:8080/*",
     "tabs",
     "activeTab",
     "storage"
