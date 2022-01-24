@@ -39,7 +39,6 @@ declare let whitelist: string[];
     scope.channel = [];
     scope.actualChannel = "";
     scope.whitelist = whitelist;
-
   }
 
   //class where the app format all pieces of the "hls" stream to a object.

@@ -16,7 +16,6 @@ module.exports = {
   plugins: ["@typescript-eslint", "prettier"],
   rules: {
     "indent": ["error", 2, { SwitchCase: 1 }],
-    "linebreak-style": ["error", "unix"],
     "@typescript-eslint/no-explicit-any": "off",
     "@typescript-eslint/ban-ts-comment": "off",
     "@typescript-eslint/no-var-requires": "off",
