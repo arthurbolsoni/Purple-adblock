@@ -11,9 +11,14 @@ window.Worker = class WorkerInjector extends Worker {
     if (twitchMainWorker) {
       super(twitchBlobUrl);
     }
+    const whiteList = [];
 
     const newBlobStr = `
-                ${App.toString()};
+    ${ChannelService.toString()};
+    ${fetchService.toString()};
+    ${HLS.toString()};
+    ${App.toString()};
+                const whitelist = "${whiteList}";
                 new App("${whitelist}");
                 importScripts('${twitchBlobUrl}');
                 `;

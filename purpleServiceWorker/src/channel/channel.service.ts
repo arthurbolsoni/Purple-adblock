@@ -1,3 +1,5 @@
+import { HLS } from "../HLS";
+
 export class ChannelService {
   constructor(private channelName: string, private realFetch = fetch) {
     console.log(channel);
@@ -19,7 +21,7 @@ export class ChannelService {
         LogPrint("new channel 2: " + match[1]);
         channel.push({ name: match[1], flowSig: [], hls: new HLS() });
       } else {
-        existent = true;    
+        existent = true;
       }
     }
     //--------------------------------------------//

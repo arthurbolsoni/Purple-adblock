@@ -1,6 +1,6 @@
 {
   "scripts": {
-    "_build": "rimraf dist && tsc",
+    "_build": "rimraf dist && tsc && webpack",
     "build": "npm run _build && cp dist/purpleServiceWorker.js ../chrome/purpleServiceWorker.js",
     "build:nocopy": "npm run _build"
   }

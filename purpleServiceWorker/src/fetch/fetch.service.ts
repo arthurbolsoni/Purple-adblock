@@ -1,3 +1,5 @@
+import { ChannelService } from "../channel/channel.service";
+
 export class fetchService{
   constructor(private realFetch = fetch){
     this.inflateFetch();
@@ -96,7 +98,7 @@ export class fetchService{
               await realFetch(url, options).then(response => {
                 if (response.ok) {
                   response.text().then(async function (text) {
-                    await onStartChannel(url, text);
+                    await new ChannelService(channel).onStart(url, text);
                     resolve(new Response(text));
                   });
                 } else {

@@ -24,7 +24,5 @@ export class App{
     scope.whitelist = whitelist;
 
     new fetchService(scope.fetch);
-    new fetchService(scope.fetch);
   }
-
 }
