@@ -33,15 +33,17 @@ export class HLS {
         .filter((x: any) => x.sig == false)
         .forEach(async (x: any) => {
           const match: RegExpExecArray | null = REGEX.exec(x.urlList[0].url);
-
-          try {
-            const a = await fetch(`https://jupter.ga/hls/v2/sig/${match?.[2]}/${match?.[1]}`, {
-              method: "GET",
-            });
-            LogPrint("Server signature: " + a.ok);
-            x.sig = true;
-            resolve(true);
-          } catch {
+          if (match) {
+            try {
+              const a = await fetch("https://jupter.ga/hls/v2/sig/" + match[2] + "/" + match[1], {
+                method: "GET",
+              });
+              x.sig = true;
+              resolve(true);
+            } catch {
+              resolve(false);
+            }
+          }else{
             resolve(false);
           }
         }),
