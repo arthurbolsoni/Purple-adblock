@@ -1,7 +1,7 @@
 {
     "background": {
         "scripts": [
-            "background.js"
+            "js/background.js"
     ],
         "persistent": true
     },
@@ -18,7 +18,7 @@
     "name": "Purple Ads Blocker",
     "description": "Purple Ads Blocker is a video ad-blocker for Twitch.tv and some other url",
     "manifest_version": 2,
-    "version": "2.0.1",
+    "version": "2.0.2",
     "permissions": [
         "webRequest",
         "webRequestBlocking",
@@ -47,9 +47,9 @@
             ],
             "run_at": "document_start",
             "js": [
-                "content-script.js"
+                "main.js"
             ]
         }
     ],
-    "web_accessible_resources": [ "purpleServiceWorker.js"]
+    "web_accessible_resources": [ "app/bundle.js" , "app/Worker.js"]
 }

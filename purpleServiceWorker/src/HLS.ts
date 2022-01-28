@@ -8,14 +8,12 @@ export class HLS {
     const qualityUrlSplit: qualityUrl[] = [];
     let captureArray: RegExpExecArray | null;
 
-    const REGEX = /RESOLUTION=(\S+),C(?:^|\S+\s+)(https:\/\/video(\S+).m3u8)/gs;
+    const REGEX = /NAME="((?:\S+\s+\S+|\S+))",AUTO(?:^|\S+\s+)(?:^|\S+\s+)(https:\/\/video(\S+).m3u8)/g;
 
-    while ((captureArray = REGEX.exec(text)) != null) {
-      qualityUrlSplit.push({
-        quality: qualityUrlSplit.some((x) => x.quality == captureArray?.[1]) ? captureArray[1] + "p30" : captureArray[1],
-        url: captureArray[2],
-      });
+    while ((captureArray = REGEX.exec(text)) !== null) {
+        qualityUrlSplit.push({ quality: captureArray[1], url: captureArray[2] });
     }
+    console.log(qualityUrlSplit);
     const streamList = { server: type, urlList: qualityUrlSplit, sig: sig };
     this._streamServerList.push(streamList);
 

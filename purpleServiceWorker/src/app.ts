@@ -1,7 +1,9 @@
-import { inflateFetch } from "./fetch.inflate";
+import { inflateFetch } from "./fetch/fetch.inflate";
 import { HLS } from "./HLS";
-import { onStart } from "./on.channel";
-import { on } from "./on.fetch";
+import { onStart } from "./channel/on.channel";
+import { on } from "./fetch/on.fetch";
+import { current } from "./channel/current.channel";
+import { picture } from "./fetch/picture.fetch";
 
 export function app(scope: any, whitelist: any[]) {
     scope.LogPrint = (x: any) => {
@@ -27,13 +29,13 @@ export function app(scope: any, whitelist: any[]) {
     scope.whitelist = whitelist;
 
     scope.onFetch = on;
+    scope.newPicture = picture;
 
     scope.onStartChannel = onStart;
+    scope.currentChannel = current;
     
-    console.log("HLS")
     scope.HLS = HLS;
 
-    console.log("INFLATE FETCH")
     inflateFetch(scope);
   }
 

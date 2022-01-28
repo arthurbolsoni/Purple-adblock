@@ -53,7 +53,7 @@ declare let whitelist: string[];
       const qualityUrlSplit: qualityUrl[] = [];
       let captureArray: RegExpExecArray | null;
 
-      const REGEX = /RESOLUTION=(\S+),C(?:^|\S+\s+)(https:\/\/video(\S+).m3u8)/gs;
+      const REGEX = /NAME="((?:^|\S+\s+\S+))",AUTO(?:^|\S+\s+)(?:^|\S+\s+)(https:\/\/video(\S+).m3u8)/gs;
 
       while ((captureArray = REGEX.exec(text)) != null) {
         qualityUrlSplit.push({
@@ -347,58 +347,58 @@ declare let whitelist: string[];
   function inflateFetch() {
     // @ts-expect-error
     // eslint-disable-next-line no-global-assign
-        fetch = async function (url, options) {
-            if (typeof url === 'string') {
-                if (url.endsWith('.ts')) {
-                    //var p = channel.find(x => x.name === actualChannel).hls.getPlaylistByUrl(url);
-                    //var pp = channel.find(x => x.name === actualChannel).hls.getAllPlaylist();
+    fetch = async function (url, options) {
+      if (typeof url === 'string') {
+        if (url.endsWith('.ts')) {
+          //var p = channel.find(x => x.name === actualChannel).hls.getPlaylistByUrl(url);
+          //var pp = channel.find(x => x.name === actualChannel).hls.getAllPlaylist();
 
-                    //LogPrint("ts timestamp: " + p[0].timestamp);
-                }
-
-                if (url.endsWith('m3u8') && url.includes('ttvnw.net') && !whitelist.includes(actualChannel)) {
-                    return new Promise(function (resolve, reject) {
-                        var processFetch = async function (url) {
-                            // await onBeforeFetch(url);
-                            await realFetch(url, options).then(function (response) {
-                                response.text().then(function (text) {
-                                    onAfterFetch(text, url).then(function (r) {
-                                        var p = channel.find(x => x.name === actualChannel).hls.getAllPlaylist();
-                                        resolve(new Response(p));
-                                    });
-                                });
-                            })
-                        };
-                        processFetch(url);
-                    });
-                }
-
-                if (url.includes("usher.ttvnw.net/api/channel/hls/") && !url.includes('picture-by-picture')) {
-                    return new Promise(function (resolve, reject) {
-                        var processFetch = async function (url) {
-                            await realFetch(url, options).then(function (response) {
-                                if (response.ok) {
-                                    response.text().then(async function (text) {
-                                        await onStartChannel(url, text);
-                                        resolve(new Response(text));
-                                    });
-                                } else {
-                                    resolve(response);
-                                    LogPrint("channel offline");
-                                }
-                            })
-                        };
-                        processFetch(url);
-                    });
-                }
-
-                if (url.includes('picture-by-picture')) {
-                }
-
-            }      
-            
-            // @ts-expect-error
-            return realFetch.apply(this, arguments);
+          //LogPrint("ts timestamp: " + p[0].timestamp);
         }
+
+        if (url.endsWith('m3u8') && url.includes('ttvnw.net') && !whitelist.includes(actualChannel)) {
+          return new Promise(function (resolve, reject) {
+            var processFetch = async function (url) {
+              // await onBeforeFetch(url);
+              await realFetch(url, options).then(function (response) {
+                response.text().then(function (text) {
+                  onAfterFetch(text, url).then(function (r) {
+                    var p = channel.find(x => x.name === actualChannel).hls.getAllPlaylist();
+                    resolve(new Response(p));
+                  });
+                });
+              })
+            };
+            processFetch(url);
+          });
+        }
+
+        if (url.includes("usher.ttvnw.net/api/channel/hls/") && !url.includes('picture-by-picture')) {
+          return new Promise(function (resolve, reject) {
+            var processFetch = async function (url) {
+              await realFetch(url, options).then(function (response) {
+                if (response.ok) {
+                  response.text().then(async function (text) {
+                    await onStartChannel(url, text);
+                    resolve(new Response(text));
+                  });
+                } else {
+                  resolve(response);
+                  LogPrint("channel offline");
+                }
+              })
+            };
+            processFetch(url);
+          });
+        }
+
+        if (url.includes('picture-by-picture')) {
+        }
+
+      }
+
+      // @ts-expect-error
+      return realFetch.apply(this, arguments);
     }
+  }
 })();

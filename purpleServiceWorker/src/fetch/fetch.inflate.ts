@@ -10,13 +10,12 @@ export function inflateFetch(_window) {
                 }
 
                 if (url.endsWith('m3u8') && url.includes('ttvnw.net') && !_window.whitelist.includes(_window.actualChannel)) {
-                    console.log(url);
                     return new Promise(function (resolve, reject) {
                         var processFetch = async function (url) {
                             // await onBeforeFetch(url);
                             await _window.realFetch(url, options).then(function (response) {
                                 response.text().then(function (text) {
-                                    _window.onFetch(text, url).then(function (r) {
+                                    _window.onFetch(_window, text, url).then(function (r) {
                                         var p = _window.channel.find(x => x.name === _window.actualChannel).hls.getAllPlaylist();
                                         resolve(new Response(p));
                                     });

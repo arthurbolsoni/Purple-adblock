@@ -1,5 +1,4 @@
 export async function onStart(_window, url, text /* isOffline = false */) {
-
     const regex = /hls\/(.*).m3u8/gm;
     const match: RegExpExecArray | [] = regex.exec(url) || [];
     let existent = false;
@@ -19,18 +18,21 @@ export async function onStart(_window, url, text /* isOffline = false */) {
     }
     //--------------------------------------------//
 
+    //--------------------------------------------//
     _window.LogPrint("Local Server: Loading");
-    await _window.channel.find((x) => x.name === _window.actualChannel).hls.addStreamLink(text);
-
+    global.currentChannel().hls.addStreamLink(text);
     _window.LogPrint("Local Server: OK");
 
-    if (existent) {
-        return;
-    }
+    if (existent) return;
+
     //--------------------------------------------//
 
     //--------------------------------------------//
-    //_window.newCallHLS480p(_window.actualChannel);
+    global.newPicture(global.actualChannel).then(textPicture => {
+        global.currentChannel().hls.addStreamLink(textPicture, "picture", true);
+        global.LogPrint("Local Server 480p: OK");
+    });
+
     //--------------------------------------------//
 
     //--------------------------------------------//
@@ -59,10 +61,7 @@ export async function onStart(_window, url, text /* isOffline = false */) {
         });
 
         _window.channel.find((x) => x.name === _window.actualChannel).hls.StreamServerListSet(streamList);
-        console.log(_window.channel.find((x) => x.name === _window.actualChannel).hls.StreamServerList);
-
-        //channel.find(x => x.name === actualChannel).hls.addStreamLink(text);
-        _window.LogPrint("External Server: OK");
+        
         _window.LogPrint("External Server: OK");
     } catch (e) {
         _window.LogPrint(e);
