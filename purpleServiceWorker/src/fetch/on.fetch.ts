@@ -1,7 +1,7 @@
 export async function on(_window, response, url) {
-  //   if (Math.random() < 0.5 ){
-  //       response += "twitch-client-ad";
-  //   }
+    //  if (Math.random() < 0.5 ){
+    //      response += "twitch-client-ad";
+    //  }
 
   const channelCurrent = await global.currentChannel();
   
@@ -36,7 +36,7 @@ export async function on(_window, response, url) {
       const pictureStream = StreamServerList.filter((x) => x.server == "picture")
         .map((x) => x.urlList.find((x) => x.quality.includes("480")))[0].url
         
-      const returno = await global.realFetch(pictureStream).text();
+      const returno = await (await global.realFetch(pictureStream)).text();
 
       global.LogPrint("480P");
       global.LogPrint(e);

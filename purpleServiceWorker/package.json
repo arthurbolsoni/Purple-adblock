@@ -1,7 +1,8 @@
 {
   "scripts": {
-    "_build": "rimraf dist && webpack",
-    "build": "npm run _build && copyfiles -u 1 dist/bundle.js ../chrome/app",
+    "_build": "rimraf dist && webpack serve --open --config webpack.dev.js",
+    "build:dev": "npm run _build && copyfiles -u 1 dist/bundle.js ../chrome/app",
+    "build:prod": "npm run _build && copyfiles -u 1 dist/bundle.js ../chrome/app",
     "build:nocopy": "npm run _build"
   }
 }

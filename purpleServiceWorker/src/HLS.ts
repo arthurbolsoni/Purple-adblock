@@ -74,9 +74,7 @@ export class HLS {
         const r = this._playlist.filter((x) => {
           return x.timestamp >= sequenceTimestamp;
         });
-        //LogPrint(Math.floor(date.getTime() / 1000));
-        //LogPrint(r);
-
+        
         if (!r.length) {
           this._sequence = this._sequence + 1;
           this._playlist.push({
@@ -85,7 +83,6 @@ export class HLS {
             info: lines[parseInt(i) + 1],
             url: lines[parseInt(i) + 2],
           });
-          //LogPrint("new seek add");
           changed = true;
         }
       }
