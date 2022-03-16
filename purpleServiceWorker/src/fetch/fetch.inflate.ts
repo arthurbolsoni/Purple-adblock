@@ -33,7 +33,6 @@ export function inflateFetch(_window) {
                             await _window.realFetch(url, options).then(function (response) {
                                 if (response.ok) {
                                     response.text().then(async function (text) {
-                                        console.log("ccccccccccccccccccccccccccccccccccccccccccc")
                                         await _window.onStartChannel(_window, url, text);
                                         resolve(new Response(text));
                                     });

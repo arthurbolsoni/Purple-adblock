@@ -1,8 +1,12 @@
 {
   "scripts": {
-    "_build": "rimraf dist && webpack serve --open --config webpack.dev.js",
-    "build:dev": "npm run _build && copyfiles -u 1 dist/bundle.js ../chrome/app",
-    "build:prod": "npm run _build && copyfiles -u 1 dist/bundle.js ../chrome/app",
+    "_build:dev": "rimraf dist && webpack --config webpack.dev.js",
+    "_build:prod": "rimraf dist && webpack --config webpack.prod.js",
+    "build:dev": "npm run _build:dev && copyfiles -u 1 dist/bundle.js ../chrome/app",
+    "build:prod": "npm run _build:prod && copyfiles -u 1 dist/bundle.js ../chrome/app", 
     "build:nocopy": "npm run _build"
+  },
+  "devDependencies": {
+    "webpack-dev-server": "^4.7.4"
   }
 }

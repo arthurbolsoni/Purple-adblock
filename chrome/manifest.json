@@ -1,11 +1,8 @@
 {
     "background": {
-        "scripts": [
-            "js/background.js"
-    ],
-        "persistent": true
-    },
-    "browser_action": {
+    	"service_worker": "js/background.js"
+  	},
+    "action": {
         "default_title": "Purple Ads Blocker",
         "default_icon": {
             "128": "images/logov2-128.png"
@@ -17,16 +14,16 @@
     },
     "name": "Purple Ads Blocker",
     "description": "Purple Ads Blocker is a video ad-blocker for Twitch.tv and some other url",
-    "manifest_version": 2,
-    "version": "2.0.2",
+    "manifest_version": 3,
     "permissions": [
-        "webRequest",
-        "webRequestBlocking",
+      "activeTab",
+      "storage"
+    ],
+    "version": "2.0.2",
+    "host_permissions": [
         "https://*.twitch.tv/*",
         "https://jupter.ga/*",
         "https://*.ttvnw.net/*",
-        "activeTab",
-        "storage",
         "https://*.amazon-adsystem.com/*",
         "https://cdn.krxd.net/*",
         "https://script.ioam.de/iam.js",
@@ -51,5 +48,5 @@
             ]
         }
     ],
-    "web_accessible_resources": [ "app/bundle.js" , "app/Worker.js"]
+    "web_accessible_resources": [{ "resources": [ "app/bundle.js" , "app/Worker.js"], "matches": ["<all_urls>"]}]
 }

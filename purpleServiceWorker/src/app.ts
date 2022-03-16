@@ -6,37 +6,54 @@ import { current } from "./channel/current.channel";
 import { picture } from "./fetch/picture.fetch";
 
 export function app(scope: any, whitelist: any[]) {
-    scope.LogPrint = (x: any) => {
-      console.log("[Purple]: ", x);
-    };
-    scope.realFetch = fetch;
-    scope.quality = "";
-    scope.addEventListener("message", function (e) {
-      switch (e.data.funcName) {
-        case "setQuality": {
-          scope.quality = e.data.args[0].name;
-          console.log(scope.quality);
-          break;
-        }
-        default: {
-          break;
-        }
+  scope.LogPrint = (x: any) => {
+    console.log("[Purple]: ", x);
+  };
+
+  scope.isAds = (x: string) => {
+    return x.toString().includes("stitched-ad") || x.toString().includes("twitch-client-ad");
+  };
+
+  scope.realFetch = fetch;
+  scope.quality = "";
+  scope.whitelist = [];
+
+  scope.addEventListener("message", function (e) {
+    if (e.data.type == "setWhitelist") {
+      scope.whitelist = e.data.value;
+    }
+  });
+
+  scope.addEventListener("message", function (e) {
+    console.log(e.data.funcName);
+    switch (e.data.funcName) {
+      case "setQuality": {
+        scope.quality = e.data.args[0].name;
+        console.log(scope.quality);
+        break;
       }
-    });
-  
-    scope.channel = [];
-    scope.actualChannel = "";
-    scope.whitelist = whitelist;
+      default: {
+        break;
+      }
+    }
+  });
 
-    scope.onFetch = on;
-    scope.newPicture = picture;
+  scope.postMessage({
+    type: "getWhitelist",
+    value: null
+  });
 
-    scope.onStartChannel = onStart;
-    scope.currentChannel = current;
-    
-    scope.HLS = HLS;
+  scope.channel = [];
+  scope.actualChannel = "";
 
-    inflateFetch(scope);
-  }
+  scope.onFetch = on;
+  scope.newPicture = picture;
 
-  app(self, ["jukes"]);
+  scope.onStartChannel = onStart;
+  scope.currentChannel = current;
+
+  scope.HLS = HLS;
+
+  inflateFetch(scope);
+}
+app(self, ['test']);

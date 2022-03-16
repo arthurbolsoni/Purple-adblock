@@ -6,7 +6,7 @@ export async function on(_window, response, url) {
   const channelCurrent = await global.currentChannel();
   
   //if ads find on main link called from twitch api player
-  if (response.toString().includes("stitched-ad") || response.toString().includes("twitch-client-ad")) {
+  if(global.isAds(response)){
     global.LogPrint("ads found");
     
     const quality = global.quality;
@@ -15,15 +15,15 @@ export async function on(_window, response, url) {
     try {
       //try all hls sigs that have on StreamServerList from HLS
       if (StreamServerList.length > 0) {
-        const returno = await global.realFetch(StreamServerList.find((x) => x.server == "proxy").urlList.find((a) => a.quality == quality).url, {
-          method: "GET",
-        }).text();
-        if (returno.toString().includes("stitched-ad") || returno.toString().includes("twitch-client-ad")) {
+        const returno2 = await global.realFetch(StreamServerList.find((x) => x.server == "proxy").urlList.find((a) => a.quality == quality).url);
+        var returnoText = await returno2.text();
+        
+        if(global.isAds(returnoText)){
           global.LogPrint("ads on proxy");
           throw new Error("No m3u8 valid url found on StreamServerList");
         }
 
-        return channelCurrent.hls.addPlaylist(returno, true);
+        return channelCurrent.hls.addPlaylist(returnoText, true);
 
         //gera erro se nao tiver link
       }
