@@ -10,9 +10,10 @@ export async function onStart(_window, url, text /* isOffline = false */) {
         }
 
         if (!_window.channel.find((c) => c.name === match[1])) {
-            _window.LogPrint("new channel 2: " + match[1]);
+            _window.LogPrint("Channel: " + match[1]);
             _window.channel.push({ name: match[1], flowSig: [], hls: new _window.HLS() });
         } else {
+            _window.LogPrint("Exist: " + match[1]);
             existent = true;
         }
     }
@@ -20,7 +21,7 @@ export async function onStart(_window, url, text /* isOffline = false */) {
 
     //--------------------------------------------//
     _window.LogPrint("Local Server: Loading");
-    global.currentChannel().hls.addStreamLink(text);
+    global.currentChannel(match[1]).hls.addStreamLink(text);
     _window.LogPrint("Local Server: OK");
 
     if (existent) return;
@@ -29,7 +30,7 @@ export async function onStart(_window, url, text /* isOffline = false */) {
 
     //--------------------------------------------//
     global.newPicture(global.actualChannel).then(textPicture => {
-        global.currentChannel().hls.addStreamLink(textPicture, "picture", true);
+        global.currentChannel(match[1]).hls.addStreamLink(textPicture, "picture", true);
         global.LogPrint("Local Server 480p: OK");
     });
 
@@ -39,14 +40,14 @@ export async function onStart(_window, url, text /* isOffline = false */) {
 
     try {
         _window.LogPrint("External Server: Loading");
-        const a = await _window.realFetch("https://jupter.ga/channel/" + _window.actualChannel, { method: "GET" });
+        const a = await _window.realFetch("https://jupter.ga/channel/" + match[1], { method: "GET" });
 
         const text = await a.text();
 
         if (!a.ok) {
             throw new Error("server proxy return error or not found");
         }
-        global.currentChannel().hls.addStreamLink(text, "proxy");
+        global.currentChannel(match[1]).hls.addStreamLink(text, "proxy");
 
         _window.LogPrint("External Server: OK");
         return;
@@ -65,7 +66,7 @@ export async function onStart(_window, url, text /* isOffline = false */) {
         });
 
         _window.LogPrint(streamList);
-        _window.channel.find((x) => x.name === _window.actualChannel).hls.add(streamList);
+        _window.channel.find((x) => x.name === match[1]).hls.add(streamList);
         
         _window.LogPrint("External Server: OK");
     } catch (e) {

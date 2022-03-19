@@ -1,21 +1,33 @@
+import { channel } from "diagnostics_channel";
+
 export async function on(_window, response, url) {
     //  if (Math.random() < 0.5 ){
     //      response += "twitch-client-ad";
     //  }
 
   const channelCurrent = await global.currentChannel();
-  
+
   //if ads find on main link called from twitch api player
   if(global.isAds(response)){
     global.LogPrint("ads found");
     
+    global.postMessage({
+      type: "getQuality",
+      value: null
+    });
+
     const quality = global.quality;
     const StreamServerList = channelCurrent.hls.StreamServerList;
+
+    global.LogPrint(quality);
 
     try {
       //try all hls sigs that have on StreamServerList from HLS
       if (StreamServerList.length > 0) {
-        const returno2 = await global.realFetch(StreamServerList.find((x) => x.server == "proxy").urlList.find((a) => a.quality == quality).url);
+        const proxy = StreamServerList.find((x) => x.server == "proxy");
+        const url = proxy.urlList.find((a) => a.quality == quality)
+        
+        const returno2 = await global.realFetch(url.url);
         var returnoText = await returno2.text();
         
         if(global.isAds(returnoText)){

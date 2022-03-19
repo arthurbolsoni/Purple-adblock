@@ -3,9 +3,9 @@ import { HLS } from "./HLS";
 import { onStart } from "./channel/on.channel";
 import { on } from "./fetch/on.fetch";
 import { current } from "./channel/current.channel";
-import { picture } from "./fetch/picture.fetch";
+import { picture } from "./channel/picture.fetch";
 
-export function app(scope: any, whitelist: any[]) {
+export function app(scope: any){
   scope.LogPrint = (x: any) => {
     console.log("[Purple]: ", x);
   };
@@ -18,18 +18,25 @@ export function app(scope: any, whitelist: any[]) {
   scope.quality = "";
   scope.whitelist = [];
 
+  //receive message from window
   scope.addEventListener("message", function (e) {
-    if (e.data.type == "setWhitelist") {
-      scope.whitelist = e.data.value;
-    }
-  });
-
-  scope.addEventListener("message", function (e) {
-    console.log(e.data.funcName);
     switch (e.data.funcName) {
       case "setQuality": {
         scope.quality = e.data.args[0].name;
-        console.log(scope.quality);
+        break;
+      }
+      default: {
+        break;
+      }
+    }
+    
+    switch (e.data.type) {
+      case "setWhitelist": {
+        scope.whitelist = e.data.value;
+        break;
+      }
+      case "setQuality": {
+        scope.quality = e.data.value.name;
         break;
       }
       default: {
@@ -39,21 +46,22 @@ export function app(scope: any, whitelist: any[]) {
   });
 
   scope.postMessage({
-    type: "getWhitelist",
+    type: "init",
     value: null
   });
 
   scope.channel = [];
   scope.actualChannel = "";
+  scope.currentChannel = current;
+  
+  scope.newPicture = picture;
+  scope.tunnel = null;
 
   scope.onFetch = on;
-  scope.newPicture = picture;
-
   scope.onStartChannel = onStart;
-  scope.currentChannel = current;
 
   scope.HLS = HLS;
-
+  
   inflateFetch(scope);
 }
-app(self, ['test']);
+app(self);

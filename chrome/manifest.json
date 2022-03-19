@@ -3,7 +3,7 @@
     	"service_worker": "js/background.js"
   	},
     "action": {
-        "default_title": "Purple Ads Blocker",
+        "default_title": "Purple Ads Blocker, for Twitch",
         "default_icon": {
             "128": "images/logov2-128.png"
         },
