@@ -38,6 +38,8 @@ If you're looking for some help, create an issue or come join us in the [Discord
 
 ## Help cover the costs of running the server
 
+**ETHEREUM WALLET:** 0xde73dfd6b56e0168A235204c4f5Ff842E3088707
+
 **BTC:** 12NXXqNKTKD8nv89pdvHotF6JqX5CWfyZk
 
 **LTC:** LYagnjToA6SZjAnEttdJEtp61bfvAN2xYU
