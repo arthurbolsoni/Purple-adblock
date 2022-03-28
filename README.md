@@ -38,7 +38,7 @@ If you're looking for some help, create an issue or come join us in the [Discord
 
 ## Help cover the costs of running the server
 
-**ETHEREUM WALLET:** 0xde73dfd6b56e0168A235204c4f5Ff842E3088707
+**ETHEREUM WALLET:** 0x35a8052eF440bA87DFa464e48AebD420b0635058
 
 **BTC:** 12NXXqNKTKD8nv89pdvHotF6JqX5CWfyZk
 
