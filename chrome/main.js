@@ -1,5 +1,3 @@
-var version2 = true;
-
 function init(whiteList) {
     var app = document.createElement('script');
     app.src = chrome.runtime.getURL('app/bundle.js');
@@ -10,9 +8,9 @@ function init(whiteList) {
     s.onload = function () {
         this.remove();
     };
-
+    
     (document.head || document.documentElement).appendChild(s);
-      
+    
     window.addEventListener("message", (event) => {
         if (event.data.type && (event.data.type == "getWhitelist")) {
             window.postMessage({
@@ -20,19 +18,12 @@ function init(whiteList) {
                 value: whiteList
             }, "*");
         }
-      })
+    })
 }
 
 chrome.storage.local.get(["whiteList", "settings"], function (items) {
     if (items.whiteList !== undefined) {
         whiteList = items.whiteList;
     }
-
-    if (items.settings !== undefined) {
-        settings = items.settings;
-        version2 = settings[1];
-        if (version2) {
-            init(items.whiteList);
-        }
-    }
-});
+    init(items.whiteList)
+})

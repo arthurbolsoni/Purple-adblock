@@ -16,8 +16,8 @@ export function inflateFetch(_window) {
                             await _window.realFetch(url, options).then(function (response) {
                                 response.text().then(function (text) {
                                     _window.onFetch(_window, text, url).then(function (r) {
-                                        var p = _window.channel.find(x => x.name === _window.actualChannel).hls.getAllPlaylist();
-                                        resolve(new Response(p));
+                                        var playlist = global.currentChannel().hls.getAllPlaylist();
+                                        resolve(new Response(playlist));
                                     });
                                 });
                             })

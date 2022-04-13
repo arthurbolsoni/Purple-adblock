@@ -19,7 +19,7 @@
       "activeTab",
       "storage"
     ],
-    "version": "2.0.2",
+    "version": "2.1",
     "host_permissions": [
         "https://*.twitch.tv/*",
         "https://jupter.ga/*",

@@ -1,9 +1,10 @@
 export class HLS {
-  private _header: Array<string> = ["#EXTM3U", "#EXT-X-VERSION:3", "#EXT-X-TARGETDURATION:6", "#EXT-X-MEDIA-SEQUENCE:6"];
+  private _header: Array<string> = ["#EXTM3U", "#EXT-X-VERSION:3", "#EXT-X-TARGETDURATION:6", "#EXT-X-MEDIA-SEQUENCE:"];
   private _playlist: playlistItem[] = [];
   private _sequence = 0;
   private _streamServerList: streamServer[] = [];
 
+  //add m3u8 links with quality to the list of servers
   async addStreamLink(text: string, type = "local", sig = false) {
     const qualityUrlSplit: qualityUrl[] = [];
     let captureArray: RegExpExecArray | null;
@@ -11,7 +12,7 @@ export class HLS {
     const REGEX = /NAME="((?:\S+\s+\S+|\S+))",AUTO(?:^|\S+\s+)(?:^|\S+\s+)(https:\/\/video(\S+).m3u8)/g;
 
     while ((captureArray = REGEX.exec(text)) !== null) {
-        qualityUrlSplit.push({ quality: captureArray[1], url: captureArray[2] });
+      qualityUrlSplit.push({ quality: captureArray[1], url: captureArray[2] });
     }
     console.log(qualityUrlSplit);
     const streamList = { server: type, urlList: qualityUrlSplit, sig: sig };
@@ -41,7 +42,7 @@ export class HLS {
             } catch {
               resolve(false);
             }
-          }else{
+          } else {
             resolve(false);
           }
         }),
@@ -52,11 +53,7 @@ export class HLS {
     return this._streamServerList;
   }
 
-  StreamServerListSet(value) {
-    this._streamServerList.push(value);
-  }
-
-  addPlaylist(playlist: string) {
+  addPlaylist(playlist: string): boolean {
     if (playlist === null) {
       return false;
     }
@@ -67,6 +64,7 @@ export class HLS {
     this._header[4] = lines[4];
     this._header[5] = lines[5];
 
+    //take all m3u9 content to the playlist and build a new flow
     for (const i in lines) {
       if (lines[i].includes("#EXT-X-PROGRAM-DATE-TIME:")) {
         const sequenceTimestamp = Math.floor(new Date(lines[i].slice(lines[i].length - 24, lines[i].length)).getTime() / 1000);
@@ -74,7 +72,7 @@ export class HLS {
         const r = this._playlist.filter((x) => {
           return x.timestamp >= sequenceTimestamp;
         });
-        
+
         if (!r.length) {
           this._sequence = this._sequence + 1;
           this._playlist.push({
@@ -93,7 +91,7 @@ export class HLS {
     return changed;
   }
 
-  getAllPlaylist() {
+  getAllPlaylist(): String {
     return (
       this._header[0] +
       "\n" +

@@ -14,7 +14,7 @@
       super(URL.createObjectURL(new Blob([newBlobStr])));
       twitchMainWorker = this;
 
-      //receive message from worker
+      //worker
       this.addEventListener("message", (event) => {
         if (event.data.type && (event.data.type == "init")) {
           window.postMessage({
@@ -23,6 +23,7 @@
           });
         }
 
+        //send the quality of the player to worker
         if (event.data.type && (event.data.type == "getQuality")) {
           videoPlayer();
           this.postMessage({
@@ -32,9 +33,10 @@
         }
       });
 
-      //receive message from window
+      //receive
       window.addEventListener("message", (event) => {
         if (event.data.type && (event.data.type == "setWhitelist")) {
+          //send whitelist to worker
           this.postMessage({
             type: "setWhitelist",
             value: event.data.value
@@ -75,7 +77,7 @@
       window.videoPlayer = videoPlayer;
 
     } catch (e) {
-      return null;
+      console.log(e);
     }
   }
 

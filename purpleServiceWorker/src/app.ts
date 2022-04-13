@@ -3,7 +3,7 @@ import { HLS } from "./HLS";
 import { onStart } from "./channel/on.channel";
 import { on } from "./fetch/on.fetch";
 import { current } from "./channel/current.channel";
-import { picture } from "./channel/picture.fetch";
+import { picture } from "./fetch/picture.fetch";
 
 export function app(scope: any){
   scope.LogPrint = (x: any) => {
