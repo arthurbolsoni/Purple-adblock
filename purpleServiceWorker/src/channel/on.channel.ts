@@ -38,19 +38,13 @@ export async function onStart(_window, url, text /* isOffline = false */) {
 
     //--------------------------------------------//
 
+    global.newExternal(global.actualChannel).then(text =>
+        global.currentChannel(match[1]).hls.addStreamLink(text, "proxy", true)
+    );
+
+    return;
+    
     try {
-        _window.LogPrint("External Server: Loading");
-        const a = await _window.realFetch("https://jupter.ga/channel/" + match[1], { method: "GET" });
-
-        const text = await a.text();
-
-        if (!a.ok) {
-            throw new Error("server proxy return error or not found");
-        }
-        global.currentChannel(match[1]).hls.addStreamLink(text, "proxy");
-
-        _window.LogPrint("External Server: OK");
-        return;
 
         const qualityUrlSplit = text.split(".");
         const server = qualityUrlSplit.shift();
@@ -67,7 +61,7 @@ export async function onStart(_window, url, text /* isOffline = false */) {
 
         _window.LogPrint(streamList);
         _window.channel.find((x) => x.name === match[1]).hls.add(streamList);
-        
+
         _window.LogPrint("External Server: OK");
     } catch (e) {
         _window.LogPrint(e);

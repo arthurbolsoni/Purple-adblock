@@ -22,8 +22,17 @@ export async function on(_window, response, url) {
     try {
       //try all hls sigs that have on StreamServerList from HLS
       if (StreamServerList.length > 0) {
-        const proxy = StreamServerList.find((x) => x.server == "proxy");
-        const url = proxy.urlList.find((a) => a.quality == quality)
+        const proxy: streamList | undefined = StreamServerList.find((x) => x.server == "proxy");
+        
+        if(!proxy){
+          throw new Error("No m3u8 valid url found on StreamServerList");
+        }
+
+        const url: qualityUrl | undefined = proxy.urlList.find((a) => a.quality == quality)
+        
+        if(!url){
+          throw new Error("No m3u8 valid url found on StreamServerList");
+        }
 
         const returno2 = await global.realFetch(url.url);
         var returnoText = await returno2.text();
