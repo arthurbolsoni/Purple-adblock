@@ -111,7 +111,7 @@ const init = async () => {
       res.status(hls.status).send(hls.content);
     }
   });
-  
+
   app.get("/channel/:channelName", async (req, res) => {
     if (req.params.channelName == null) {
       res.status(400).send({

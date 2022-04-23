@@ -7,8 +7,8 @@
     "server:build": "cd server && npm run build",
     "server:start": "cd server && npm run start",
     "server:dev": "cd server && npm run dev",
-    "worker:build": "cd purpleServiceWorker && npm run build",
-    "worker:build:nocopy": "cd purpleServiceWorker && npm run build:nocopy",
+    "worker:dev": "cd purpleServiceWorker && npm run build:dev",
+    "worker:prod": "cd purpleServiceWorker && npm run build:prod",
     "lint-staged": "lint-staged",
     "lint": "eslint --ext .js,.ts && prettier --write **/*.{js,ts,css,html} --ignore-path .gitignore"
   },
@@ -37,11 +37,18 @@
     "eslint-config-prettier": "^8.3.0",
     "eslint-plugin-prettier": "^4.0.0",
     "prettier": "^2.5.1",
+    "ts-loader": "^9.2.6",
     "ts-node": "^10.4.0",
-    "typescript": "^4.5.4"
+    "typescript": "^4.5.4",
+    "webpack": "^5.67.0",
+    "webpack-dev-server": "^4.7.4", 
+    "webpack-merge": "^5.8.0"
   },
   "dependencies": {
+    "copyfiles": "^2.4.1",
     "express-rate-limit": "^6.1.0",
-    "lint-staged": "^12.2.2"
+    "html-webpack-plugin": "^5.5.0",
+    "lint-staged": "^12.2.2",
+    "webpack-cli": "^4.9.2"
   }
 }

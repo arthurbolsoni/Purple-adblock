@@ -1,7 +1,13 @@
 {
   "scripts": {
-    "_build": "rimraf dist && tsc",
-    "build": "npm run _build && cp dist/purpleServiceWorker.js ../chrome/purpleServiceWorker.js",
+    "_build:dev": "rimraf dist && webpack --config webpack.dev.js",
+    "_build:prod": "rimraf dist && webpack --config webpack.prod.js",
+    "build:dev": "npm run _build:dev && copyfiles -u 1 dist/bundle.js ../chrome/app && copyfiles -u 1 src/worker.js ../chrome/app",
+    "build:prod": "npm run _build:prod && copyfiles -u 1 dist/bundle.js ../chrome/app && copyfiles -u 1 src/worker.js ../chrome/app",
     "build:nocopy": "npm run _build"
+  },
+  "devDependencies": {
+    "webpack-cli": "^4.9.2",
+    "webpack-dev-server": "^4.7.4"
   }
 }

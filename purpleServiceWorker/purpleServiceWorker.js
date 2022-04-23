@@ -39,7 +39,6 @@ declare let whitelist: string[];
     scope.channel = [];
     scope.actualChannel = "";
     scope.whitelist = whitelist;
-
   }
 
   //class where the app format all pieces of the "hls" stream to a object.
@@ -54,7 +53,7 @@ declare let whitelist: string[];
       const qualityUrlSplit: qualityUrl[] = [];
       let captureArray: RegExpExecArray | null;
 
-      const REGEX = /RESOLUTION=(\S+),C(?:^|\S+\s+)(https:\/\/video(\S+).m3u8)/gs;
+      const REGEX = /NAME="((?:^|\S+\s+\S+))",AUTO(?:^|\S+\s+)(?:^|\S+\s+)(https:\/\/video(\S+).m3u8)/gs;
 
       while ((captureArray = REGEX.exec(text)) != null) {
         qualityUrlSplit.push({
@@ -171,11 +170,11 @@ declare let whitelist: string[];
       }
 
       const newBlobStr = `
-                ${onAfterFetch.toString()};
-                ${onStartChannel.toString()};
-                ${inflateFetch.toString()};
-                ${newCallHLS480p.toString()};
-                ${declare.toString()};
+                ${onAfterFetch.toString()}
+                ${onStartChannel.toString()}
+                ${inflateFetch.toString()}
+                ${newCallHLS480p.toString()}
+                ${declare.toString()}
                 ${HLS.toString()}
                 declare(self, "${whitelist}");
                 inflateFetch();
@@ -345,37 +344,38 @@ declare let whitelist: string[];
       LogPrint(e);
     }
   }
-  const inflateFetch = () => {
+  function inflateFetch() {
     // @ts-expect-error
     // eslint-disable-next-line no-global-assign
-    fetch = async (url, options) => {
-      if (typeof url === "string") {
-        if (url.endsWith(".ts")) {
-          //let p = channel.find(x => x.name === actualChannel).hls.getPlaylistByUrl(url);
-          //let pp = channel.find(x => x.name === actualChannel).hls.getAllPlaylist();
+    fetch = async function (url, options) {
+      if (typeof url === 'string') {
+        if (url.endsWith('.ts')) {
+          //var p = channel.find(x => x.name === actualChannel).hls.getPlaylistByUrl(url);
+          //var pp = channel.find(x => x.name === actualChannel).hls.getAllPlaylist();
+
           //LogPrint("ts timestamp: " + p[0].timestamp);
         }
 
-        if (url.endsWith("m3u8") && url.includes("ttvnw.net") && !whitelist.includes(actualChannel)) {
+        if (url.endsWith('m3u8') && url.includes('ttvnw.net') && !whitelist.includes(actualChannel)) {
           return new Promise(function (resolve, reject) {
-            const processFetch = async function (url) {
+            var processFetch = async function (url) {
               // await onBeforeFetch(url);
               await realFetch(url, options).then(function (response) {
                 response.text().then(function (text) {
                   onAfterFetch(text, url).then(function (r) {
-                    const p = channel.find((x) => x.name === actualChannel).hls.getAllPlaylist();
+                    var p = channel.find(x => x.name === actualChannel).hls.getAllPlaylist();
                     resolve(new Response(p));
                   });
                 });
-              });
+              })
             };
             processFetch(url);
           });
         }
 
-        if (url.includes("usher.ttvnw.net/api/channel/hls/") && !url.includes("picture-by-picture")) {
+        if (url.includes("usher.ttvnw.net/api/channel/hls/") && !url.includes('picture-by-picture')) {
           return new Promise(function (resolve, reject) {
-            const processFetch = async function (url) {
+            var processFetch = async function (url) {
               await realFetch(url, options).then(function (response) {
                 if (response.ok) {
                   response.text().then(async function (text) {
@@ -386,19 +386,19 @@ declare let whitelist: string[];
                   resolve(response);
                   LogPrint("channel offline");
                 }
-              });
+              })
             };
             processFetch(url);
           });
         }
 
-        if (url.includes("picture-by-picture")) {
-          // TODO
+        if (url.includes('picture-by-picture')) {
         }
+
       }
 
       // @ts-expect-error
       return realFetch.apply(this, arguments);
-    };
-  };
+    }
+  }
 })();
