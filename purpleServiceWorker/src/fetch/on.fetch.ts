@@ -11,7 +11,12 @@ export async function on(_window, response, url) {
 
     global.postMessage({
       type: "getQuality",
-      value: null
+      value: null,
+    });
+
+    global.postMessage({
+      type: "reload",
+      value: null,
     });
 
     const quality = global.quality;
@@ -23,14 +28,14 @@ export async function on(_window, response, url) {
       //try all hls sigs that have on StreamServerList from HLS
       if (StreamServerList.length > 0) {
         const proxy: streamList | undefined = StreamServerList.find((x) => x.server == "proxy");
-        
-        if(!proxy){
+
+        if (!proxy) {
           throw new Error("No m3u8 valid url found on StreamServerList");
         }
 
-        const url: qualityUrl | undefined = proxy.urlList.find((a) => a.quality == quality)
-        
-        if(!url){
+        const url: qualityUrl | undefined = proxy.urlList.find((a) => a.quality == quality);
+
+        if (!url) {
           throw new Error("No m3u8 valid url found on StreamServerList");
         }
 
@@ -41,7 +46,7 @@ export async function on(_window, response, url) {
           global.LogPrint("ads on proxy");
           throw new Error("No m3u8 valid url found on StreamServerList");
         }
-        
+
         return channelCurrent.hls.addPlaylist(returnoText);
       }
 
@@ -49,8 +54,9 @@ export async function on(_window, response, url) {
       throw new Error("No m3u8 valid url found on StreamServerList");
     } catch (e) {
       //if nothing resolve, return 480p flow
-      const pictureStream = StreamServerList.filter((x) => x.server == "picture")
-        .map((x) => x.urlList.find((x) => x.quality.includes("480")))[0].url
+      const pictureStream = StreamServerList.filter((x) => x.server == "picture").map((x) =>
+        x.urlList.find((x) => x.quality.includes("480")),
+      )[0].url;
 
       const returno = await (await global.realFetch(pictureStream)).text();
 

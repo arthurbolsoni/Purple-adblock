@@ -6,7 +6,7 @@ import { current } from "./channel/current.channel";
 import { picture } from "./fetch/picture.fetch";
 import { external } from "./fetch/external.fetch";
 
-export function app(scope: any){
+export function app(scope: any) {
   scope.LogPrint = (x: any) => {
     console.log("[Purple]: ", x);
   };
@@ -30,10 +30,12 @@ export function app(scope: any){
         break;
       }
     }
-    
+
     switch (e.data.type) {
       case "setWhitelist": {
-        scope.whitelist = e.data.value;
+        if(e.data.value){
+          scope.whitelist = e.data.value;
+        }
         break;
       }
       case "setQuality": {
@@ -48,7 +50,7 @@ export function app(scope: any){
 
   scope.postMessage({
     type: "init",
-    value: null
+    value: null,
   });
 
   scope.channel = [];
@@ -63,7 +65,7 @@ export function app(scope: any){
   scope.onStartChannel = onStart;
 
   scope.HLS = HLS;
-  
+
   inflateFetch(scope);
 }
 app(self);
