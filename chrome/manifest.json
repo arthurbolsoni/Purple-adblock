@@ -19,7 +19,7 @@
       "activeTab",
       "storage"
     ],
-    "version": "2.1",
+    "version": "2.2.0",
     "host_permissions": [
         "https://*.twitch.tv/*",
         "https://jupter.ga/*",
@@ -44,9 +44,9 @@
             ],
             "run_at": "document_start",
             "js": [
-                "main.js"
+                "content-script.js"
             ]
         }
     ],
-    "web_accessible_resources": [{ "resources": [ "app/bundle.js" , "app/Worker.js"], "matches": ["<all_urls>"]}]
+    "web_accessible_resources": [{ "resources": [ "app/bundle.js" , "app/inject-script.js"], "matches": ["<all_urls>"]}]
 }
