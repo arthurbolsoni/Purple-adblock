@@ -1,12 +1,19 @@
 (function () {
   let twitchMainWorker;
+
   window.Worker = class WorkerInjector extends Worker {
     constructor(twitchBlobUrl) {
+
+      window.postMessage({
+        type: "init",
+        value: null,
+      });
+
       if (twitchMainWorker) {
         super(twitchBlobUrl);
       }
-
-      const newBlobStr = `
+      
+        const newBlobStr = `
         importScripts('chrome-extension://bgbcmmagfjhgnendhjapjpfbljbmlmoe/app/bundle.js');
         importScripts('${twitchBlobUrl}');
         `;
@@ -47,6 +54,11 @@
 
       //receive
       window.addEventListener("message", (event) => {
+        //pass settings to worker
+        if (event.data.type && event.data.type == "setInit") {
+          //console.log(event.data.value);
+        }
+        
         if (event.data.type && event.data.type == "setWhitelist") {
           //send whitelist to worker
           this.postMessage({

@@ -29,7 +29,7 @@ export async function onStart(_window, url, text /* isOffline = false */) {
   //--------------------------------------------//
 
   //--------------------------------------------//
-  global.newPicture(global.actualChannel).then((textPicture) => {
+  await global.newPicture(global.actualChannel).then((textPicture) => {
     global.currentChannel(match[1]).hls.addStreamLink(textPicture, "picture", true);
     global.LogPrint("Local Server 480p: OK");
   });
