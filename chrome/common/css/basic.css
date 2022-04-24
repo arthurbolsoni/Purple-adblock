@@ -1,6 +1,6 @@
 html {
-  width: 258px;
-  background: rgba(30, 30, 30, 1);
+  width: 250px;
+  background: rgb(27, 27, 35);
   color: white;
   font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
 }
@@ -21,7 +21,7 @@ a {
 }
 
 .container {
-  height: 150px;
+  height: 120px;
   position: relative;
 }
 
@@ -34,8 +34,9 @@ a {
   -ms-transform: translate(-50%, -50%);
   transform: translate(-50%, -50%);
 }
+
 .icon {
-  background-color: green;
+  background-color: rgb(13, 65, 133);
   -webkit-mask: url("../img/power-off.svg") no-repeat center;
   mask: url("../img/power-off.svg") no-repeat center;
   width: 100px;
@@ -55,10 +56,15 @@ a {
   background-color: grey;
   outline: none;
 }
-
+.text {
+  font-family: sans-serif;
+  font-size: 14px;
+}
 .buttonlog {
+  margin-block-start: 0.5em;
+  margin-block-end: 0.5em;
   color: white;
-  height: 25px;
+  height: 40px;
   display: flex;
   justify-content: center;
   align-items: center;

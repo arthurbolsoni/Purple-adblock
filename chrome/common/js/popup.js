@@ -100,6 +100,5 @@ chrome.tabs.query({ active: true, lastFocusedWindow: true }, function (tabs) {
 });
 
 chrome.runtime.sendMessage("log", function (response) {
-  text = "" + response;
   document.getElementsByClassName("textarea")[0].value = response.join("\n");
 });

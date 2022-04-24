@@ -18,7 +18,7 @@ export function app(scope: any) {
   scope.realFetch = fetch;
   scope.quality = "";
   scope.whitelist = [];
-  
+
   //receive message from window
   scope.addEventListener("message", function (e) {
     switch (e.data.funcName) {
@@ -33,7 +33,7 @@ export function app(scope: any) {
 
     switch (e.data.type) {
       case "setWhitelist": {
-        if(e.data.value){
+        if (e.data.value) {
           scope.whitelist = e.data.value;
         }
         break;

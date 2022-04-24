@@ -29,7 +29,7 @@ chrome.storage.onChanged.addListener(function (changes, namespace) {
 chrome.storage.local.get(["whiteList", "settings"], function (items) {
   if (items.whiteList !== undefined) {
     whiteList = items.whiteList;
-    logger.log(whiteList);
+    logger.log("disabled list: " + whiteList);
   }
   if (items.settings !== undefined) {
     settings = items.settings;
@@ -40,7 +40,7 @@ chrome.runtime.onMessage.addListener(function (request, sender, sendResponse) {
   if (request.method == "getWhitelist") {
     sendResponse(whiteList);
   } else {
-    sendResponse(logger);
+    sendResponse(logger.logs);
   }
 });
 
@@ -51,3 +51,5 @@ chrome.runtime.onInstalled.addListener(function (details) {
       break;
   }
 });
+
+logger.log("Initialized");
