@@ -1,21 +1,34 @@
 (function () {
   let twitchMainWorker;
+  let extension;
+
+  //receive the settings from extension
+  window.addEventListener("message", (event) => {
+    //pass settings to worker
+    if (event.data.type && event.data.type == "setInit") {
+      extension = event.data.value;
+    }
+  })
+
+  window.postMessage({
+    type: "init",
+    value: null,
+  });
 
   window.Worker = class WorkerInjector extends Worker {
     constructor(twitchBlobUrl) {
-      window.postMessage({
-        type: "init",
-        value: null,
-      });
-
       if (twitchMainWorker) {
         super(twitchBlobUrl);
       }
 
       const newBlobStr = `
-        importScripts('chrome-extension://bgbcmmagfjhgnendhjapjpfbljbmlmoe/app/bundle.js');
-        importScripts('${twitchBlobUrl}');
-        `;
+      importScripts('${extension}/bundle.js');
+      importScripts('${twitchBlobUrl}');
+      `;
+
+      if (!extension) {
+        newBlobStr = twitchBlobUrl;
+      }
 
       super(URL.createObjectURL(new Blob([newBlobStr])));
       twitchMainWorker = this;
@@ -53,11 +66,6 @@
 
       //receive
       window.addEventListener("message", (event) => {
-        //pass settings to worker
-        if (event.data.type && event.data.type == "setInit") {
-          //console.log(event.data.value);
-        }
-
         if (event.data.type && event.data.type == "setWhitelist") {
           //send whitelist to worker
           this.postMessage({
