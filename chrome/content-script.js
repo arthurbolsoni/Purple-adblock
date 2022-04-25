@@ -1,7 +1,4 @@
 function init(whiteList) {
-  var settings = document.createElement("script");
-  //settings.textContent = "var abc = 'aaaaaaa';";
-
   var app = document.createElement("script");
   app.src = chrome.runtime.getURL("app/bundle.js");
   app.remove();
@@ -11,8 +8,7 @@ function init(whiteList) {
   s.onload = function () {
     this.remove();
   };
-
-  (document.head || document.documentElement).appendChild(settings);
+  
   (document.head || document.documentElement).appendChild(s);
 
   window.addEventListener("message", (event) => {
@@ -20,7 +16,7 @@ function init(whiteList) {
       window.postMessage(
         {
           type: "setInit",
-          value: chrome.runtime.getURL("app/bundle.js"),
+          value: chrome.runtime.getURL("app"),
         },
         "*",
       );
