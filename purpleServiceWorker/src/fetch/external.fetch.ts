@@ -2,7 +2,7 @@
 export async function external(channelName: string): Promise<string> {
   try {
     global.LogPrint("External Server: Loading");
-    const response: Response = await global.realFetch("https://jupter.ga/channel/" + channelName);
+    const response: Response = await global.realFetch("https://" + global.tunnel[0]  + "/channel/" + channelName);
 
     if (!response.ok) {
       throw new Error("server proxy return error or not found");

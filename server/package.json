@@ -6,7 +6,7 @@
   "scripts": {
     "warning": "echo If you recieve an error, you probably haven't built the project.\nRun npm server:build to build the project.\n",
     "build": "rimraf dist && tsc",
-    "start": "npm run warning && cross-env NODE_ENV=production node dist/src/index.js",
+    "start": "npm run warning && cross-env NODE_ENV=production node dist/index.js",
     "dev": "cross-env NODE_ENV=development nodemon"
   },
   "devDependencies": {

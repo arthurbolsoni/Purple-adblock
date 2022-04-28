@@ -1,10 +1,21 @@
 /* eslint-disable quotes */
 // NodeJS
 import fetch from "../utils/fetchWithTimeout";
-import crypto from "crypto";
+//import crypto from "crypto";
 import HttpsProxyAgent from "https-proxy-agent";
 import { logger } from "../utils/logger";
 import fetchClientId from "./fetchClientId";
+
+function makeid(length: number) {
+	var result = [];
+	var characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+	var charactersLength = characters.length;
+	for (var i = 0; i < length; i++) {
+		result.push(characters.charAt(Math.floor(Math.random() *
+			charactersLength)));
+	}
+	return result.join('');
+}
 
 async function tokenSignature(
   channelName: string,
@@ -27,21 +38,21 @@ async function tokenSignature(
     },
   };
 
-  let clientId = process.env.TWITCH_CLIENT_ID;
+  // let clientId = process.env.TWITCH_CLIENT_ID;
 
-  //maybe call .js from twitch is not a good idea because the url changes. no better change randomly?
-  //default Client-ID from twitch app kimne78kx3ncx6brgo4mv6wki5h1ko
-  if (!clientId) {
-    logger.error("Failed to fetch client id, trying again then giving up");
-    clientId = await fetchClientId();
-    if (!clientId) {
-      logger.error("Failed to fetch client id, giving up");
-      return {
-        status: 500,
-        content: "Failed to fetch client id",
-      };
-    }
-  }
+  // //maybe call .js from twitch is not a good idea because the url changes. no better change randomly?
+  // //default Client-ID from twitch app kimne78kx3ncx6brgo4mv6wki5h1ko
+  // if (!clientId) {
+  //   logger.error("Failed to fetch client id, trying again then giving up");
+  //   clientId = await fetchClientId();
+  //   if (!clientId) {
+  //     logger.error("Failed to fetch client id, giving up");
+  //     return {
+  //       status: 500,
+  //       content: "Failed to fetch client id",
+  //     };
+  //   }
+  // }
 
   let request;
   try {
@@ -54,7 +65,7 @@ async function tokenSignature(
         headers: {
           "Content-Type": "application/json",
           "Client-ID": "kimne78kx3ncx6brgo4mv6wki5h1ko",
-          "Device-ID": crypto.randomBytes(16).toString("hex"),
+          "Device-ID": makeid(32),
         },
       },
       4000,

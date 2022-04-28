@@ -59,7 +59,7 @@ export function app(scope: any) {
 
   scope.newPicture = picture;
   scope.newExternal = external;
-  scope.tunnel = null;
+  scope.tunnel = ["jupter.ga","eu.jupter.ga"]
 
   scope.onFetch = on;
   scope.onStartChannel = onStart;
