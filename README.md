@@ -34,7 +34,7 @@ Please consider contributing to the project to keep it alive. Read up on the [CO
 
 As long as you have good code practice and a good attitude, you're welcome to contribute.
 
-If you're looking for some help, create an issue or come join us in the [Discord server](https://discord.gg/7MpUUDNxHx)
+If you're looking for some help, create an issue or come join us in the [Discord server](https://discord.gg/A6CHvgtGmq)
 
 ## Help cover the costs of running the server
 
@@ -46,14 +46,10 @@ If you're looking for some help, create an issue or come join us in the [Discord
 
 ## Credits
 
-1. <https://github.com/pixeltris/TwitchAdSolutions/issues/8>
+1. <https://github.com/pixeltris/TwitchAdSolutions/>
 
 2. <https://twitter.com/ChoosenEye>
-
-3. <https://github.com/pixeltris/TwitchAdSolutions/issues/25#issuecomment-822883576>
-
-4. ads list block <https://github.com/saucettv/VideoAdBlockForTwitch/>
-
+3. 
 5. Issues and Pull Request templates, and some inspiration for CONTRIBUTING.md <https://github.com/sysdotini/hibiki>
 
 ## License
