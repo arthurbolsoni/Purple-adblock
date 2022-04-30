@@ -49,7 +49,7 @@ If you're looking for some help, create an issue or come join us in the [Discord
 1. <https://github.com/pixeltris/TwitchAdSolutions/>
 
 2. <https://twitter.com/ChoosenEye>
-3. 
+
 5. Issues and Pull Request templates, and some inspiration for CONTRIBUTING.md <https://github.com/sysdotini/hibiki>
 
 ## License
