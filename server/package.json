@@ -1,6 +1,6 @@
 {
   "name": "proxy-server",
-  "version": "1.0.0",
+  "version": "2.2.0",
   "description": "Proxy server for Purple Adblocker",
   "main": "src/index.ts",
   "scripts": {
@@ -15,18 +15,14 @@
     "nodemon": "^2.0.15"
   },
   "dependencies": {
-    "@types/cors": "^2.8.12",
-    "@types/express-pino-logger": "^4.0.3",
-    "cors": "^2.8.5",
     "cross-fetch": "^3.1.5",
-    "csurf": "^1.11.0",
     "dotenv": "^14.0.1",
-    "express": "^4.17.1",
-    "express-pino-logger": "^7.0.0",
-    "express-session": "^1.17.1",
+    "fastify": "^3.28.0",
+    "fastify-cookie": "^5.7.0",
+    "fastify-cors": "^6.1.0",
+    "fastify-csrf": "^3.1.0",
+    "fastify-helmet": "^7.1.0",
     "helmet": "^5.0.1",
-    "https-proxy-agent": "^5.0.0",
-    "ping": "^0.4.1",
     "pino": "^7.6.3",
     "pino-pretty": "^7.3.0"
   }

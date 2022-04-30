@@ -1,10 +1,8 @@
-// TODO: Switch to Fastify, especially if this extension is going to be recieves lots of requests. (https://www.fastify.io/)
-import express from "express";
-import helmet from "helmet";
-import cors from "cors";
+import Fastify from 'fastify';
+import helmet from 'fastify-helmet'
+import cors from 'fastify-cors'
 
 import { logger } from "./utils/logger";
-import expressPino from "express-pino-logger";
 
 import dotenv from "dotenv";
 dotenv.config();
@@ -13,34 +11,25 @@ if (!process.env.PORT) {
   logger.warn("Port not set in .env file. Using default port 8080.");
 }
 
-import { getNewHLS, readm3u8 } from "./modules/twHLS";
+import { getNewHLS, getNewHLSv2 } from "./modules/twHLS";
 import requestUrlByProxy from "./modules/proxyFetch";
 import fetchClientId from "./modules/fetchClientId";
 
 // @ts-ignore
 import Package from "../package.json";
+import { channelRequest, signatureRequest } from './types/env';
 // SSL code removed: Use Nginx or Caddy with reverse_proxy instead
 
 const port = process.env.PORT || 8080;
-const app = express();
+const app = Fastify({
+  logger: false,
+})
 
 const init = async () => {
-  if (process.env.NODE_ENV === "development") {
-    app.use(expressPino({ logger }));
-  }
-  app.use(helmet());
-  app.use(express.json());
-  app.use(express.urlencoded({ extended: true }));
-  app.use(
-    cors({
-      origin: "*",
-      allowedHeaders: "*",
-      exposedHeaders: "*",
-    }),
-  );
-
-  app.disable("x-powered-by");
-  app.disable("etag");
+  app.register(helmet);
+  app.register(cors, {
+    origin: "*",
+  });
 
   app.get("/", (req, res) => {
     res.send({
@@ -50,15 +39,8 @@ const init = async () => {
     });
   });
 
-  app.use((_req, res, next) => {
-    res.removeHeader("Connection");
-    res.removeHeader("Date");
-    res.removeHeader("X-DNS-Prefetch-Control");
-    next();
-  });
-
   //receive the first request on twitch stream to be done proxy/vps.
-  app.get("/hls/v2/sig/:links/:server", async (req, res) => {
+  app.get("/hls/v2/sig/:links/:server", async (req: signatureRequest, res) => {
     if (req.params.links == null) {
       res.status(400).send({
         success: false,
@@ -70,7 +52,7 @@ const init = async () => {
     if (req.params.server == null) {
       res.status(400).send({
         success: false,
-        message: "No server provided",
+        message: "No server provided",  
       });
       return;
     }
@@ -92,7 +74,7 @@ const init = async () => {
     }
   });
 
-  app.get("/hls/v2/channel/:channelName", async (req, res) => {
+  app.get("/hls/v2/channel/:channelName", async (req: channelRequest, res) => {
     if (req.params.channelName == null) {
       res.status(400).send({
         success: false,
@@ -103,20 +85,13 @@ const init = async () => {
     try{
       
     //I thought about reducing all the unnecessary content of the requests to increase the speed, but I don't know if it was really worth it
-    const hls = await getNewHLS(req.params.channelName.toString(), "");
+    const hls = await getNewHLSv2(req.params.channelName.toString(), "");
+    
     if (hls.valid) {
-      if (hls.status == 200) {
-        let m;
-        const HlsRegex = /RESOLUTION=(\S+),C(?:^|\S+\s+\S+)video-weaver.(\S+).hls.ttvnw.net\/v1\/playlist\/(\S+).m3u8/g;
-        while ((m = HlsRegex.exec(hls.content)) !== null) {
-          await requestUrlByProxy(m[3], m[1]);
-        }
-      }
-
-      res.set("proxystatus", "200");
+      res.header("proxystatus", "200");
       res.status(hls.status).send(hls.content);
     } else {
-      res.set("proxystatus", "404");
+      res.header("proxystatus", "404");
       res.status(hls.status).send(hls.content);
     }
 
@@ -130,7 +105,7 @@ const init = async () => {
     }
   });
 
-  app.get("/channel/:channelName", async (req, res) => {
+  app.get("/channel/:channelName", async (req: channelRequest, res) => {
     if (req.params.channelName == null) {
       res.status(400).send({
         success: false,
@@ -139,13 +114,13 @@ const init = async () => {
       return;
     }
     try {
-      const result = await readm3u8(req.params.channelName, null);
+      const result = await getNewHLS(req.params.channelName, "");
 
       if (result.valid) {
-        res.set("proxystatus", "200");
+        res.header("proxystatus", "200");
         res.send(result.content);
       } else {
-        res.set("proxystatus", "404");
+        res.header("proxystatus", "404");
         res.status(result.status).send(result);
       }
     } catch (e) {
@@ -157,10 +132,10 @@ const init = async () => {
   app.get("/on", (_req, res) => {
     const status = true;
     if (status) {
-      res.set("proxystatus", "200");
+      res.header("proxystatus", "200");
       res.send();
     } else {
-      res.set("proxystatus", "404");
+      res.header("proxystatus", "404");
       res.status(503).send();
     }
   });

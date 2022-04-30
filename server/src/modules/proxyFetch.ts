@@ -1,5 +1,4 @@
 import fetch from "../utils/fetchWithTimeout";
-import HttpsProxyAgent from "https-proxy-agent";
 
 export default async function requestUrlByProxy(id: string, server: string) {
   if (id && server) {

@@ -1,8 +1,6 @@
 /* eslint-disable quotes */
 // NodeJS
 import fetch from "../utils/fetchWithTimeout";
-//import crypto from "crypto";
-import HttpsProxyAgent from "https-proxy-agent";
 import { logger } from "../utils/logger";
 import fetchClientId from "./fetchClientId";
 
@@ -107,8 +105,8 @@ async function tokenSignature(
 }
 
 //method to work in method 1
-export async function readm3u8(channelName: any, proxyUrl: string | null | HttpsProxyAgent.HttpsProxyAgentOptions) {
-  const proxy = proxyUrl ? HttpsProxyAgent(proxyUrl) : null;
+export async function getNewHLSv2(channelName: any, proxyUrl: string | null) {
+  const proxy = null;
 
   //twitch signature on CDN
   const signature = await tokenSignature(channelName, proxy);
@@ -138,12 +136,7 @@ export async function readm3u8(channelName: any, proxyUrl: string | null | Https
         },
         4000,
       );
-
-      return {
-        status: returning.status,
-        content: await returning.text(),
-        valid: true,
-      };
+      return r;
     }
   } catch {}
 
@@ -151,8 +144,8 @@ export async function readm3u8(channelName: any, proxyUrl: string | null | Https
 }
 
 //method to work on method 2
-export async function getNewHLS(channelName: any, proxyUrl: string | HttpsProxyAgent.HttpsProxyAgentOptions) {
-  const proxy = proxyUrl ? HttpsProxyAgent(proxyUrl) : null;
+export async function getNewHLS(channelName: any, proxyUrl: string ) {
+  const proxy = null;
 
   // get token and signature
   const signature = await tokenSignature(channelName, proxy);
@@ -163,8 +156,6 @@ export async function getNewHLS(channelName: any, proxyUrl: string | HttpsProxyA
       valid: false,
     };
   }
-
-  logger.log(signature);
 
   // get stream from twitch server
   return await getStream(channelName, proxy, signature.token, signature.sig);

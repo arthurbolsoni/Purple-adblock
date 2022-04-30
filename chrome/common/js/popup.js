@@ -10,8 +10,8 @@ document.getElementsByClassName("buttonlog")[0].onclick = function (e) {
   }
 };
 
-document.getElementById("toggleV1").onclick = inputChangetoggleV1;
-document.getElementById("toggleV2").onclick = inputChangetoggleV2;
+//document.getElementById("toggleV1").onclick = inputChangetoggleV1;
+//document.getElementById("toggleV2").onclick = inputChangetoggleV2;
 
 function inputChangetoggleV1() {
   document.getElementById("toggleV2").checked = !document.getElementById("toggleV2").checked;
@@ -58,10 +58,10 @@ chrome.tabs.query({ active: true, lastFocusedWindow: true }, function (tabs) {
       settings = items.settings;
       console.log(settings);
       if (settings[0]) {
-        document.getElementById("toggleV1").checked = settings[0];
+        //document.getElementById("toggleV1").checked = settings[0];
         document.getElementById("toggleV2").checked = false;
       } else {
-        document.getElementById("toggleV1").checked = false;
+        //document.getElementById("toggleV1").checked = false;
         document.getElementById("toggleV2").checked = settings[1];
       }
     } else {

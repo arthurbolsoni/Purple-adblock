@@ -34,8 +34,9 @@ function init(whiteList) {
 }
 
 chrome.storage.local.get(["whiteList", "settings"], function (items) {
+  var whitelist = [];
   if (items.whiteList !== undefined) {
     whiteList = items.whiteList;
   }
-  init(items.whiteList);
+  init(whitelist);
 });
