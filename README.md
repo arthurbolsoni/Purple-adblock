@@ -26,7 +26,7 @@ It doesn't work with "Alternate Player for Twitch.tv", or other "twitch adblocke
 
 ### How it works
 
-Purple proxies all streams through a proxy server, and if it detects an advertisement, it continue streaming from the channel you're watching, therefore avoiding buffering problems in the same connection.
+Purple proxies all streams through a proxy server, and if it detects an advertisement, it continue streaming from the channel you're watching, therefore avoiding buffering problems in the same connection. This is basically a MITM attack.
 
 ## Contributing & Support
 
@@ -34,15 +34,11 @@ Please consider contributing to the project to keep it alive. Read up on the [CO
 
 As long as you have good code practice and a good attitude, you're welcome to contribute.
 
-If you're looking for some help, create an issue or come join us in the [Discord server](https://discord.gg/7MpUUDNxHx)
+If you're looking for some help, create an issue or come join us in the [Discord server](https://discord.gg/A6CHvgtGmq)
 
 ## Help cover the costs of running the server
 
 **ETHEREUM WALLET:** 0x35a8052eF440bA87DFa464e48AebD420b0635058
-
-**BTC:** 12NXXqNKTKD8nv89pdvHotF6JqX5CWfyZk
-
-**LTC:** LYagnjToA6SZjAnEttdJEtp61bfvAN2xYU
 
 **DOGECOIN:** DR3AdZD5gr2WBkyKZUuxLfxK26QQ6RHsvR
 
@@ -52,13 +48,9 @@ If you're looking for some help, create an issue or come join us in the [Discord
 
 ## Credits
 
-1. <https://github.com/pixeltris/TwitchAdSolutions/issues/8>
+1. <https://github.com/pixeltris/TwitchAdSolutions>
 
 2. <https://twitter.com/ChoosenEye>
-
-3. <https://github.com/pixeltris/TwitchAdSolutions/issues/25#issuecomment-822883576>
-
-4. ads list block <https://github.com/saucettv/VideoAdBlockForTwitch/>
 
 5. Issues and Pull Request templates, and some inspiration for CONTRIBUTING.md <https://github.com/sysdotini/hibiki>
 
