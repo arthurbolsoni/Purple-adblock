@@ -38,10 +38,6 @@ If you're looking for some help, create an issue or come join us in the [Discord
 
 ## Help cover the costs of running the server
 
-**BTC:** 12NXXqNKTKD8nv89pdvHotF6JqX5CWfyZk
-
-**LTC:** LYagnjToA6SZjAnEttdJEtp61bfvAN2xYU
-
 **DOGECOIN:** DR3AdZD5gr2WBkyKZUuxLfxK26QQ6RHsvR
 
 **BUY ME A COFFEE :)** [Click here](https://www.buymeacoffee.com/arthurbolsoni)
