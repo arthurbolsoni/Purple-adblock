@@ -46,7 +46,7 @@ If you're looking for some help, create an issue or come join us in the [Discord
 
 ## Credits
 
-1. <https://github.com/pixeltris/TwitchAdSolutions/>
+1. <https://github.com/pixeltris/TwitchAdSolutions>
 
 2. <https://twitter.com/ChoosenEye>
 
