@@ -38,6 +38,8 @@ If you're looking for some help, create an issue or come join us in the [Discord
 
 ## Help cover the costs of running the server
 
+ETHEREUM WALLET: 0x35a8052eF440bA87DFa464e48AebD420b0635058
+
 **DOGECOIN:** DR3AdZD5gr2WBkyKZUuxLfxK26QQ6RHsvR
 
 **BUY ME A COFFEE :)** [Click here](https://www.buymeacoffee.com/arthurbolsoni)
