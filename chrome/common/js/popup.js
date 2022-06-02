@@ -100,7 +100,7 @@ chrome.tabs.query({'active': true, 'lastFocusedWindow': true}, function
         }else{
             document.getElementById('adblockbutton').onclick = null;
             document.getElementById("adblocktext").classList.add("disable");
-            document.getElementById("watching").textContent = "Waiting channel";
+            document.getElementById("watching").textContent = "Awaiting channel";
         }
     });
 });
