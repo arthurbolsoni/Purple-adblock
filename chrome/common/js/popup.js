@@ -29,7 +29,7 @@ var channel = "";
 function inputChange(e) {
     if(isActive){
         document.getElementById("adblocktext").classList.add("disable");
-        document.getElementById("watching").textContent = "Disactived on : " + channel;
+        document.getElementById("watching").textContent = "Disabled on : " + channel;
         
         if(!whiteList.includes(channel)){
             whiteList.push(channel);
@@ -40,7 +40,7 @@ function inputChange(e) {
 
     }else{
         document.getElementById("adblocktext").classList.remove("disable");
-        document.getElementById("watching").textContent = "Actived on : " + channel;
+        document.getElementById("watching").textContent = "Enabled on : " + channel;
         for( var i = 0; i < whiteList.length; i++){
             if ( whiteList[i] === channel) { 
                 whiteList.splice(i, 1); 
@@ -88,7 +88,7 @@ chrome.tabs.query({'active': true, 'lastFocusedWindow': true}, function
                     }
                 if(isActive){
                     document.getElementById("adblocktext").classList.remove("disable");
-                    document.getElementById("watching").textContent = "Actived on : " + channel;
+                    document.getElementById("watching").textContent = "Enabled on : " + channel;
                     return;
                 }else{
                     document.getElementById("adblocktext").classList.add("disable");
@@ -96,7 +96,7 @@ chrome.tabs.query({'active': true, 'lastFocusedWindow': true}, function
                     return;
                 }
             }
-            document.getElementById("watching").textContent = "Actived on : " + channel;
+            document.getElementById("watching").textContent = "Enabled on : " + channel;
         }else{
             document.getElementById('adblockbutton').onclick = null;
             document.getElementById("adblocktext").classList.add("disable");
