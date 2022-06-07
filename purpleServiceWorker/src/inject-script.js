@@ -33,11 +33,10 @@
       super(URL.createObjectURL(new Blob([newBlobStr])));
       twitchMainWorker = this;
 
-      //worker
       this.addEventListener("message", (event) => {
         if (event.data.type && event.data.type == "init") {
           window.postMessage({
-            type: "getWhitelist",
+            type: "getSetting",
             value: null,
           });
         }
@@ -45,6 +44,7 @@
         //receive the message from worker for stop and play the player
         if (event.data.type && event.data.type == "reload") {
           videoPlayer();
+          return;
           if (window.videoPlayer.isLiveLowLatency() && window.videoPlayer.getLiveLatency() > 5) {
             window.videoPlayer.pause();
             window.videoPlayer.play();
@@ -66,10 +66,10 @@
 
       //receive
       window.addEventListener("message", (event) => {
-        if (event.data.type && event.data.type == "setWhitelist") {
-          //send whitelist to worker
+        if (event.data.type && event.data.type == "setSetting") {
+          //send settings to worker
           this.postMessage({
-            type: "setWhitelist",
+            type: "setSetting",
             value: event.data.value,
           });
         }

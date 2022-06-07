@@ -11,16 +11,16 @@ document.getElementsByClassName("buttonlog")[0].onclick = function (e) {
 };
 
 //document.getElementById("toggleV1").onclick = inputChangetoggleV1;
-//document.getElementById("toggleV2").onclick = inputChangetoggleV2;
+document.getElementById("toggleProxy").onclick = inputChangetoggleProxy;
 
 function inputChangetoggleV1() {
-  document.getElementById("toggleV2").checked = !document.getElementById("toggleV2").checked;
-  chrome.storage.local.set({ ["settings"]: [document.getElementById("toggleV1").checked, document.getElementById("toggleV2").checked] });
+  document.getElementById("toggleProxy").checked = !document.getElementById("toggleProxy").checked;
+  chrome.storage.local.set({ ["settings"]: [document.getElementById("toggleV1").checked, document.getElementById("toggleProxy").checked] });
 }
 
-function inputChangetoggleV2() {
-  document.getElementById("toggleV1").checked = !document.getElementById("toggleV1").checked;
-  chrome.storage.local.set({ ["settings"]: [document.getElementById("toggleV1").checked, document.getElementById("toggleV2").checked] });
+function inputChangetoggleProxy() {
+  console.log(document.getElementById("toggleProxy").checked);
+  chrome.storage.local.set({ ["toggleProxy"]: document.getElementById("toggleProxy").checked });
 }
 
 var isActive = true;
@@ -53,19 +53,15 @@ function inputChange(e) {
 
 chrome.tabs.query({ active: true, lastFocusedWindow: true }, function (tabs) {
   var url = tabs[0].url;
-  chrome.storage.local.get(/* String or Array */ ["whiteList", "settings"], function (items) {
-    if (items.settings !== undefined) {
-      settings = items.settings;
-      console.log(settings);
-      if (settings[0]) {
-        //document.getElementById("toggleV1").checked = settings[0];
-        document.getElementById("toggleV2").checked = false;
-      } else {
-        //document.getElementById("toggleV1").checked = false;
-        document.getElementById("toggleV2").checked = settings[1];
-      }
-    } else {
-      document.getElementById("toggleV2").checked = true;
+  chrome.storage.local.get(/* String or Array */["whiteList", "toggleProxy"], function (items) {
+
+    document.getElementById("toggleProxy").checked = false;
+
+    if (items.toggleProxy !== undefined) {
+      toggleProxy = items.toggleProxy;
+
+      console.log(toggleProxy);
+      document.getElementById("toggleProxy").checked = items.toggleProxy;
     }
 
     if (url.includes("https://www.twitch.tv/")) {

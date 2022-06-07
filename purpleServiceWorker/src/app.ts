@@ -12,10 +12,11 @@ export function app(scope: any) {
   };
 
   scope.isAds = (x: string) => {
-    return x.toString().includes("stitched-ad") || x.toString().includes("twitch-client-ad");
+    return x.toString().includes("stitched-ad") || x.toString().includes("twitch-client-ad") || x.toString().includes("twitch-ad-quartile");
   };
 
   scope.realFetch = fetch;
+  scope.isProxyAuth = false;
   scope.quality = "";
   scope.whitelist = [];
 
@@ -32,9 +33,10 @@ export function app(scope: any) {
     }
 
     switch (e.data.type) {
-      case "setWhitelist": {
+      case "setSetting": {
         if (e.data.value) {
-          scope.whitelist = e.data.value;
+          scope.whitelist = e.data.value.whiteList;
+          scope.isProxyAuth = e.data.value.toggleProxy;
         }
         break;
       }
@@ -53,13 +55,14 @@ export function app(scope: any) {
     value: null,
   });
 
+  scope.comingAds = false;
   scope.channel = [];
   scope.actualChannel = "";
   scope.currentChannel = current;
 
   scope.newPicture = picture;
   scope.newExternal = external;
-  scope.tunnel = ["jupter.ga","eu.jupter.ga"]
+  scope.tunnel = ["eu1.jupter.ga"]  
 
   scope.onFetch = on;
   scope.onStartChannel = onStart;

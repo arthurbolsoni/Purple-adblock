@@ -38,6 +38,7 @@ export async function onStart(_window, url, text /* isOffline = false */) {
 
   //--------------------------------------------//
 
+  if(!global.isProxyAuth) return;
   global.newExternal(global.actualChannel).then((text) => global.currentChannel(match[1]).hls.addStreamLink(text, "proxy", true));
 
   return;

@@ -1,4 +1,4 @@
-function init(whiteList) {
+function init(items) {
   var app = document.createElement("script");
   app.src = chrome.runtime.getURL("app/bundle.js");
   app.remove();
@@ -21,11 +21,11 @@ function init(whiteList) {
         "*",
       );
     }
-    if (event.data.type && event.data.type == "getWhitelist") {
+    if (event.data.type && event.data.type == "getSetting") {
       window.postMessage(
         {
-          type: "setWhitelist",
-          value: whiteList,
+          type: "setSetting",
+          value: items,
         },
         "*",
       );
@@ -33,10 +33,10 @@ function init(whiteList) {
   });
 }
 
-chrome.storage.local.get(["whiteList", "settings"], function (items) {
+chrome.storage.local.get(["whiteList", "toggleProxy"], function (items) {
   var whitelist = [];
   if (items.whiteList !== undefined) {
     whiteList = items.whiteList;
   }
-  init(whitelist);
+  init(items);
 });

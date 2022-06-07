@@ -4,10 +4,14 @@ export async function on(_window, response, url) {
   //  }
 
   const channelCurrent = await global.currentChannel();
+  global.LogPrint("Sequence");
 
   //if ads find on main link called from twitch api player
   if (global.isAds(response)) {
+
     global.LogPrint("ads found");
+
+    channelCurrent.hls.addPlaylist(response);
 
     global.postMessage({
       type: "getQuality",
@@ -25,7 +29,7 @@ export async function on(_window, response, url) {
     global.LogPrint(quality);
 
     try {
-      //try all hls sigs that have on StreamServerList from HLS
+      //try all hls sigs that have on StreamServerList from HLS 
       if (StreamServerList.length > 0) {
         const proxy: streamList | undefined = StreamServerList.find((x) => x.server == "proxy");
 
@@ -60,9 +64,9 @@ export async function on(_window, response, url) {
 
       const returno = await (await global.realFetch(pictureStream)).text();
 
-      global.LogPrint("480P");
-      global.LogPrint(e);
-      channelCurrent.hls.addPlaylist(returno);
+      if (channelCurrent.hls.addPlaylist(returno)) {
+        global.LogPrint("480p");
+      }
       return true;
     }
   } else {
