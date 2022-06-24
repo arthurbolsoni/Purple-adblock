@@ -52,8 +52,6 @@ If you're looking for some help, create an issue or come join us in the [Discord
 
 2. <https://twitter.com/ChoosenEye>
 
-5. Issues and Pull Request templates, and some inspiration for CONTRIBUTING.md <https://github.com/sysdotini/hibiki>
-
 ## License
 
 GNU General Public License v3.0
