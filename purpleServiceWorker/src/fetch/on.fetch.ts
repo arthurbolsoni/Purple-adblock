@@ -4,8 +4,7 @@ export async function on(_window, response, url) {
   //  }
 
   const channelCurrent = await global.currentChannel();
-  global.LogPrint("Sequence");
-
+  
   //if ads find on main link called from twitch api player
   if (global.isAds(response)) {
 

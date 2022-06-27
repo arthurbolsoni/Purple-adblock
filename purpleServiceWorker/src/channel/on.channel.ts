@@ -4,8 +4,11 @@ export async function onStart(_window, url, text /* isOffline = false */) {
   let existent = false;
 
   if (match[1]) {
-    _window.actualChannel = match[1];
-    if (_window.whitelist.includes(match[1])) {
+    if(global.whitelist == undefined){
+      global.whitelist = [];
+    }
+    global.actualChannel = match[1];
+    if (global.whitelist.includes(match[1])) {
       return;
     }
 

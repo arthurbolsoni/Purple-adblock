@@ -19,6 +19,7 @@ export function app(scope: any) {
   scope.isProxyAuth = false;
   scope.quality = "";
   scope.whitelist = [];
+  global.whitelist = [];
 
   //receive message from window
   scope.addEventListener("message", function (e) {

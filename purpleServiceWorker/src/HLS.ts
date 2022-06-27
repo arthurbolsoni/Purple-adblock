@@ -76,7 +76,6 @@ export class HLS {
         });
         //add the sequence on playlist variable if it no exist
         if (!r.length) {
-          global.LogPrint(sequenceTimestamp);
           this._sequence = this._sequence + 1;
           this._playlist.push({
             time: lines[parseInt(i) - 1],
