@@ -17,10 +17,15 @@
 
   window.Worker = class WorkerInjector extends Worker {
     constructor(twitchBlobUrl) {
+      console.log("new worker intance " + twitchBlobUrl)
+      if (twitchBlobUrl == ''){
+        super(twitchBlobUrl)
+      }
       if (twitchMainWorker) {
         super(twitchBlobUrl);
       }
 
+      console.log("[Purple]: init " + twitchBlobUrl)
       const newBlobStr = `
       importScripts('${extension}/bundle.js');
       importScripts('${twitchBlobUrl}');
