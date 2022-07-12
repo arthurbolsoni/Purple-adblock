@@ -18,6 +18,7 @@
   window.Worker = class WorkerInjector extends Worker {
     constructor(twitchBlobUrl) {
       console.log("new worker intance " + twitchBlobUrl)
+
       if (twitchBlobUrl == ''){
         super(twitchBlobUrl)
       }
@@ -26,6 +27,7 @@
       }
 
       console.log("[Purple]: init " + twitchBlobUrl)
+      
       const newBlobStr = `
       importScripts('${extension}/bundle.js');
       importScripts('${twitchBlobUrl}');
@@ -33,6 +35,7 @@
 
       if (!extension) {
         newBlobStr = twitchBlobUrl;
+        console.log("[Purple]: Wrong return, shut down script " + twitchBlobUrl)
       }
 
       super(URL.createObjectURL(new Blob([newBlobStr])));

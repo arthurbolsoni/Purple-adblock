@@ -70,6 +70,6 @@ export function app(scope: any) {
 
   scope.HLS = HLS;
 
-  inflateFetch(scope);
+  inflateFetch();
 }
-app(self);
+app(global);
