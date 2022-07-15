@@ -2,7 +2,7 @@
   let twitchMainWorker;
   let extension;
 
-  //receive the settings from extension
+  //receive the url of bundle from extension
   window.addEventListener("message", (event) => {
     //pass settings to worker
     if (event.data.type && event.data.type == "setInit") {
@@ -19,7 +19,7 @@
     constructor(twitchBlobUrl) {
       console.log("new worker intance " + twitchBlobUrl)
 
-      if (twitchBlobUrl == ''){
+      if (twitchBlobUrl == '') {
         super(twitchBlobUrl)
       }
       if (twitchMainWorker) {
@@ -27,7 +27,7 @@
       }
 
       console.log("[Purple]: init " + twitchBlobUrl)
-      
+
       const newBlobStr = `
       importScripts('${extension}/bundle.js');
       importScripts('${twitchBlobUrl}');
@@ -40,9 +40,13 @@
 
       super(URL.createObjectURL(new Blob([newBlobStr])));
       twitchMainWorker = this;
+      this.declareEventWorker();
+      this.declareEventWindow();
+    }
 
+    declareEvent() {
       this.addEventListener("message", (event) => {
-        if (event.data.type && event.data.type == "init") {
+        if (event.data.type == "init") {
           window.postMessage({
             type: "getSetting",
             value: null,
@@ -50,7 +54,7 @@
         }
 
         //receive the message from worker for stop and play the player
-        if (event.data.type && event.data.type == "reload") {
+        if (event.data.type == "reload") {
           videoPlayer();
           return;
           if (window.videoPlayer.isLiveLowLatency() && window.videoPlayer.getLiveLatency() > 5) {
@@ -63,7 +67,7 @@
         }
 
         //send the quality of the player to worker
-        if (event.data.type && event.data.type == "getQuality") {
+        if (event.data.type == "getQuality") {
           videoPlayer();
           this.postMessage({
             type: "setQuality",
@@ -71,10 +75,12 @@
           });
         }
       });
+    }
 
-      //receive
+    declareEventWindow() {
+      //Event listener from window and extension.
       window.addEventListener("message", (event) => {
-        if (event.data.type && event.data.type == "setSetting") {
+        if (event.data.type == "setSetting") {
           //send settings to worker
           this.postMessage({
             type: "setSetting",

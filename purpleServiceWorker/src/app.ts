@@ -1,4 +1,4 @@
-import { inflateFetch } from "./fetch/fetch.inflate";
+import { inflateFetch } from "./fetch/inflate.fetch";
 import { HLS } from "./HLS";
 import { onStart } from "./channel/on.channel";
 import { on } from "./fetch/on.fetch";
@@ -7,6 +7,7 @@ import { picture } from "./fetch/picture.fetch";
 import { external } from "./fetch/external.fetch";
 
 export function app(scope: any) {
+  
   scope.LogPrint = (x: any) => {
     console.log("[Purple]: ", x);
   };
@@ -70,6 +71,7 @@ export function app(scope: any) {
 
   scope.HLS = HLS;
 
+  scope.LogPrint("Script running")
   inflateFetch();
 }
 app(global);

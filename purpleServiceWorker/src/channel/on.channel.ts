@@ -12,20 +12,20 @@ export async function onStart(_window, url, text /* isOffline = false */) {
       return;
     }
 
-    if (!_window.channel.find((c) => c.name === match[1])) {
-      _window.LogPrint("Channel: " + match[1]);
-      _window.channel.push({ name: match[1], flowSig: [], hls: new _window.HLS() });
+    if (!global.channel.find((c) => c.name === match[1])) {
+      global.LogPrint("Channel: " + match[1]);
+      global.channel.push({ name: match[1], flowSig: [], hls: new global.HLS() });
     } else {
-      _window.LogPrint("Exist: " + match[1]);
+      global.LogPrint("Exist: " + match[1]);
       existent = true;
     }
   }
   //--------------------------------------------//
 
   //--------------------------------------------//
-  _window.LogPrint("Local Server: Loading");
+  global.LogPrint("Local Server: Loading");
   global.currentChannel(match[1]).hls.addStreamLink(text);
-  _window.LogPrint("Local Server: OK");
+  global.LogPrint("Local Server: OK");
 
   if (existent) return;
 
@@ -60,11 +60,11 @@ export async function onStart(_window, url, text /* isOffline = false */) {
       }
     });
 
-    _window.LogPrint(streamList);
-    _window.channel.find((x) => x.name === match[1]).hls.add(streamList);
+    global.LogPrint(streamList);
+    global.channel.find((x) => x.name === match[1]).hls.add(streamList);
 
-    _window.LogPrint("External Server: OK");
+    global.LogPrint("External Server: OK");
   } catch (e) {
-    _window.LogPrint(e);
+    global.LogPrint(e);
   }
 }
