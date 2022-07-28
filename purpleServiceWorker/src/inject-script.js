@@ -44,7 +44,7 @@
       this.declareEventWindow();
     }
 
-    declareEvent() {
+    declareEventWorker() {
       this.addEventListener("message", (event) => {
         if (event.data.type == "init") {
           window.postMessage({
