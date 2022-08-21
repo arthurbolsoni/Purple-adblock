@@ -44,7 +44,7 @@
       this.declareEventWindow();
     }
 
-    declareEventWorker() {
+    declareEventWorker(){
       this.addEventListener("message", (event) => {
         if (event.data.type == "init") {
           window.postMessage({
@@ -70,8 +70,17 @@
         if (event.data.type == "getQuality") {
           videoPlayer();
           this.postMessage({
-            type: "setQuality",
+            funcName: "setQuality",
             value: window.videoPlayer.getQuality(),
+          });
+        }
+
+        //send the quality of the player to worker
+        if (event.data.type == "pause") {
+          this.postMessage({
+            funcName: "pause",
+            args: undefined,
+            id: 1
           });
         }
       });
@@ -83,7 +92,7 @@
         if (event.data.type == "setSetting") {
           //send settings to worker
           this.postMessage({
-            type: "setSetting",
+            funcName: "setSetting",
             value: event.data.value,
           });
         }

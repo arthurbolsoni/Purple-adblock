@@ -2,55 +2,9 @@ export class HLS {
   private _header: Array<string> = ["#EXTM3U", "#EXT-X-VERSION:3", "#EXT-X-TARGETDURATION:6", "#EXT-X-MEDIA-SEQUENCE:"];
   private _playlist: playlistItem[] = [];
   private _sequence = 0;
-  private _streamServerList: streamServer[] = [];
 
-  //add m3u8 links with quality to the list of servers
-  async addStreamLink(text: string, type = "local", sig = false) {
-    const qualityUrlSplit: qualityUrl[] = [];
-    let captureArray: RegExpExecArray | null;
+  addPlaylistTest(playlist: string){
 
-    const REGEX = /NAME="((?:\S+\s+\S+|\S+))",AUTO(?:^|\S+\s+)(?:^|\S+\s+)(https:\/\/video(\S+).m3u8)/g;
-
-    while ((captureArray = REGEX.exec(text)) !== null) {
-      qualityUrlSplit.push({ quality: captureArray[1], url: captureArray[2] });
-    }
-    console.log(qualityUrlSplit);
-    const streamList = { server: type, urlList: qualityUrlSplit, sig: sig };
-    this._streamServerList.push(streamList);
-
-    if (!sig) {
-      await this.signature();
-    }
-    return true;
-  }
-
-  async signature() {
-    const REGEX = /video-weaver.(.*).hls.ttvnw.net\/v1\/playlist\/(.*).m3u8$/gm;
-
-    await new Promise((resolve) =>
-      this._streamServerList
-        .filter((x: any) => x.sig == false)
-        .forEach(async (x: any) => {
-          const match: RegExpExecArray | null = REGEX.exec(x.urlList[0].url);
-          if (match) {
-            try {
-              const a = await fetch("https://jupter.ga/hls/v2/sig/" + match[2] + "/" + match[1], {
-                method: "GET",
-              });
-              x.sig = true;
-              resolve(true);
-            } catch {
-              resolve(false);
-            }
-          } else {
-            resolve(false);
-          }
-        }),
-    );
-  }
-
-  get StreamServerList() {
-    return this._streamServerList;
   }
 
   addPlaylist(playlist: string): boolean {
