@@ -1,10 +1,7 @@
 function init(items) {
-  var app = document.createElement("script");
-  app.src = chrome.runtime.getURL("app/bundle.js");
-  app.remove();
-
+  
   var s = document.createElement("script");
-  s.src = chrome.runtime.getURL("app/inject-script.js");
+  s.src = chrome.runtime.getURL("app/bundle.js");
   s.onload = function () {
     this.remove();
   };

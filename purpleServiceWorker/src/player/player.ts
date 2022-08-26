@@ -9,6 +9,7 @@ export class Player {
 
     streamList: Stream[] = []
     actualChannel: string = "";
+    playingAds = false;
 
     quality: string = "";
     LogPrint = global.LogPrint;
@@ -16,12 +17,17 @@ export class Player {
     message = new PlayerMessage();
 
     constructor() {
-        this.message.listener();
-        this.message.init;
+        this.message.init();
     }
 
+    endAds = () => this.message.pauseAndPlay();
+
     isAds = (x: string) => {
-        return x.toString().includes("stitched-ad") || x.toString().includes("twitch-client-ad") || x.toString().includes("twitch-ad-quartile");
+        const ads = x.toString().includes("stitched-ad") || x.toString().includes("twitch-client-ad") || x.toString().includes("twitch-ad-quartile");
+        if (this.playingAds != ads) this.endAds();
+        this.playingAds = ads;
+
+        return this.playingAds;
     }
 
     currentStream = (channel: string = this.actualChannel): Stream => {
@@ -29,15 +35,16 @@ export class Player {
     }
 
     async onfetch(url: string, response: string) {
-
         const currentStream: Stream = await this.currentStream();
         currentStream.hls.addPlaylist(response);
+        console.log(this.message.quality);
 
         if (!this.isAds(response)) return true;
 
         this.LogPrint("ads found");
-        
+
         try {
+            currentStream.streamAccess(streams.local);
             const local = await this.fetchm3u8ByStreamType(streams.local.name)
             if (local) currentStream.hls.addPlaylist(local);
             if (local) return true;
@@ -46,9 +53,9 @@ export class Player {
             if (picture) currentStream.hls.addPlaylist(picture);
             if (picture) return true;
 
-            const external = await this.fetchm3u8ByStreamType(streams.external.name)
-            if (external) currentStream.hls.addPlaylist(external);
-            if (external) return true;
+            // const external = await this.fetchm3u8ByStreamType(streams.external.name)
+            // if (external) currentStream.hls.addPlaylist(external);
+            // if (external) return true;
 
         } catch (e: any) {
             console.log(e.message);
@@ -107,11 +114,7 @@ export class Player {
         this.LogPrint("Local Server: OK");
 
         await stream.streamAccess(streams.picture);
-
-        stream.streamAccess(streams.local);
-        stream.streamAccess(streams.local);
-        stream.streamAccess(streams.local);
-        stream.streamAccess(streams.local);
+        
         stream.streamAccess(streams.local);
 
         if (existent) return;
@@ -133,7 +136,7 @@ export class Player {
                                     //send the flow stream to script valitor and classificator
                                     await global.player.onfetch(url, text);
 
-                                    var playlist = global.player.currentStream().hls.getAllPlaylist();
+                                    var playlist = global.player.currentStream().hls.getPlaylist();
                                     resolve(new Response(playlist as any));
                                 });
                         } catch {
@@ -162,6 +165,7 @@ export class Player {
                 }
 
                 if (url.includes("picture-by-picture")) {
+                    this.LogPrint("picture-by-picture");
                 }
             }
 

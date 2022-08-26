@@ -66,7 +66,7 @@ async function tokenSignature(
           "Device-ID": makeid(32),
         },
       },
-      4000,
+      10000,
     );
 
     const status = request.status;
@@ -97,6 +97,7 @@ async function tokenSignature(
     return returning;
   } catch (error) {
     logger.error(error);
+    logger.error(requestBody);
     return {
       status: 500,
       content: (error as Response).json(),

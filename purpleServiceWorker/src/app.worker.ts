@@ -7,9 +7,9 @@ declare global {
   var player: any;
 }
 
-export function app(scope: any) {
-  scope.LogPrint = (x: any) => console.log("[Purple]: ", x);
-  scope.addEventListener("message", (e: any) => {
+export default function app(){
+  global.LogPrint = (x: any) => console.log("[Purple]: ", x);
+  global.addEventListener("message", (e: any) => {
     global.onEventMessage(e);
   });
 
@@ -19,7 +19,6 @@ export function app(scope: any) {
   global.player = player;
 
   player.inflateFetch();
-  scope.LogPrint("Script running");
+  global.LogPrint("Script running");
 }
-
-app(global);
+app();

@@ -47,7 +47,7 @@ export class HLS {
     return changed;
   }
 
-  getAllPlaylist(): String {
+  getPlaylist(): String {
     return (
       this._header[0] +
       "\n" +

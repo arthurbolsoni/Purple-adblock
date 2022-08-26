@@ -1,7 +1,7 @@
+const { clear } = require("console");
 const path = require("path");
 
 module.exports = {
-  entry: "./src/app.ts",
   module: {
     rules: [
       {
@@ -9,10 +9,14 @@ module.exports = {
         use: "ts-loader",
         exclude: /node_modules/,
       },
+      {
+        test: /\.worker\.js$/,
+        type: 'asset/source',
+      },
     ],
   },
   resolve: {
-    extensions: [".tsx", ".ts"],
+    extensions: [".js", ".ts"],
   },
   output: {
     filename: "bundle.js",

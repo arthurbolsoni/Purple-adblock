@@ -48,5 +48,5 @@
             ]
         }
     ],
-    "web_accessible_resources": [{ "resources": [ "app/bundle.js" , "app/inject-script.js"], "matches": ["<all_urls>"]}]
+    "web_accessible_resources": [{ "resources": [ "app/bundle.js"], "matches": ["<all_urls>"]}]
 }

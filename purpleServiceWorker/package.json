@@ -1,16 +1,14 @@
 {
   "scripts": {
-    "_build:dev": "rimraf dist && webpack --config webpack.dev.js",
-    "_build:prod": "rimraf dist && webpack --config webpack.prod.js",
-    "build:dev": "npm run _build:dev && copyfiles -u 1 dist/bundle.js ../chrome/app && copyfiles -u 1 src/inject-script.js ../chrome/app",
-    "build:prod": "npm run _build:prod && copyfiles -u 1 dist/bundle.js ../chrome/app && copyfiles -u 1 src/inject-script.js ../chrome/app",
-    "build:nocopy": "npm run _build"
+    "app:dev": "webpack --entry=./src/app.worker.ts --output-filename=app.worker.js  --config=webpack.dev.js",
+    "provider:dev": "webpack --entry=./src/index.ts --output-filename=bundle.js  --config=webpack.dev.js",
+    "worker:dev": "npm run app:dev && npm run provider:dev",
+    "app:prod": "webpack --entry=./src/app.worker.ts --output-filename=app.worker.js  --config=webpack.prod.js",
+    "provider:prod": "webpack --entry=./src/index.ts --output-filename=bundle.js  --config=webpack.prod.js",
+    "worker:prod": "npm run app:prod && npm run provider:prod"
   },
   "devDependencies": {
     "webpack-cli": "^4.9.2",
-    "webpack-dev-server": "^4.7.4"
-  },
-  "dependencies": {
-    "m3u8-parser": "^4.7.1"
+    "webpack": "^5.67.0"
   }
 }

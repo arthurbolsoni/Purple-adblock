@@ -11,8 +11,6 @@
 
 ### In Progress
 
-- [ ] M3U8 format with ad filter
-
 ### Done ✓
 
 - [x] M3U8 format with ad filter
