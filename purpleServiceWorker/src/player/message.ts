@@ -19,15 +19,15 @@ export class PlayerMessage {
 
             switch (e.data.funcName) {
                 case "setSinkType": {
-                    this.getQuality();
                     break;
                 }
                 case "setQuality": {
-                    if(e.data.args) this.quality = e.data.args[0].name;
-                    if(e.data.value) this.quality = e.data.value;
+                    if (e.data.args) this.quality = e.data.args[0].name;
+                    if (e.data.value) this.quality = e.data.value;
                     break;
                 }
                 case "setSetting": {
+                    console.log(e.data.value);
                     this.setting = e.data.value;
                     break;
                 }

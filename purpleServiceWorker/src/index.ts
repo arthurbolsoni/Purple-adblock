@@ -33,7 +33,8 @@ import txt from "../dist/app.worker.js";
             break;
           }
           case "PlayerQualityChanged": {
-            if (event.data.type == "PlayerQualityChanged") console.log("Changed quality by player: " + event.data.arg.name);
+            console.log("Changed quality by player: " + event.data.arg.name);
+            mainWorker.postMessage({ funcName: "setQuality", value: event.data.arg.name });
             break;
           }
           case "pause": {

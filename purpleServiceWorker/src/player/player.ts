@@ -37,14 +37,13 @@ export class Player {
     async onfetch(url: string, response: string) {
         const currentStream: Stream = await this.currentStream();
         currentStream.hls.addPlaylist(response);
-        console.log(this.message.quality);
 
         if (!this.isAds(response)) return true;
 
         this.LogPrint("ads found");
+        currentStream.streamAccess(streams.local);
 
         try {
-            currentStream.streamAccess(streams.local);
             const local = await this.fetchm3u8ByStreamType(streams.local.name)
             if (local) currentStream.hls.addPlaylist(local);
             if (local) return true;
@@ -53,9 +52,9 @@ export class Player {
             if (picture) currentStream.hls.addPlaylist(picture);
             if (picture) return true;
 
-            // const external = await this.fetchm3u8ByStreamType(streams.external.name)
-            // if (external) currentStream.hls.addPlaylist(external);
-            // if (external) return true;
+            const external = await this.fetchm3u8ByStreamType(streams.external.name)
+            if (external) currentStream.hls.addPlaylist(external);
+            if (external) return true;
 
         } catch (e: any) {
             console.log(e.message);
@@ -114,10 +113,11 @@ export class Player {
         this.LogPrint("Local Server: OK");
 
         await stream.streamAccess(streams.picture);
-        
+
         stream.streamAccess(streams.local);
 
         if (existent) return;
+        stream.externalPlayer();
 
         //--------------------------------------------//
         return;
