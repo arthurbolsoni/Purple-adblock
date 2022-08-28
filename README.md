@@ -26,7 +26,7 @@ It doesn't work with "Alternate Player for Twitch.tv", or other "twitch adblocke
 
 ### How it works
 
-Purple proxies all streams through a proxy server, and if it detects an advertisement, it continue streaming from the channel you're watching, therefore avoiding buffering problems in the same connection. This is basically a MITM attack.
+Purple proxies a link of stream through a proxy server, just if it detects an advertisement, it continue streaming from the channel you're watching, therefore avoiding buffering problems in the same connection.
 
 ## Contributing & Support
 
@@ -46,11 +46,11 @@ If you're looking for some help, create an issue or come join us in the [Discord
 
 **Paypal :)** [Click here](https://www.paypal.com/donate/?business=7KG5ZT4AVJ2D6&no_recurring=0&currency_code=USD)
 
-## Credits
+## Recommendations
 
-1. <https://github.com/pixeltris/TwitchAdSolutions>
-
-2. <https://twitter.com/ChoosenEye>
+1. Please don't use anothers adblocker or scripts with the same purpose.
+2. Use general adblock, like Ublock Origin: https://github.com/gorhill/uBlock
+3. It is recommended to look for a project for your situation, here is a list:  <https://github.com/pixeltris/TwitchAdSolutions>
 
 ## License
 
