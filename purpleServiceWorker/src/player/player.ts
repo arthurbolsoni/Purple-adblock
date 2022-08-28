@@ -53,8 +53,12 @@ export class Player {
             if (picture) return true;
 
             const external = await this.fetchm3u8ByStreamType(streams.external.name)
+            console.log(external)
             if (external) currentStream.hls.addPlaylist(external);
             if (external) return true;
+
+            //if not resolve return the 480p to the user.
+            return picture;
 
         } catch (e: any) {
             console.log(e.message);
@@ -117,6 +121,7 @@ export class Player {
         stream.streamAccess(streams.local);
 
         if (existent) return;
+        
         stream.externalPlayer();
 
         //--------------------------------------------//
@@ -164,9 +169,9 @@ export class Player {
                     });
                 }
 
-                if (url.includes("picture-by-picture")) {
-                    this.LogPrint("picture-by-picture");
-                }
+                // if (url.includes("picture-by-picture")) {
+                //     this.LogPrint("picture-by-picture");
+                // }
             }
 
             return global.realFetch.apply(this, arguments);
