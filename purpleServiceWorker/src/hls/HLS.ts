@@ -3,11 +3,11 @@ export class HLS {
   private _playlist: playlistItem[] = [];
   private _sequence = 0;
 
-  addPlaylistTest(playlist: string){
+  addPlaylistTest(playlist: string) {
 
   }
 
-  addPlaylist(playlist: string): boolean {
+  addPlaylist(playlist: string, allowAds: boolean = false): boolean {
     if (playlist === null) {
       return false;
     }
@@ -20,7 +20,12 @@ export class HLS {
 
     //take all m3u9 content to the playlist and build a varible
     for (const i in lines) {
-      if (lines[i].includes("#EXTINF") && lines[i].includes(",live")) {
+      if (lines[i].includes("#EXTINF")) {
+        if (!allowAds) {
+          if (!lines[i].includes(",live")) {
+            continue;
+          }
+        }
         //timestamp sequence
         const sequenceTimestamp = Math.floor(new Date(lines[parseInt(i) - 1].slice(lines[parseInt(i) - 1].length - 24, lines[parseInt(i) - 1].length)).getTime() / 1000);
 

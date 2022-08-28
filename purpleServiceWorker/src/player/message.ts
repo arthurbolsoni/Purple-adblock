@@ -9,7 +9,8 @@ export class PlayerMessage {
     }
 
     quality: string = "";
-    setting: any = {}
+    // setting: { proxyUrl: string, toggleProxy: boolean, whiteList: Array<string>};
+    setting: any;
 
     constructor() {
         global.onEventMessage = (e: any) => {

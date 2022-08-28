@@ -7,14 +7,16 @@ export class Stream {
     hls: HLS = new HLS();
     channelName: string = "";
 
-    tunnel = ["eu1.jupter.ga"]
+    tunnel = ["https://eu1.jupter.ga/channel/{channelname}", "https://eu2.jupter.ga/channel/{channelname}"]
+    currentTunnel: string = this.tunnel[0];
 
-    constructor(channelName: string) {
+    constructor(channelName: string, tunnel: string = "") {
         this.channelName = channelName;
+        if (tunnel) this.currentTunnel = tunnel;
     }
 
     //add m3u8 links with quality to the list of servers
-    async addStreamLink(text: string, type = "local", sig = true){
+    async addStreamLink(text: string, type = "local", sig = true) {
         const qualityUrlSplit: qualityUrl[] = [];
         let captureArray: RegExpExecArray | null;
 
@@ -57,10 +59,11 @@ export class Stream {
     }
 
     //add a new player stream external
-    async externalPlayer(): Promise<boolean> {
+    async externalPlayer(customIgnore: boolean = false): Promise<boolean> {
+        if(customIgnore) this.currentTunnel = this.tunnel[0];
         try {
             global.LogPrint("External Server: Loading");
-            const response: Response = await global.realFetch("https://" + this.tunnel[0] + "/channel/" + this.channelName);
+            const response: Response = await global.realFetch(this.currentTunnel.replace("{channelname}", this.channelName));
 
             if (!response.ok) {
                 throw new Error("server proxy return error or not found");
@@ -69,11 +72,12 @@ export class Stream {
             const text: string = await response.text();
 
             global.LogPrint("External Server: OK");
-            
+
             this.addStreamLink(text, streams.external.name);
 
             return true;
         } catch (e) {
+            global.LogPrint("server proxy return error or not found " + this.currentTunnel);
             global.LogPrint(e);
             return false;
         }
@@ -81,6 +85,7 @@ export class Stream {
 
     //add a new player stream local
     async streamAccess(stream: streamType): Promise<boolean> {
+        if (stream.name == streams.external.name) return await this.externalPlayer();
         try {
             const gql = await global.realFetch("https://gql.twitch.tv/gql", {
                 method: "POST",

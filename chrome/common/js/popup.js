@@ -1,5 +1,6 @@
 var whiteList = [];
 document.getElementById("adblockbutton").onclick = inputChange;
+document.getElementById("inputApply").onclick = inputProxyUrl;
 
 document.getElementsByClassName("buttonlog")[0].onclick = function (e) {
   var x = document.getElementsByClassName("log")[0];
@@ -23,12 +24,22 @@ function inputChangetoggleProxy() {
   chrome.storage.local.set({ ["toggleProxy"]: document.getElementById("toggleProxy").checked });
 }
 
+function inputProxyUrl() {
+  console.log(document.getElementById("inputUrl").value);
+  if (document.getElementById("inputUrl").value.includes("{channelname}")) {
+    chrome.storage.local.set({ ["proxyUrl"]: document.getElementById("inputUrl").value });
+  }
+  if (document.getElementById("inputUrl").value == "") {
+    chrome.storage.local.set({ ["proxyUrl"]: ""});
+  }
+}
+
 var isActive = true;
 var channel = "";
 function inputChange(e) {
   if (isActive) {
     document.getElementById("adblocktext").classList.add("disable");
-    document.getElementById("watching").textContent = "Disactived on : " + channel;
+    document.getElementById("watching").textContent = "Disabled on : " + channel;
 
     if (!whiteList.includes(channel)) {
       whiteList.push(channel);
@@ -53,7 +64,8 @@ function inputChange(e) {
 
 chrome.tabs.query({ active: true, lastFocusedWindow: true }, function (tabs) {
   var url = tabs[0].url;
-  chrome.storage.local.get(/* String or Array */["whiteList", "toggleProxy"], function (items) {
+  chrome.storage.local.get(/* String or Array */["whiteList", "toggleProxy", "proxyUrl"], function (items) {
+    if (items.proxyUrl) document.getElementById("inputUrl").value = items.proxyUrl;
 
     document.getElementById("toggleProxy").checked = false;
 
@@ -96,5 +108,5 @@ chrome.tabs.query({ active: true, lastFocusedWindow: true }, function (tabs) {
 });
 
 chrome.runtime.sendMessage("log", function (response) {
-  document.getElementsByClassName("textarea")[0].value = response.join("\n");
+  // document.getElementsByClassName("textarea")[0].value = response.join("\n");
 });

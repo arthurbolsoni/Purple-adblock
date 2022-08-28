@@ -30,15 +30,26 @@
         <div class="toggle hover">
             <div style="margin: 10px;">
                 <label class="switch">
-                    <input type="checkbox" id="toggleProxy">
+                    <input type="checkbox" id="toggleProxy" disabled>
                     <span class="slider round"></span>
                 </label>
             </div>
-            <div>
+            <div class="text">
                 Proxy Authentication
             </div>
         </div>
-        <!-- <div class="toggle hover">
+
+        <div>
+            <div style="margin-top: 10px; margin-left: 10px;">
+                <div class="text">Custom auth - <a class="buttonApply" id="inputApply">Apply</a></div>
+            </div>
+            <div style="margin-bottom: 10px; margin-top: 10px;">
+                <input type="text" placeholder="https://myproxy.io/channel/{channelname}" class="input" id="inputUrl">
+            </div>
+            <div type="button" style="size: 10px;"></div>
+        </div>
+    </div>
+    <!-- <div class="toggle hover">
             <div style="margin: 10px;">
                 <label class="switch">
                     <input type="checkbox" id="toggleCustomProxy" disable>
@@ -49,8 +60,8 @@
                 Custom Proxy
             </div>
         </div> -->
-        </br>
-        <textarea class="textarea"></textarea>
+    <!-- </br>
+        <textarea class="textarea"></textarea> -->
     </div>
     <script type="text/javascript" src="../js/popup.js"></script>
 </body>

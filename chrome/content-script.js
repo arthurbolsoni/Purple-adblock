@@ -1,11 +1,11 @@
 function init(items) {
-  
+
   var s = document.createElement("script");
   s.src = chrome.runtime.getURL("app/bundle.js");
   s.onload = function () {
     this.remove();
   };
-  
+
   (document.head || document.documentElement).appendChild(s);
 
   window.addEventListener("message", (event) => {
@@ -30,7 +30,7 @@ function init(items) {
   });
 }
 
-chrome.storage.local.get(["whiteList", "toggleProxy"], function (items) {
+chrome.storage.local.get(["whiteList", "toggleProxy", "proxyUrl"], function (items) {
   var whitelist = [];
   if (items.whiteList !== undefined) {
     whiteList = items.whiteList;

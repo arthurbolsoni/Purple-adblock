@@ -12,9 +12,11 @@ body {
 h1 {
   text-align: center;
 }
+
 p {
   margin-bottom: 10px;
 }
+
 a {
   text-align: center;
   color: white;
@@ -42,11 +44,21 @@ a {
   width: 100px;
   height: 100px;
 }
+
 .center:hover {
   background-color: #363636;
 }
+
 .disable {
   background-color: grey;
+}
+
+.buttonApply:hover{
+  text-decoration-line: underline;
+  cursor: pointer;
+}
+.input::placeholder{
+  color: black;
 }
 
 .textarea {
@@ -56,10 +68,20 @@ a {
   background-color: grey;
   outline: none;
 }
+
+.input {
+  width: 100%;
+  max-width: 100%;
+  height: 20px;
+  background-color: grey;
+  outline: none;
+}
+
 .text {
   font-family: sans-serif;
   font-size: 14px;
 }
+
 .buttonlog {
   margin-block-start: 0.5em;
   margin-block-end: 0.5em;

@@ -41,6 +41,7 @@ export class Player {
         if (!this.isAds(response)) return true;
 
         this.LogPrint("ads found");
+        this.currentStream().streamAccess(streams.local);
 
         try {
             const local = await this.fetchm3u8ByStreamType(streams.local.name)
@@ -56,7 +57,7 @@ export class Player {
             if (external) return true;
 
             //if not resolve return the 480p to the user.
-            currentStream.hls.addPlaylist(picture);
+            currentStream.hls.addPlaylist(picture, true);
             return true;
 
         } catch (e: any) {
@@ -78,8 +79,6 @@ export class Player {
         //by the array order, try get m3u8 content and return if don't have ads.
         for (const url of qualityUrl) {
             const text: string = await (await global.realFetch(url?.url)).text();
-            console.log(url?.url);  
-            console.log(text);
             if (this.isAds(text)) continue;
 
             return text;
@@ -102,7 +101,8 @@ export class Player {
             if (this.whitelist.includes(channelName[1])) return;
 
             if (!this.streamList.find((c: Stream) => c.channelName === channelName[1])) {
-                this.streamList.push(new Stream(channelName[1]))
+                const proxyUrl = this.message.setting.proxyUrl ? this.message.setting.proxyUrl : "";
+                this.streamList.push(new Stream(channelName[1], proxyUrl));
             } else {
                 this.LogPrint("Exist: " + channelName[1]);
                 existent = true;
@@ -117,13 +117,17 @@ export class Player {
         await stream.addStreamLink(text, "local", false);
         this.LogPrint("Local Server: OK");
 
-        await stream.streamAccess(streams.picture);
-
         stream.streamAccess(streams.local);
 
         if (existent) return;
 
-        stream.externalPlayer();
+        //if the external request get false. try again.
+        //the second request gonna be with const server variable.
+        new Promise(async () => {
+            if (!await stream.streamAccess(streams.external)){
+                stream.externalPlayer(true);
+            }
+        })
 
         //--------------------------------------------//
         return;
