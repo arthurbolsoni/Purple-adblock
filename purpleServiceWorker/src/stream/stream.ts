@@ -1,5 +1,5 @@
 import { HLS } from "../hls/HLS";
-import { streamType } from "./type/stream.type";
+import { streams, streamType } from "./type/stream.type";
 import { qualityUrl, streamServer } from "./type/streamServer.types";
 
 export class Stream {
@@ -14,7 +14,7 @@ export class Stream {
     }
 
     //add m3u8 links with quality to the list of servers
-    async addStreamLink(text: string, type = "local", sig = false) {
+    async addStreamLink(text: string, type = "local", sig = true){
         const qualityUrlSplit: qualityUrl[] = [];
         let captureArray: RegExpExecArray | null;
 
@@ -69,8 +69,8 @@ export class Stream {
             const text: string = await response.text();
 
             global.LogPrint("External Server: OK");
-
-            this.addStreamLink(text);
+            
+            this.addStreamLink(text, streams.external.name);
 
             return true;
         } catch (e) {

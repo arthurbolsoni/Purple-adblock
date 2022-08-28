@@ -41,7 +41,6 @@ export class Player {
         if (!this.isAds(response)) return true;
 
         this.LogPrint("ads found");
-        currentStream.streamAccess(streams.local);
 
         try {
             const local = await this.fetchm3u8ByStreamType(streams.local.name)
@@ -53,12 +52,12 @@ export class Player {
             if (picture) return true;
 
             const external = await this.fetchm3u8ByStreamType(streams.external.name)
-            console.log(external)
             if (external) currentStream.hls.addPlaylist(external);
             if (external) return true;
 
             //if not resolve return the 480p to the user.
-            return picture;
+            currentStream.hls.addPlaylist(picture);
+            return true;
 
         } catch (e: any) {
             console.log(e.message);
@@ -79,6 +78,8 @@ export class Player {
         //by the array order, try get m3u8 content and return if don't have ads.
         for (const url of qualityUrl) {
             const text: string = await (await global.realFetch(url?.url)).text();
+            console.log(url?.url);  
+            console.log(text);
             if (this.isAds(text)) continue;
 
             return text;
@@ -113,7 +114,7 @@ export class Player {
 
         //--------------------------------------------//
         this.LogPrint("Local Server: Loading");
-        await stream.addStreamLink(text, "local");
+        await stream.addStreamLink(text, "local", false);
         this.LogPrint("Local Server: OK");
 
         await stream.streamAccess(streams.picture);
@@ -121,7 +122,7 @@ export class Player {
         stream.streamAccess(streams.local);
 
         if (existent) return;
-        
+
         stream.externalPlayer();
 
         //--------------------------------------------//
@@ -169,9 +170,9 @@ export class Player {
                     });
                 }
 
-                // if (url.includes("picture-by-picture")) {
-                //     this.LogPrint("picture-by-picture");
-                // }
+                if (url.includes("picture-by-picture")) {
+                    this.LogPrint("picture-by-picture");
+                }
             }
 
             return global.realFetch.apply(this, arguments);
