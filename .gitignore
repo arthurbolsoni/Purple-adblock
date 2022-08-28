@@ -161,3 +161,4 @@ dist
 
 purpleServiceWorker/dist/purpleServiceWorker.js
 chrome/PurpleAdblock-2.3-Chrome.zip
+*.zip

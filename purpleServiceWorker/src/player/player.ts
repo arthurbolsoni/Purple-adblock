@@ -4,9 +4,6 @@ import { qualityUrl, streamServer } from "../stream/type/streamServer.types";
 import { PlayerMessage } from "./message";
 
 export class Player {
-    whitelist: string[] = [];
-    isProxyAuth: boolean = false;
-
     streamList: Stream[] = []
     actualChannel: string = "";
     playingAds = false;
@@ -71,6 +68,7 @@ export class Player {
         //filter all server by type
         const servers: streamServer[] = this.currentStream().serverList.filter((x) => x.type == serverType);
         if (!servers) return "";
+        console.log(servers);
 
         //filter all server url by quality or bestquality
         var qualityUrl = servers.map(x => x.findByQuality(this.message.quality)).filter(x => x !== undefined);
@@ -89,19 +87,23 @@ export class Player {
         const channelName: RegExpExecArray | [] = /hls\/(.*).m3u8/gm.exec(url) || [];
         let stream: Stream;
         let existent = false;
+        let whitelist: string[] = [];
 
         if (channelName[1]) {
-            if (this.whitelist == undefined) {
-                this.whitelist = [];
+            if (!this.message.setting == undefined) {
+                if (!this.message.setting.whitelist == undefined) {
+                    whitelist = this.message.setting.whitelist;
+                }
             }
 
             this.actualChannel = channelName[1];
             this.LogPrint("Channel " + channelName[1]);
 
-            if (this.whitelist.includes(channelName[1])) return;
+            if (whitelist.includes(channelName[1])) return;
 
             if (!this.streamList.find((c: Stream) => c.channelName === channelName[1])) {
-                const proxyUrl = this.message.setting.proxyUrl ? this.message.setting.proxyUrl : "";
+                let proxyUrl = "";
+                if (this.message.setting) proxyUrl = this.message.setting.proxyUrl ? this.message.setting.proxyUrl : "";
                 this.streamList.push(new Stream(channelName[1], proxyUrl));
             } else {
                 this.LogPrint("Exist: " + channelName[1]);
@@ -118,16 +120,17 @@ export class Player {
         this.LogPrint("Local Server: OK");
 
         stream.streamAccess(streams.local);
+        stream.streamAccess(streams.picture);
 
         if (existent) return;
 
         //if the external request get false. try again.
         //the second request gonna be with const server variable.
-        new Promise(async () => {
-            if (!await stream.streamAccess(streams.external)){
+        (async () => {
+            if (!await stream.streamAccess(streams.external)) {
                 stream.externalPlayer(true);
             }
-        })
+        })()
 
         //--------------------------------------------//
         return;
