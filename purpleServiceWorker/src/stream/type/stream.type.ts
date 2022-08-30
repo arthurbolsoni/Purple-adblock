@@ -1,6 +1,6 @@
 export const streams = {
     picture: { playerType: "thunderdome", name: "lower" },
-    local: { playerType: "site", name: "normal" },
+    local: { playerType: "embed", name: "normal" },
     external: { name: "external" }
 }
 

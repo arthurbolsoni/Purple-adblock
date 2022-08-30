@@ -93,25 +93,29 @@ export class Stream {
     //add a new player stream local
     async streamAccess(stream: streamType): Promise<boolean> {
         if (stream.name == streams.external.name) return await this.externalPlayer();
+
         try {
+            const query = 'query PlaybackAccessToken_Template($login: String!, $isLive: Boolean!, $vodID: ID!, $isVod: Boolean!, $playerType: String!) {  streamPlaybackAccessToken(channelName: $login, params: {platform: "web", playerBackend: "mediaplayer", playerType: $playerType}) @include(if: $isLive) {    value    signature    __typename  }  videoPlaybackAccessToken(id: $vodID, params: {platform: "web", playerBackend: "mediaplayer", playerType: $playerType}) @include(if: $isVod) {    value    signature    __typename  }}';
+            const body = {
+                operationName: 'PlaybackAccessToken_Template',
+                query: query,
+                variables: {
+                    'isLive': true,
+                    'login': this.channelName,
+                    'isVod': false,
+                    'vodID': '',
+                    'playerType': stream.playerType
+                }
+            }
+
             const gql = await global.realFetch("https://gql.twitch.tv/gql", {
                 method: "POST",
                 headers: { "Client-ID": "kimne78kx3ncx6brgo4mv6wki5h1ko" },
-                body: `{"operationName":"PlaybackAccessToken","variables":{"isLive":true,"login":"${this.channelName}","isVod":false,"vodID":"","playerType":"${stream.playerType}"},"extensions":{"persistedQuery":{"version":1,"sha256Hash":"0828119ded1c13477966434e15800ff57ddacf13ba1911c129dc2200705b0712"}}}`,
+                body: JSON.stringify(body)
             });
+            const streamDataAccess: any = await gql.json();
 
-            const status: any = await gql.json();
-
-            const url =
-                "https://usher.ttvnw.net/api/channel/hls/" +
-                this.channelName +
-                ".m3u8?allow_source=true&fast_bread=true&p=" +
-                Math.floor(Math.random() * 1e7) +
-                "&player_backend=mediaplayer&playlist_include_framerate=true&reassignments_supported=false&sig=" +
-                status["data"]["streamPlaybackAccessToken"]["signature"] +
-                "&supported_codecs=avc1&token=" +
-                status["data"]["streamPlaybackAccessToken"]["value"];
-
+            const url = "https://usher.ttvnw.net/api/channel/hls/" + this.channelName + ".m3u8?allow_source=true&fast_bread=true&p=" + Math.floor(Math.random() * 1e7) + "&player_backend=mediaplayer&playlist_include_framerate=true&reassignments_supported=false&sig=" + streamDataAccess.data.streamPlaybackAccessToken.signature + "&supported_codecs=avc1&token=" + streamDataAccess.data.streamPlaybackAccessToken.value;
             const text = await (await global.realFetch(url)).text();
 
             global.LogPrint("Server loaded " + stream.name);
