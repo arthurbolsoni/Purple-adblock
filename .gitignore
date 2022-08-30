@@ -109,7 +109,6 @@ out
 
 # Nuxt.js build / generate output
 .nuxt
-dist
 
 # Gatsby files
 .cache/
@@ -159,6 +158,6 @@ dist
 
 # End of https://www.toptal.com/developers/gitignore/api/node,git
 
-purpleServiceWorker/dist/purpleServiceWorker.js
-chrome/PurpleAdblock-2.3-Chrome.zip
+!tampermonkey/dist/purpleadblocker.user.js
 *.zip
+purpleServiceWorker/dist
