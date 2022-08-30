@@ -22,6 +22,8 @@ Purple Adblock is an adblocker for Twitch which is available on [Firefox](firefo
 
 Download the extension here for: [Firefox](https://addons.mozilla.org/pt-BR/firefox/addon/purpleadblock/) or [Google Chrome](https://chrome.google.com/webstore/detail/purple-adblock/lkgcfobnmghhbhgekffaadadhmeoindg).
 
+Download the User Script to use in Tampermonkey: [User Script](https://chrome.google.com/webstore/detail/purple-adblock/lkgcfobnmghhbhgekffaadadhmeoindg).
+
 It doesn't work with "Alternate Player for Twitch.tv", or other "twitch adblockers", but you can use generic ad blockers like "uBlock Origin".
 
 ### How it works
