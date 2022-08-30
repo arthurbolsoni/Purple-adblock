@@ -19,9 +19,11 @@ export class Player {
 
     playerChangeHLS = () => this.message.pauseAndPlay();
 
-    isAds = (x: string) => {
-        const ads = x.toString().includes("stitched-ad") || x.toString().includes("twitch-client-ad") || x.toString().includes("twitch-ad-quartile");
-        // if (this.playingAds != ads) this.playerChangeHLS();
+    isAds = (x: string, allowChange: boolean = false) => {
+        // const ads = x.toString().includes("stitched-ad") || x.toString().includes("twitch-client-ad") || x.toString().includes("twitch-ad-quartile");
+        const ads = x.toString().includes("stitched");
+        if (!allowChange) return ads;
+        if (this.playingAds != ads) this.playerChangeHLS();
         this.playingAds = ads;
 
         return this.playingAds;
@@ -35,8 +37,9 @@ export class Player {
         const currentStream: Stream = await this.currentStream();
         currentStream.hls.addPlaylist(response);
 
-        if (!this.isAds(response)) return true;
-
+        if (!this.isAds(response, true)) return true;
+        
+        console.log("Player: " + this.message.quality);
         this.LogPrint("ads found");
         this.currentStream().streamAccess(streams.local);
 
@@ -53,8 +56,9 @@ export class Player {
             if (external) currentStream.hls.addPlaylist(external);
             if (external) return true;
 
+            console.log("fail");
             //if not resolve return the 480p to the user.
-            currentStream.hls.addPlaylist(picture, true);
+            currentStream.hls.addPlaylist(local, true);
             return true;
 
         } catch (e: any) {
@@ -68,7 +72,7 @@ export class Player {
         //filter all server by type
         const servers: streamServer[] = this.currentStream().serverList.filter((x) => x.type == serverType);
         if (!servers) return "";
-        
+
         //filter all server url by quality or bestquality
         var qualityUrl = servers.map(x => x.findByQuality(this.message.quality)).filter(x => x !== undefined);
         if (!qualityUrl.length) qualityUrl = servers.map(x => x.bestQuality());
@@ -119,10 +123,9 @@ export class Player {
         this.LogPrint("Local Server: OK");
 
         stream.streamAccess(streams.local);
-        stream.streamAccess(streams.picture);
 
         if (existent) return;
-
+        
         stream.tryExternalPlayer();
 
         //if the external request get false. try again.

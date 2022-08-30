@@ -38,7 +38,7 @@ export class Stream {
     async signature() {
         const REGEX = /video-weaver.(.*).hls.ttvnw.net\/v1\/playlist\/(.*).m3u8$/gm;
 
-        await new Promise((resolve) =>
+        await new Promise((resolve) => {
             this.serverList
                 .filter((x: any) => x.sig == false)
                 .forEach(async (x: any) => {
@@ -55,7 +55,8 @@ export class Stream {
                         resolve(false);
                     }
                 }),
-        );
+                resolve(false);
+        });
     }
 
     //add a new player stream external
@@ -82,7 +83,7 @@ export class Stream {
             return false;
         }
     }
-    
+
     tryExternalPlayer = async () => {
         if (!await this.streamAccess(streams.external)) {
             this.externalPlayer(true);

@@ -34,6 +34,7 @@ export class PlayerMessage {
                 case "setQuality": {
                     if (e.data.args) this.quality = e.data.args[0].name;
                     if (e.data.value) this.quality = e.data.value;
+                    console.log("Message: " + this.quality);
                     break;
                 }
                 case "setSetting": {

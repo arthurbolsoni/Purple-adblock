@@ -53,6 +53,7 @@ import txt from "../dist/app.worker.js";
         if (!event.data.arg) return;
         switch (event.data.arg.key) {
           case "quality": {
+            if (!event.data.arg.value.name) break;
             console.log("Changed quality by player: " + event.data.arg.value.name);
             mainWorker.postMessage({ funcName: "setQuality", value: event.data.arg.value.name });
             break;
