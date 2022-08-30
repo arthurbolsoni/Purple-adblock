@@ -4,8 +4,8 @@ export class PlayerMessage {
     pause = () => global.postMessage({ type: "pause" });
     play = () => global.postMessage({ type: "play" });
     pauseAndPlay = () => {
-        this.pause;
-        this.play;
+        this.pause();
+        this.play();
     }
 
     quality: string = "";
@@ -19,7 +19,16 @@ export class PlayerMessage {
             // if (global.onmessage) global.onmessage(this, myMessage);
 
             switch (e.data.funcName) {
-                case "setSinkType": {
+                case "pause": {
+                    break;
+                }
+                case "play": {
+                    break;
+                }
+                case "Ready": {
+                    break;
+                }
+                case "Playing": {
                     break;
                 }
                 case "setQuality": {
@@ -28,7 +37,6 @@ export class PlayerMessage {
                     break;
                 }
                 case "setSetting": {
-                    console.log(e.data.value);
                     this.setting = e.data.value;
                     break;
                 }

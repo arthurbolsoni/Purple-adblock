@@ -17,11 +17,11 @@ export class Player {
         this.message.init();
     }
 
-    endAds = () => this.message.pauseAndPlay();
+    playerChangeHLS = () => this.message.pauseAndPlay();
 
     isAds = (x: string) => {
         const ads = x.toString().includes("stitched-ad") || x.toString().includes("twitch-client-ad") || x.toString().includes("twitch-ad-quartile");
-        if (this.playingAds != ads) this.endAds();
+        // if (this.playingAds != ads) this.playerChangeHLS();
         this.playingAds = ads;
 
         return this.playingAds;
@@ -68,8 +68,7 @@ export class Player {
         //filter all server by type
         const servers: streamServer[] = this.currentStream().serverList.filter((x) => x.type == serverType);
         if (!servers) return "";
-        console.log(servers);
-
+        
         //filter all server url by quality or bestquality
         var qualityUrl = servers.map(x => x.findByQuality(this.message.quality)).filter(x => x !== undefined);
         if (!qualityUrl.length) qualityUrl = servers.map(x => x.bestQuality());
@@ -124,13 +123,10 @@ export class Player {
 
         if (existent) return;
 
+        stream.tryExternalPlayer();
+
         //if the external request get false. try again.
         //the second request gonna be with const server variable.
-        (async () => {
-            if (!await stream.streamAccess(streams.external)) {
-                stream.externalPlayer(true);
-            }
-        })()
 
         //--------------------------------------------//
         return;
@@ -179,6 +175,7 @@ export class Player {
 
                 if (url.includes("picture-by-picture")) {
                     this.LogPrint("picture-by-picture");
+                    return new Response();
                 }
             }
 

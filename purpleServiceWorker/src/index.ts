@@ -25,7 +25,8 @@ import txt from "../dist/app.worker.js";
 
     declareEventWorker() {
       this.addEventListener("message", (event) => {
-        // if (typeof (event.data.type) === "string") console.log(event.data);
+        // if (typeof (event.data.type) !== "string") console.log(event.data.arg);
+        // if (typeof (event.data.type) !== "string") console.log(event.data);
 
         switch (event.data.type) {
           case "init": {
@@ -33,12 +34,42 @@ import txt from "../dist/app.worker.js";
             break;
           }
           case "PlayerQualityChanged": {
-            console.log("Changed quality by player: " + event.data.arg.name);
             mainWorker.postMessage({ funcName: "setQuality", value: event.data.arg.name });
             break;
           }
           case "pause": {
             mainWorker.postMessage({ funcName: "pause", args: undefined, id: 1 });
+            break;
+          }
+          case "play": {
+            mainWorker.postMessage({ funcName: "play", args: undefined, id: 1 });
+            break;
+          }
+          default: {
+            break;
+          }
+        }
+
+        if (!event.data.arg) return;
+        switch (event.data.arg.key) {
+          case "quality": {
+            console.log("Changed quality by player: " + event.data.arg.value.name);
+            mainWorker.postMessage({ funcName: "setQuality", value: event.data.arg.value.name });
+            break;
+          }
+          case "state": {
+            mainWorker.postMessage({ funcName: event.data.arg.value });
+          }
+          default: {
+            break;
+          }
+        }
+
+        switch (event.data.arg.name) {
+          case "pause": {
+            break;
+          }
+          case "play": {
             break;
           }
           default: {

@@ -25,7 +25,7 @@ export class Stream {
         while ((captureArray = REGEX.exec(text)) !== null) {
             qualityUrlSplit.push({ quality: captureArray[1], url: captureArray[2] });
         }
-        console.log(qualityUrlSplit);
+
         const streamList: streamServer = new streamServer({ type: type, urlList: qualityUrlSplit, sig: sig });
         this.serverList.push(streamList);
 
@@ -60,7 +60,7 @@ export class Stream {
 
     //add a new player stream external
     async externalPlayer(customIgnore: boolean = false): Promise<boolean> {
-        if(customIgnore) this.currentTunnel = this.tunnel[0];
+        if (customIgnore) this.currentTunnel = this.tunnel[0];
         try {
             global.LogPrint("External Server: Loading");
             const response: Response = await global.realFetch(this.currentTunnel.replace("{channelname}", this.channelName));
@@ -80,6 +80,12 @@ export class Stream {
             global.LogPrint("server proxy return error or not found " + this.currentTunnel);
             global.LogPrint(e);
             return false;
+        }
+    }
+    
+    tryExternalPlayer = async () => {
+        if (!await this.streamAccess(streams.external)) {
+            this.externalPlayer(true);
         }
     }
 

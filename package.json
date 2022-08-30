@@ -1,17 +1,18 @@
 {
   "name": "purple-adblock",
-  "version": "2.2.0",
+  "version": "2.3.4",
   "description": "An adblocker for the Twitch.tv using server side signature and local m3u8 manipulation",
   "scripts": {
     "preinstall": "node cli/preinstall.js",
     "server:build": "cd server && npm run build",
     "server:start": "cd server && npm run start",
     "server:dev": "cd server && npm run dev",
-    "worker:dev": "cd purpleServiceWorker && npm run worker:dev && cd ../ && npm run copyChromeBuild",
-    "worker:prod": "cd purpleServiceWorker && npm run worker:prod && cd ../ && npm run copyChromeBuild",
+    "worker:dev": "cd purpleServiceWorker && npm run worker:dev && cd ../ && npm run copyChromeBuild && npm run userscript:build",
+    "worker:prod": "cd purpleServiceWorker && npm run worker:prod && cd ../ && npm run copyChromeBuild && npm run userscript:build",
+    "userscript:build": "node tampermonkey/build.js",
     "lint-staged": "lint-staged",
     "lint": "eslint --ext .js,.ts && prettier --write **/*.{js,ts,css,html} --ignore-path .gitignore",
-    "copyChromeBuild": "copyfiles -u 2 ./purpleServiceWorker/dist/bundle.js chrome/app"
+    "copyChromeBuild": "copyfiles -u 2 ./purpleServiceWorker/dist/bundle.js chrome/app && node cli/builder.js"
   },
   "repository": "https://github.com/arthurbolsoni/Purple-adblock.git",
   "author": "kingarthur",
