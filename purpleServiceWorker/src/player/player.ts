@@ -17,13 +17,15 @@ export class Player {
         this.message.init();
     }
 
-    playerChangeHLS = () => this.message.pauseAndPlay();
+    onStartAds = () => {};
+    onEndAds = () => {};
 
     isAds = (x: string, allowChange: boolean = false) => {
         // const ads = x.toString().includes("stitched-ad") || x.toString().includes("twitch-client-ad") || x.toString().includes("twitch-ad-quartile");
         const ads = x.toString().includes("stitched");
         if (!allowChange) return ads;
-        if (this.playingAds != ads) this.playerChangeHLS();
+        if (this.playingAds != ads && ads) this.onStartAds();
+        if (this.playingAds != ads && !ads) this.onEndAds();
         this.playingAds = ads;
 
         return this.playingAds;
@@ -38,14 +40,11 @@ export class Player {
         currentStream.hls.addPlaylist(response);
 
         if (!this.isAds(response, true)) return true;
-        
-        console.log("Player: " + this.message.quality);
-        this.LogPrint("ads found");
-        this.currentStream().streamAccess(streams.local);
 
         try {
             const local = await this.fetchm3u8ByStreamType(streams.local.name)
             if (local) currentStream.hls.addPlaylist(local);
+            if (!local) currentStream.streamAccess(streams.local);
             if (local) return true;
 
             const picture = await this.fetchm3u8ByStreamType(streams.picture.name)
@@ -119,13 +118,13 @@ export class Player {
 
         //--------------------------------------------//
         this.LogPrint("Local Server: Loading");
-        await stream.addStreamLink(text, "local", false);
+        await stream.addStreamLink(text, "local", true);
         this.LogPrint("Local Server: OK");
 
         stream.streamAccess(streams.local);
 
         if (existent) return;
-        
+
         stream.tryExternalPlayer();
 
         //if the external request get false. try again.

@@ -90,7 +90,7 @@ export class Stream {
         }
     }
 
-    //add a new player stream local
+    //create a new stream access
     async streamAccess(stream: streamType): Promise<boolean> {
         if (stream.name == streams.external.name) return await this.externalPlayer();
 
