@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Purple Adblocker
 // @source       https://github.com/arthurbolsoni/Purple-adblock
-// @version      2.3.5
+// @version      2.4.1
 // @description  Per aspera ad astra
 // @author       ArthurBolzoni
 // @downloadURL  https://raw.githubusercontent.com/arthurbolsoni/Purple-adblock/main/tampermonkey/dist/purpleadblocker.user.js
