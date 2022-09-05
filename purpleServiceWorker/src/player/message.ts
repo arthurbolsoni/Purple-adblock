@@ -8,6 +8,8 @@ export class PlayerMessage {
         this.play();
     }
 
+    isLoaded = false;
+
     quality: string = "";
     // setting: { proxyUrl: string, toggleProxy: boolean, whiteList: Array<string>};
     setting: any;
@@ -19,6 +21,15 @@ export class PlayerMessage {
             // if (global.onmessage) global.onmessage(this, myMessage);
 
             switch (e.data.funcName) {
+                case "Buffering": {
+                    break;
+                }
+                case "onClientSinkPlaying": {
+                    break;
+                }
+                case "onClientSinkUpdate": {
+                    break;
+                }
                 case "pause": {
                     break;
                 }

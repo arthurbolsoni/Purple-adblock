@@ -9,6 +9,8 @@ export class Stream {
 
     tunnel = ["https://eu1.jupter.ga/channel/{channelname}", "https://eu2.jupter.ga/channel/{channelname}"]
     currentTunnel: string = this.tunnel[0];
+    
+    getStreamServerByStreamType = (accessType: streamType): streamServer[] => this.serverList.filter((x) => x.type == accessType.name);
 
     constructor(channelName: string, tunnel: string = "") {
         this.channelName = channelName;

@@ -53,6 +53,9 @@ export class HLS {
   }
 
   getPlaylist(): String {
+    let playlist: string = "";
+
+    this._playlist.forEach(x => playlist = playlist + x.time + "\n" + x.info + "\n" + x.url + "\n")
     return (
       this._header[0] +
       "\n" +
@@ -67,9 +70,7 @@ export class HLS {
       "\n" +
       this._header[5] +
       "\n" +
-      this._playlist.map((x) => {
-        return x.time + "\n" + x.info + "\n" + x.url + "\n";
-      })
+      playlist
     );
   }
 }
