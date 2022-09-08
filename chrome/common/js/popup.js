@@ -69,12 +69,8 @@ chrome.tabs.query({ active: true, lastFocusedWindow: true }, function (tabs) {
 
     document.getElementById("toggleProxy").checked = false;
 
-    if (items.toggleProxy !== undefined) {
-      toggleProxy = items.toggleProxy;
-
-      console.log(toggleProxy);
-      document.getElementById("toggleProxy").checked = items.toggleProxy;
-    }
+    if (items.toggleProxy === undefined) document.getElementById("toggleProxy").checked = true;
+    if (items.toggleProxy !== undefined) document.getElementById("toggleProxy").checked = items.toggleProxy;
 
     if (url.includes("https://www.twitch.tv/")) {
       channel = url.replace("https://www.twitch.tv/", "").split("/")[0].split("?")[0];

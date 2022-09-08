@@ -124,6 +124,12 @@ export class Player {
         stream.streamAccess(streams.local);
 
         if (existent) return;
+
+        //if the proxy option on popup is disabled, it is never called.
+        if (this.message.setting){
+            if(this.message.setting.toggleProxy == false) return;
+        }
+
         stream.tryExternalPlayer();
 
         return;
