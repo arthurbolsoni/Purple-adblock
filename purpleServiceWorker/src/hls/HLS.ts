@@ -3,9 +3,7 @@ export class HLS {
   private _playlist: playlistItem[] = [];
   private _sequence = 0;
 
-  addPlaylistTest(playlist: string) {
-
-  }
+  addPlaylistTest(playlist: string) {}
 
   addPlaylist(playlist: string, allowAds: boolean = false): boolean {
     if (playlist === null) {
@@ -27,7 +25,9 @@ export class HLS {
           }
         }
         //timestamp sequence
-        const sequenceTimestamp = Math.floor(new Date(lines[parseInt(i) - 1].slice(lines[parseInt(i) - 1].length - 24, lines[parseInt(i) - 1].length)).getTime() / 1000);
+        const sequenceTimestamp = Math.floor(
+          new Date(lines[parseInt(i) - 1].slice(lines[parseInt(i) - 1].length - 24, lines[parseInt(i) - 1].length)).getTime() / 1000,
+        );
 
         //select all sequence that no exist
         const r = this._playlist.filter((x) => {
@@ -55,7 +55,7 @@ export class HLS {
   getPlaylist(): String {
     let playlist: string = "";
 
-    this._playlist.forEach(x => playlist = playlist + x.time + "\n" + x.info + "\n" + x.url + "\n")
+    this._playlist.forEach((x) => (playlist = playlist + x.time + "\n" + x.info + "\n" + x.url + "\n"));
     return (
       this._header[0] +
       "\n" +
