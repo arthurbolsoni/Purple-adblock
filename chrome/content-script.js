@@ -1,5 +1,4 @@
 function init(items) {
-
   var s = document.createElement("script");
   s.src = chrome.runtime.getURL("app/bundle.js");
   s.onload = function () {

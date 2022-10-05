@@ -30,7 +30,7 @@ function inputProxyUrl() {
     chrome.storage.local.set({ ["proxyUrl"]: document.getElementById("inputUrl").value });
   }
   if (document.getElementById("inputUrl").value == "") {
-    chrome.storage.local.set({ ["proxyUrl"]: ""});
+    chrome.storage.local.set({ ["proxyUrl"]: "" });
   }
 }
 
@@ -64,7 +64,7 @@ function inputChange(e) {
 
 chrome.tabs.query({ active: true, lastFocusedWindow: true }, function (tabs) {
   var url = tabs[0].url;
-  chrome.storage.local.get(/* String or Array */["whiteList", "toggleProxy", "proxyUrl"], function (items) {
+  chrome.storage.local.get(/* String or Array */ ["whiteList", "toggleProxy", "proxyUrl"], function (items) {
     if (items.proxyUrl) document.getElementById("inputUrl").value = items.proxyUrl;
 
     document.getElementById("toggleProxy").checked = false;

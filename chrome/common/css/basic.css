@@ -53,11 +53,11 @@ a {
   background-color: grey;
 }
 
-.buttonApply:hover{
+.buttonApply:hover {
   text-decoration-line: underline;
   cursor: pointer;
 }
-.input::placeholder{
+.input::placeholder {
   color: black;
 }
 

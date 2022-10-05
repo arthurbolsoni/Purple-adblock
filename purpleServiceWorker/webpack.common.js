@@ -11,7 +11,7 @@ module.exports = {
       },
       {
         test: /\.worker\.js$/,
-        type: 'asset/source',
+        type: "asset/source",
       },
     ],
   },

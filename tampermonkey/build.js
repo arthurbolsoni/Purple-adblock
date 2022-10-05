@@ -1,8 +1,8 @@
-const fs = require('fs');
+const fs = require("fs");
 
 console.log("building userScript version: " + process.env.npm_package_version);
 
-let raw = fs.readFileSync('./purpleServiceWorker/dist/bundle.js');
+let raw = fs.readFileSync("./purpleServiceWorker/dist/bundle.js");
 
 const build = `// ==UserScript==
 // @name         Purple Adblocker
@@ -17,8 +17,8 @@ const build = `// ==UserScript==
 // @grant        none
 // ==/UserScript==
 
-${raw}`
+${raw}`;
 
-if (!fs.existsSync('tampermonkey/dist')) fs.mkdirSync('tampermonkey/dist');
+if (!fs.existsSync("tampermonkey/dist")) fs.mkdirSync("tampermonkey/dist");
 
-fs.writeFileSync('tampermonkey/dist/purpleadblocker.user.js', build);
+fs.writeFileSync("tampermonkey/dist/purpleadblocker.user.js", build);

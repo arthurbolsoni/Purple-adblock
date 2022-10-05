@@ -7,9 +7,11 @@ export class streamServer {
   urlList!: qualityUrl[];
   sig!: boolean;
 
-  bestQuality = () => { return this.urlList[0] }
-  findByQuality = (quality: string) => this.urlList.find(x => x.quality == quality);
-  
+  bestQuality = () => {
+    return this.urlList[0];
+  };
+  findByQuality = (quality: string) => this.urlList.find((x) => x.quality == quality);
+
   constructor(partial: Partial<streamServer>) {
     Object.assign(this, partial);
   }

@@ -9,10 +9,10 @@ import txt from "../dist/app.worker.js";
 
   window.Worker = class WorkerInjector extends Worker {
     constructor(twitchBlobUrl: any) {
-      console.log("new worker intance " + twitchBlobUrl)
+      console.log("new worker intance " + twitchBlobUrl);
 
-      if (twitchBlobUrl == '') super(twitchBlobUrl)
-      console.log("[Purple]: init " + twitchBlobUrl)
+      if (twitchBlobUrl == "") super(twitchBlobUrl);
+      console.log("[Purple]: init " + twitchBlobUrl);
 
       const newBlobStr = `${txt}
       importScripts('${twitchBlobUrl}');`;
@@ -30,7 +30,7 @@ import txt from "../dist/app.worker.js";
 
         switch (event.data.type) {
           case "init": {
-            window.postMessage({ type: "getSetting", value: null, });
+            window.postMessage({ type: "getSetting", value: null });
             break;
           }
           case "PlayerQualityChanged": {
@@ -77,7 +77,7 @@ import txt from "../dist/app.worker.js";
             break;
           }
         }
-      })
+      });
     }
 
     declareEventWindow() {
