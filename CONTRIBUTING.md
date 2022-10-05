@@ -31,12 +31,7 @@ npm run install
 Now you're all setup! If you'd like to...
 
 - Build the service worker
-  - `npm run worker:build` or `npm run worker:dev`
-- Run the server
-  - Development
-    - `npm run server:dev`
-  - Production
-    - `npm run server:build` then `npm run server:start`
+  - `npm run worker:build` or `npm run worker:dev
 - Run linter and prettier
   - `npm run lint`
 
