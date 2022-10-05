@@ -8,7 +8,7 @@ import dotenv from "dotenv";
 dotenv.config();
 
 if (!process.env.PORT) {
-  logger.warn("Port not set in .env file. Using default port 8080.");
+  logger.warn("Port not set in .env file. Using default port 80.");
 }
 
 import { getNewHLS, getNewHLSv2 } from "./modules/twHLS";
@@ -20,7 +20,7 @@ import Package from "../package.json";
 import { channelRequest, signatureRequest } from './types/env';
 // SSL code removed: Use Nginx or Caddy with reverse_proxy instead
 
-const port = process.env.PORT || 8080;
+const port = process.env.PORT || 80;
 const app = Fastify({
   logger: false,
 })
@@ -146,7 +146,7 @@ const start = async () => {
   logger.info(await fetchClientId());
   logger.info("Starting server...");
   await init();
-  app.listen(port);
+  app.listen({ port: 80 });
   logger.info(`Server listening on port ${port} - https://127.0.0.1:${port}`);
 };
 
