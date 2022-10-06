@@ -44,7 +44,7 @@ If you're looking for some help, create an issue or come join us in the [Discord
 
 **DOGECOIN:** DR3AdZD5gr2WBkyKZUuxLfxK26QQ6RHsvR
 
-**STRIPE DONATION  :)** []
+**STRIPE DONATION :)** [Click here](https://donate.stripe.com/aEU5kwaLFeY89gI7ss)
 
 ## Recommendations
 
