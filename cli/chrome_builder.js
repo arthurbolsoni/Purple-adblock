@@ -13,16 +13,16 @@ raw.description = process.env.npm_package_description;
 fs.writeFileSync("./platform/chrome/manifest.json", JSON.stringify(raw));
 fs.copyFileSync("./serviceWorker/dist/bundle.js", "./platform/chrome/app/bundle.js");
 
-const dirname = "./build";
+var dirname = "./build";
 const fileName = process.env.npm_package_name + "-" + process.env.npm_package_version + "-chrome";
 
 if (!fs.existsSync(dirname)) fs.mkdirSync(dirname);
 
-const writeStream = fs.createWriteStream(dirname + "/" + fileName + ".zip");
-const zipFile = archiver("zip", { zlib: { level: 9 } });
-zipFile.pipe(writeStream);
-zipFile.directory("./platform/chrome", false);
-zipFile.finalize();
+const writeStream1 = fs.createWriteStream(dirname + "/" + fileName + ".zip");
+const zipFile1 = archiver("zip", { zlib: { level: 9 } });
+zipFile1.pipe(writeStream1);
+zipFile1.directory("./platform/chrome", false);
+zipFile1.finalize();
 
 console.log("===================================================================");
 console.log("Build packed to " + dirname + "/" + fileName + ".zip");

@@ -4,9 +4,10 @@
   "description": "An adblocker for the Twitch.tv using server side signature and local m3u8 manipulation",
   "scripts": {
     "preinstall": "node cli/preinstall.js",
-    "worker:dev": "npm run worker:dev --prefix serviceWorker && concurrently \"npm run chrome:build\" \"npm run userscript:build\"",
-    "worker:build": "npm run worker:prod --prefix serviceWorker && concurrently \"npm run chrome:build\" \"npm run userscript:build\"",
-    "chrome:build": "node cli/builder.js",
+    "worker:dev": "npm run worker:dev --prefix serviceWorker && concurrently \"npm run chrome:build\" \"npm run firefox:build\" \"npm run userscript:build\"",
+    "worker:build": "npm run worker:prod --prefix serviceWorker && concurrently \"npm run chrome:build\" \"npm run firefox:build\" \"npm run userscript:build\"",
+    "chrome:build": "node cli/chrome_builder.js",
+    "firefox:build": "node cli/firefox_builder.js",
     "userscript:build": "node tampermonkey/build.js",
     "lint-staged": "lint-staged",
     "lint": "eslint --ext .js,.ts && prettier --write **/*.{js,ts,css,html} --ignore-path .gitignore"
