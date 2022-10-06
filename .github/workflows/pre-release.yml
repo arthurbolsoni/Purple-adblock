@@ -37,4 +37,4 @@ jobs:
           title: "Development Build"
           files: |
             LICENSE.txt
-            *.zip
+            build/*.zip
