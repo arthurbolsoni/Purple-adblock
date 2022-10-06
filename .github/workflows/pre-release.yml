@@ -27,7 +27,7 @@ jobs:
         with:
           node-version: 16
       - run: npm install
-      - run: npm run build
+      - run: npm run worker:build
       
       - uses: "marvinpinto/action-automatic-releases@latest"
         with:
