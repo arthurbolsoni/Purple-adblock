@@ -44,9 +44,7 @@ If you're looking for some help, create an issue or come join us in the [Discord
 
 **DOGECOIN:** DR3AdZD5gr2WBkyKZUuxLfxK26QQ6RHsvR
 
-**BUY ME A COFFEE :)** [Click here](https://www.buymeacoffee.com/arthurbolsoni)
-
-**Paypal :)** [Click here](https://www.paypal.com/donate/?business=7KG5ZT4AVJ2D6&no_recurring=0&currency_code=USD)
+**STRIPE DONATION :)** [Click here](https://donate.stripe.com/aEU5kwaLFeY89gI7ss)
 
 ## Recommendations
 

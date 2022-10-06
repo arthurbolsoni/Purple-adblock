@@ -4,6 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <link rel="stylesheet" href="../css/basic.css" />
+    <link rel="stylesheet" href="../css/toggle.css" />
   </head>
 
   <body>
@@ -12,17 +13,40 @@
         <div class="icon" id="adblocktext" width="100"></div>
       </div>
     </div>
-    <p id="watching"></p>
-    <hr data-more="d" />
-    <a href="https://github.com/arthurbolsoni/Purple-adblock" target="_blank"><h2>Project Repository</h2></a>
-    <a href="https://www.buymeacoffee.com/arthurbolsoni" target="_blank"><p>Support the project :D</p></a>
-    <hr data-more="d" />
-    <div class="buttonlog" id="buttonlog">
-      <div class="content">Show Log</div>
+    <hr />
+    <p id="watching" style="margin-left: 12px"></p>
+    <hr />
+    <a href="https://github.com/arthurbolsoni/Purple-adblock" target="_blank">
+      <h2>"Per aspera ad astra."</h2>
+    </a>
+    <a href="https://donate.stripe.com/aEU5kwaLFeY89gI7ss" target="_blank">
+      <p>Help us do the adblock best :) DONATE :D</p>
+    </a>
+
+    <div class="buttonSettings hover" id="buttonSettings">
+      <div class="text">Settings</div>
     </div>
 
-    <div class="log" style="display: none">
-      <textarea class="textarea"></textarea>
+    <div class="settings" style="display: none">
+      <div class="toggle hover">
+        <div style="margin: 10px">
+          <label class="switch">
+            <input type="checkbox" id="toggleProxy" />
+            <span class="slider round"></span>
+          </label>
+        </div>
+        <div class="text">Proxy Authentication</div>
+      </div>
+
+      <div>
+        <div style="margin-top: 10px; margin-left: 10px">
+          <div class="text">Custom auth - <a class="buttonApply" id="inputApply">Apply</a></div>
+        </div>
+        <div style="margin-bottom: 10px; margin-top: 10px">
+          <input type="text" placeholder="https://myproxy.io/channel/{channelname}" class="input" id="inputUrl" />
+        </div>
+        <div type="button" style="size: 10px"></div>
+      </div>
     </div>
     <script type="text/javascript" src="../js/popup.js"></script>
   </body>

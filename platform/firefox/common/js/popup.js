@@ -1,79 +1,76 @@
+const storage = () => (typeof browser === "undefined" ? chrome.storage.local : browser.storage.local);
+const tabs = () => (typeof browser === "undefined" ? chrome.tabs : browser.tabs);
+
 let whiteList = [];
-document.getElementById("adblockbutton").onclick = inputChange;
+var channel = "";
 
-document.getElementsByClassName("buttonlog")[0].onclick = function (e) {
-  let x = document.getElementsByClassName("log")[0];
-  if (x.style.display === "none") {
-    x.style.display = "block";
-  } else {
-    x.style.display = "none";
+document.getElementById("adblockbutton").onclick = buttonStatusChange;
+document.getElementById("inputApply").onclick = inputProxyUrl;
+document.getElementById("buttonSettings").onclick = buttonSettings;
+document.getElementById("toggleProxy").onclick = inputChangetoggleProxy;
+
+function inputChangetoggleProxy() {
+  console.log(document.getElementById("toggleProxy").checked);
+  storage().set({ ["toggleProxy"]: document.getElementById("toggleProxy").checked });
+}
+
+function buttonSettings() {
+  let x = document.getElementsByClassName("settings")[0];
+  x.style.display === "none" ? (x.style.display = "block") : (x.style.display = "none");
+}
+
+function inputProxyUrl() {
+  console.log(document.getElementById("inputUrl").value);
+  if (document.getElementById("inputUrl").value.includes("{channelname}")) {
+    storage().set({ ["proxyUrl"]: document.getElementById("inputUrl").value });
   }
-};
-
-let isActive = true;
-let channel = "";
-function inputChange(e) {
-  if (isActive) {
-    document.getElementById("adblocktext").classList.add("disable");
-    document.getElementById("watching").textContent = "Disactived on : " + channel;
-
-    if (!whiteList.includes(channel)) {
-      whiteList.push(channel);
-    }
-
-    browser.storage.local.set({ ["whiteList"]: whiteList });
-    isActive = false;
-  } else {
-    document.getElementById("adblocktext").classList.remove("disable");
-    document.getElementById("watching").textContent = "Actived on : " + channel;
-    for (let i = 0; i < whiteList.length; i++) {
-      if (whiteList[i] === channel) {
-        whiteList.splice(i, 1);
-        i--;
-      }
-    }
-
-    browser.storage.local.set({ ["whiteList"]: whiteList });
-    isActive = true;
+  if (document.getElementById("inputUrl").value == "") {
+    storage().set({ ["proxyUrl"]: "" });
   }
 }
 
-browser.tabs.query({ active: true, lastFocusedWindow: true }, function (tabs) {
-  let url = tabs[0].url;
-  if (url.includes("https://www.twitch.tv/")) {
-    channel = url.replace("https://www.twitch.tv/", "").split("/")[0].split("?")[0];
+function buttonStatusChange() {
+  whiteList.includes(channel) ? delete whiteList.splice(whiteList.indexOf(channel), 1) : whiteList.push(channel);
+  storage().set({ ["whiteList"]: whiteList });
 
-    browser.storage.local.get(/* String or Array */ ["whiteList"], function (items) {
-      if (items.whiteList !== undefined) {
-        whiteList = items.whiteList;
-
-        console.log(channel);
-        console.log(whiteList);
-
-        if (whiteList.includes(channel)) {
-          isActive = false;
-        }
-        if (isActive) {
-          document.getElementById("adblocktext").classList.remove("disable");
-          document.getElementById("watching").textContent = "Actived on : " + channel;
-          return;
-        } else {
-          document.getElementById("adblocktext").classList.add("disable");
-          document.getElementById("watching").textContent = "Disactived on : " + channel;
-          return;
-        }
-      }
-    });
-
-    document.getElementById("watching").textContent = "Actived on : " + channel;
+  if (!whiteList.includes(channel)) {
+    document.getElementById("adblocktext").classList.add("disable");
+    document.getElementById("watching").textContent = "Disabled on : " + channel;
   } else {
-    document.getElementById("adblockbutton").onclick = null;
+    document.getElementById("adblocktext").classList.remove("disable");
+    document.getElementById("watching").textContent = "Actived on : " + channel;
+  }
+}
+
+tabs().query({ active: true, lastFocusedWindow: true }, function (tabs) {
+  if (!tabs.length) return;
+
+  storage().get(["whiteList", "toggleProxy", "proxyUrl"], (items) => {
+    if (items.proxyUrl) document.getElementById("inputUrl").value = items.proxyUrl;
+
+    const proxyToggle = document.getElementById("toggleProxy");
+    items.proxyToggle === undefined ? (proxyToggle.checked = true) : (toggleProxy = items.toggleProxy);
+
     document.getElementById("adblocktext").classList.add("disable");
     document.getElementById("watching").textContent = "Waiting channel";
-  }
-});
 
-browser.runtime.sendMessage("log", function (response) {
-  text = "" + response;
-  document.getElementsByClassName("textarea")[0].value = response.join("\n");
+    if (!tabs[0].url.includes("https://www.twitch.tv/")) {
+      document.getElementById("adblockbutton").onclick = null;
+      return;
+    }
+
+    channel = tabs[0].url.replace("https://www.twitch.tv/", "").split("/")[0].split("?")[0];
+
+    if (items.whiteList !== undefined) whiteList = items.whiteList;
+
+    if (whiteList.includes(channel)) {
+      document.getElementById("adblocktext").classList.remove("disable");
+      document.getElementById("watching").textContent = "Actived on : " + channel;
+      return;
+    } else {
+      document.getElementById("adblocktext").classList.add("disable");
+      document.getElementById("watching").textContent = "Disabled on : " + channel;
+      return;
+    }
+  });
 });

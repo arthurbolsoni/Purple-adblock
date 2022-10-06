@@ -1,12 +1,14 @@
+@-moz-document url-prefix() {
+  body {
+    width: 250px;
+  }
+}
+
 html {
   width: 250px;
   background: rgb(27, 27, 35);
   color: white;
   font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
-}
-
-body {
-  margin: 0;
 }
 
 h1 {
@@ -57,6 +59,7 @@ a {
   text-decoration-line: underline;
   cursor: pointer;
 }
+
 .input::placeholder {
   color: black;
 }
@@ -82,7 +85,7 @@ a {
   font-size: 14px;
 }
 
-.buttonlog {
+.buttonSettings {
   margin-block-start: 0.5em;
   margin-block-end: 0.5em;
   color: white;
@@ -90,6 +93,7 @@ a {
   display: flex;
   justify-content: center;
   align-items: center;
+  text-align: center;
   cursor: pointer;
 }
 

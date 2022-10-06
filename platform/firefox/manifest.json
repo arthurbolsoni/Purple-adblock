@@ -16,16 +16,22 @@
   "description": "Purple AdBlocker is an ad-blocker for Twitch",
   "manifest_version": 2,
   "name": "Purple Ads Blocker",
-  "version": "1.5.0.2",
+  "version": "0.0.0",
+  "author": "kingarthur",
   "permissions": [
-    "webRequest",
-    "webRequestBlocking",
     "https://*.twitch.tv/*",
-    "https://usher.ttvnw.net/*",
-    "https://much.ga/*",
-    "http://127.0.0.1:8080/*",
-    "tabs",
     "activeTab",
     "storage"
+  ],
+  "content_scripts": [
+    {
+      "matches": [
+        "https://*.twitch.tv/*"
+      ],
+      "run_at": "document_start",
+      "js": [
+        "content-script.js"
+      ]
+    }
   ]
 }
