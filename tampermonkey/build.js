@@ -2,7 +2,7 @@ const fs = require("fs");
 
 console.log("building userScript version: " + process.env.npm_package_version);
 
-let raw = fs.readFileSync("./purpleServiceWorker/dist/bundle.js");
+let raw = fs.readFileSync("./serviceWorker/dist/bundle.js");
 
 const build = `// ==UserScript==
 // @name         Purple Adblocker

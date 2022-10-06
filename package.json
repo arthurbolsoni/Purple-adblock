@@ -4,12 +4,12 @@
   "description": "An adblocker for the Twitch.tv using server side signature and local m3u8 manipulation",
   "scripts": {
     "preinstall": "node cli/preinstall.js",
-    "worker:dev": "cd purpleServiceWorker && npm run worker:dev && cd ../ && npm run copyChromeBuild && npm run userscript:build",
-    "worker:build": "cd purpleServiceWorker && npm run worker:prod && cd ../ && npm run copyChromeBuild && npm run userscript:build",
+    "worker:dev": "npm run worker:dev --prefix serviceWorker && concurrently \"npm run chrome:build\" \"npm run userscript:build\"",
+    "worker:build": "npm run worker:prod --prefix serviceWorker && npm run chrome:build && npm run userscript:build",
+    "chrome:build": "node cli/builder.js",
     "userscript:build": "node tampermonkey/build.js",
     "lint-staged": "lint-staged",
-    "lint": "eslint --ext .js,.ts && prettier --write **/*.{js,ts,css,html} --ignore-path .gitignore",
-    "copyChromeBuild": "copyfiles -u 2 ./purpleServiceWorker/dist/bundle.js chrome/app && node cli/builder.js"
+    "lint": "eslint --ext .js,.ts && prettier --write **/*.{js,ts,css,html} --ignore-path .gitignore"
   },
   "repository": "https://github.com/arthurbolsoni/Purple-adblock.git",
   "author": "kingarthur",
@@ -31,26 +31,24 @@
     "@types/node": "^17.0.8",
     "@typescript-eslint/eslint-plugin": "^5.9.1",
     "@typescript-eslint/parser": "^5.9.1",
+    "archiver": "^5.3.1",
+    "copyfiles": "^2.4.1",
     "cross-env": "^7.0.3",
     "eslint": "^7.9.0",
     "eslint-config-prettier": "^8.3.0",
     "eslint-plugin-prettier": "^4.0.0",
+    "html-webpack-plugin": "^5.5.0",
+    "lint-staged": "^12.2.2",
+    "node-fetch": "^3.2.10",
     "prettier": "^2.5.1",
+    "rimraf": "^3.0.2",
     "ts-loader": "^9.2.6",
     "ts-node": "^10.4.0",
     "typescript": "^4.5.4",
     "webpack": "^5.67.0",
+    "webpack-cli": "^4.9.2",
     "webpack-dev-server": "^4.7.4",
-    "webpack-merge": "^5.8.0"
-  },
-  "dependencies": {
-    "archiver": "^5.3.1",
-    "copyfiles": "^2.4.1",
-    "express-rate-limit": "^6.1.0",
-    "html-webpack-plugin": "^5.5.0",
-    "lint-staged": "^12.2.2",
-    "node-fetch": "^3.2.10",
-    "rimraf": "^3.0.2",
-    "webpack-cli": "^4.9.2"
+    "webpack-merge": "^5.8.0",
+    "concurrently": "^7.4.0"
   }
 }
