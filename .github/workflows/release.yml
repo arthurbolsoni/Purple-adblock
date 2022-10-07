@@ -27,7 +27,7 @@ jobs:
         with:
           node-version: 16
       - run: npm install
-      - run: npm run worker:build
+      - run: npm run build
       
       - name: get-npm-version
         id: package-version

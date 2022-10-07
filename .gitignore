@@ -162,4 +162,5 @@ out
 *.zip
 *.xpi
 **/dist
+serviceWorker/dist/
 .env
