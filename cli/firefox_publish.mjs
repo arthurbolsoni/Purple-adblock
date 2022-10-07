@@ -7,7 +7,7 @@ dotenv.config()
 console.log("Signing package .xpi with AMO")
 
 var dirname = "./dist";
-const fileName = process.env.npm_package_name + "-" + process.env.npm_package_version + "-firefox";
+const fileName = process.env.npm_package_name + "-" + process.env.npm_package_version + "-unsigned-firefox";
 
 signAddon({
     // Required arguments:
@@ -17,7 +17,8 @@ signAddon({
     apiKey: process.env.AMO_API_KEY,
     apiSecret: process.env.AMO_API_SECRET,
     id: "{a7399979-5203-4489-9861-b168187b52e1}",
-    channel: "unlisted"
+    channel: "unlisted",
+    downloadDir: "./dist/",
 })
     .then(function (result) {
         if (result.success) {

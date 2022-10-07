@@ -1,28 +1,42 @@
 const fs = require('fs');
+var fs_Extra = require('fs-extra');
 const archiver = require('archiver');
 
+platform = "firefox";
+fileType = ".xpi";
+const dirname = "./dist";
+const name = process.env.npm_package_name + "-" + process.env.npm_package_version + "-unsigned-" + platform;
+
 console.log("===================================================================");
-console.log("Building Firefox extension version: " + process.env.npm_package_version);
+console.log("Building " + platform + " extension version: " + process.env.npm_package_version);
 console.log("===================================================================");
 
-var raw = fs.readFileSync("./platform/firefox/manifest.json");
-raw = JSON.parse(raw);
-raw.version = process.env.npm_package_version;
-raw.description = process.env.npm_package_description;
+//manifest build
+const manifest = JSON.parse(fs.readFileSync("./platform/" + platform + "/manifest.json"))
+manifest.version = process.env.npm_package_version;
+manifest.description = process.env.npm_package_description;
 
-fs.writeFileSync("./platform/firefox/manifest.json", JSON.stringify(raw));
+//copy the bundle.js
 fs.copyFileSync("./serviceWorker/dist/bundle.js", "./platform/src/app/bundle.js");
-
-var dirname = "./dist";
-const fileName = process.env.npm_package_name + "-" + process.env.npm_package_version + "-firefox";
 
 if (!fs.existsSync(dirname)) fs.mkdirSync(dirname);
 
-const writeStream1 = fs.createWriteStream(dirname + "/" + fileName + ".xpi");
-const zipFile1 = archiver("zip", { zlib: { level: 9 } });
-zipFile1.pipe(writeStream1);
-zipFile1.directory("./platform/src", false);
-zipFile1.directory("./platform/firefox", false);
-zipFile1.finalize();
+//if production zip the content,
+if (process.env.NODE_ENV.trim() === "production") {
+    const zipFile = archiver("zip", { zlib: { level: 9 } });
+    zipFile.pipe(fs.createWriteStream(dirname + "/" + name + fileType));
+    zipFile.directory("./platform/src", false);
+    zipFile.directory("./platform/" + platform, false);
+    zipFile.append(Buffer.from(JSON.stringify(manifest)), { name: "./platform/manifest.json" });
+    zipFile.finalize();
 
-console.log("Build packed to " + dirname + "/" + fileName + ".xpi");
+    console.log("Build packed to " + dirname + "/" + name + fileType);
+} else {
+    if (!fs.existsSync(dirname + "/" + name)) fs.mkdirSync(dirname + "/" + name);
+    fs_Extra.copySync("./platform/src/", dirname + "/" + name);
+    fs_Extra.copySync("./platform/" + platform, dirname + "/" + name);
+    fs.writeFileSync(dirname + "/" + name + "/" + "manifest.json", JSON.stringify(manifest));
+
+    console.log("Build packed to " + dirname + "/" + name);
+}
+

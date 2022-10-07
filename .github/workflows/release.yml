@@ -28,17 +28,17 @@ jobs:
           node-version: 16
       - run: npm install
       - run: npm run build
-      
-      - name: get-npm-version
-        id: package-version
-        uses: martinbeentjes/npm-get-version-action@main
-        
+
+      - name: Read version
+        run: |
+          echo "version=$(grep version package.json | awk -F \" '{print $4}')" >> $GITHUB_ENV
+                  
       - uses: "marvinpinto/action-automatic-releases@latest"
         with:
           repo_token: "${{ secrets.GITHUB_TOKEN }}"
-          automatic_release_tag: ${{ steps.package-version.outputs.current-version}}
+          automatic_release_tag: ${{ env.version }}
           prerelease: false
-          title: ${{ steps.package-version.outputs.current-version}}
+          title: ${{ env.version }}
           files: |
             LICENSE
             dist/*.zip
