@@ -1,4 +1,4 @@
-const fs = require("fs");
+import fs from "fs";
 
 console.log("building userScript version: " + process.env.npm_package_version);
 

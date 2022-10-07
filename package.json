@@ -1,11 +1,13 @@
 {
   "name": "purple-adblock",
-  "version": "2.5.0",
+  "version": "2.5.0.2",
   "description": "An adblocker for the Twitch.tv using server side signature and local m3u8 manipulation",
   "scripts": {
     "preinstall": "node cli/preinstall.js",
-    "worker:dev": "npm run worker:dev --prefix serviceWorker && concurrently \"npm run chrome:build && npm run firefox:build\" \"npm run userscript:build\"",
-    "worker:build": "npm run worker:prod --prefix serviceWorker && concurrently \"npm run chrome:build && npm run firefox:build\" \"npm run userscript:build\"",
+    "dev": "npm run worker:dev --prefix serviceWorker && concurrently \"npm run chrome:build:dev && npm run firefox:build:dev\" \"npm run userscript:build\"",
+    "chrome:build:dev": "node cli/chrome_builder.js",
+    "firefox:build:dev": "node cli/firefox_builder.js",
+    "build": "npm run worker:prod --prefix serviceWorker && concurrently \"npm run chrome:build && npm run firefox:build\" \"npm run userscript:build\"",
     "chrome:build": "node cli/chrome_builder.js",
     "firefox:build": "node cli/firefox_builder.js",
     "userscript:build": "node tampermonkey/build.js",
@@ -18,6 +20,7 @@
   "bugs": {
     "url": "https://github.com/arthurbolsoni/Purple-adblock/issues"
   },
+  "type": "module",
   "homepage": "https://github.com/arthurbolsoni/Purple-adblock#readme",
   "pre-commit": [
     "pre-commit"
@@ -35,7 +38,11 @@
     "html-webpack-plugin": "^5.5.0",
     "lint-staged": "^12.2.2",
     "prettier": "^2.5.1",
-    "typescript": "^4.5.4",
-    "ts-loader": "^9.4.1"
+    "sign-addon": "^5.1.0",
+    "ts-loader": "^9.4.1",
+    "typescript": "^4.5.4"
+  },
+  "dependencies": {
+    "dotenv": "^16.0.3"
   }
 }

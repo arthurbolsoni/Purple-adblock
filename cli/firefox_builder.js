@@ -1,5 +1,5 @@
-const fs = require("fs");
-const archiver = require("archiver");
+import fs from "fs";
+import archiver from "archiver";
 
 console.log("===================================================================");
 console.log("Building Firefox extension version: " + process.env.npm_package_version);
@@ -13,7 +13,7 @@ raw.description = process.env.npm_package_description;
 fs.writeFileSync("./platform/firefox/manifest.json", JSON.stringify(raw));
 fs.copyFileSync("./serviceWorker/dist/bundle.js", "./platform/src/app/bundle.js");
 
-var dirname = "./dist/";
+var dirname = "./dist";
 const fileName = process.env.npm_package_name + "-" + process.env.npm_package_version + "-firefox";
 
 if (!fs.existsSync(dirname)) fs.mkdirSync(dirname);
@@ -25,6 +25,4 @@ zipFile1.directory("./platform/src", false);
 zipFile1.directory("./platform/firefox", false);
 zipFile1.finalize();
 
-console.log("===================================================================");
-console.log("Build packed to " + dirname + "/" + fileName + ".zip");
-console.log("===================================================================");
+console.log("Build packed to " + dirname + "/" + fileName + ".xpi");

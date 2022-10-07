@@ -1,5 +1,5 @@
-const fs = require("fs");
-const archiver = require("archiver");
+import fs from "fs";
+import archiver from "archiver";
 
 console.log("===================================================================");
 console.log("Building Chromium extension version: " + process.env.npm_package_version);

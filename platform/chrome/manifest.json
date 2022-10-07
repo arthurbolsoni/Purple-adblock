@@ -1,1 +1,45 @@
-{"background":{"service_worker":"app/background.js"},"action":{"default_title":"Purple Ads Blocker, for Twitch","default_icon":{"128":"images/logov2-128.png"},"default_popup":"common/html/popup.html"},"author":"kingarthur","icons":{"128":"images/logov2-128.png"},"name":"Purple Ads Blocker","manifest_version":3,"permissions":["activeTab","storage","scripting"],"host_permissions":["https://*.twitch.tv/*"],"content_scripts":[{"matches":["https://*.twitch.tv/*"],"run_at":"document_start","js":["content-script.js"]}],"web_accessible_resources":[{"resources":["app/bundle.js"],"matches":["<all_urls>"]}],"version":"2.5.0"}
+{
+    "action": {
+        "default_title": "Purple Ads Blocker, for Twitch",
+        "default_icon": {
+            "128": "images/logov2-128.png"
+        },
+        "default_popup": "common/html/popup.html"
+    },
+    "author": "kingarthur",
+    "icons": {
+        "128": "images/logov2-128.png"
+    },
+    "name": "Purple Ads Blocker",
+    "manifest_version": 3,
+    "permissions": [
+        "activeTab",
+        "storage",
+        "scripting"
+    ],
+    "host_permissions": [
+        "https://*.twitch.tv/*"
+    ],
+    "content_scripts": [
+        {
+            "matches": [
+                "https://*.twitch.tv/*"
+            ],
+            "run_at": "document_start",
+            "js": [
+                "content-script.js"
+            ]
+        }
+    ],
+    "web_accessible_resources": [
+        {
+            "resources": [
+                "app/bundle.js"
+            ],
+            "matches": [
+                "<all_urls>"
+            ]
+        }
+    ],
+    "version": "2.5.0.2"
+}
