@@ -148,7 +148,6 @@ export class Player {
                   await global.player.onfetch(url, text);
 
                   var playlist = global.player.currentStream().hls.getPlaylist();
-                  console.log(playlist);
                   resolve(new Response(playlist as any));
                 });
             } catch {

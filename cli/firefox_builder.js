@@ -11,16 +11,17 @@ raw.version = process.env.npm_package_version;
 raw.description = process.env.npm_package_description;
 
 fs.writeFileSync("./platform/firefox/manifest.json", JSON.stringify(raw));
-fs.copyFileSync("./serviceWorker/dist/bundle.js", "./platform/firefox/app/bundle.js");
+fs.copyFileSync("./serviceWorker/dist/bundle.js", "./platform/src/app/bundle.js");
 
-var dirname = "./build";
+var dirname = "./dist/";
 const fileName = process.env.npm_package_name + "-" + process.env.npm_package_version + "-firefox";
 
 if (!fs.existsSync(dirname)) fs.mkdirSync(dirname);
 
-const writeStream1 = fs.createWriteStream(dirname + "/" + fileName + ".zip");
+const writeStream1 = fs.createWriteStream(dirname + "/" + fileName + ".xpi");
 const zipFile1 = archiver("zip", { zlib: { level: 9 } });
 zipFile1.pipe(writeStream1);
+zipFile1.directory("./platform/src", false);
 zipFile1.directory("./platform/firefox", false);
 zipFile1.finalize();
 
