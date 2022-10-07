@@ -38,7 +38,7 @@ jobs:
           repo_token: "${{ secrets.GITHUB_TOKEN }}"
           automatic_release_tag: ${{ env.version }}
           prerelease: true
-          title: "Development Build - " ${{ env.version }}
+          title: "Development Build"
           files: |
             LICENSE
             dist/*.zip
