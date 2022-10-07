@@ -22,7 +22,14 @@ fs.copyFileSync("./serviceWorker/dist/bundle.js", "./platform/src/app/bundle.js"
 if (!fs.existsSync(dirname)) fs.mkdirSync(dirname);
 
 //if production zip the content,
-if (process.env.NODE_ENV.trim() === "production") {
+if (process.env.NODE_ENV === "development") {
+    if (!fs.existsSync(dirname + "/" + name)) fs.mkdirSync(dirname + "/" + name);
+    fs_Extra.copySync("./platform/src/", dirname + "/" + name);
+    fs_Extra.copySync("./platform/" + platform, dirname + "/" + name);
+    fs.writeFileSync(dirname + "/" + name + "/" + "manifest.json", JSON.stringify(manifest));
+
+    console.log("Build packed to " + dirname + "/" + name);
+} else {
     const zipFile = archiver("zip", { zlib: { level: 9 } });
     zipFile.pipe(fs.createWriteStream(dirname + "/" + name + fileType));
     zipFile.directory("./platform/src", false);
@@ -31,12 +38,4 @@ if (process.env.NODE_ENV.trim() === "production") {
     zipFile.finalize();
 
     console.log("Build packed to " + dirname + "/" + name + fileType);
-} else {
-    if (!fs.existsSync(dirname + "/" + name)) fs.mkdirSync(dirname + "/" + name);
-    fs_Extra.copySync("./platform/src/", dirname + "/" + name);
-    fs_Extra.copySync("./platform/" + platform, dirname + "/" + name);
-    fs.writeFileSync(dirname + "/" + name + "/" + "manifest.json", JSON.stringify(manifest));
-
-    console.log("Build packed to " + dirname + "/" + name);
 }
-
