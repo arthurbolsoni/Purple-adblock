@@ -20,7 +20,6 @@
   "bugs": {
     "url": "https://github.com/arthurbolsoni/Purple-adblock/issues"
   },
-  "type": "module",
   "homepage": "https://github.com/arthurbolsoni/Purple-adblock#readme",
   "pre-commit": [
     "pre-commit"

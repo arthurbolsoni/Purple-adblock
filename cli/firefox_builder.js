@@ -1,5 +1,5 @@
-import fs from "fs";
-import archiver from "archiver";
+const fs = require('fs');
+const archiver = require('archiver');
 
 console.log("===================================================================");
 console.log("Building Firefox extension version: " + process.env.npm_package_version);
