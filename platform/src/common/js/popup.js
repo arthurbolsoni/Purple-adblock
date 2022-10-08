@@ -1,7 +1,7 @@
 const storage = () => (typeof browser === "undefined" ? chrome.storage.local : browser.storage.local);
 const tabs = () => (typeof browser === "undefined" ? chrome.tabs : browser.tabs);
 
-let whiteList = [];
+let whitelist = [];
 var channel = "";
 
 document.getElementById("adblockbutton").onclick = buttonStatusChange;
@@ -30,10 +30,10 @@ function inputProxyUrl() {
 }
 
 function buttonStatusChange() {
-  whiteList.includes(channel) ? delete whiteList.splice(whiteList.indexOf(channel), 1) : whiteList.push(channel);
-  storage().set({ ["whiteList"]: whiteList });
+  whitelist.includes(channel) ? whitelist.splice(whitelist.indexOf(channel), 1) : whitelist.push(channel);
+  storage().set({ ["whitelist"]: whitelist });
 
-  if (!whiteList.includes(channel)) {
+  if (whitelist.includes(channel)) {
     document.getElementById("adblocktext").classList.add("disable");
     document.getElementById("watching").textContent = "Disabled on : " + channel;
   } else {
@@ -45,11 +45,11 @@ function buttonStatusChange() {
 tabs().query({ active: true, lastFocusedWindow: true }, function (tabs) {
   if (!tabs.length) return;
 
-  storage().get(["whiteList", "toggleProxy", "proxyUrl"], (items) => {
+  storage().get(["whitelist", "toggleProxy", "proxyUrl"], (items) => {
     if (items.proxyUrl) document.getElementById("inputUrl").value = items.proxyUrl;
 
     const proxyToggle = document.getElementById("toggleProxy");
-    items.proxyToggle === undefined ? (proxyToggle.checked = true) : (toggleProxy = items.toggleProxy);
+    proxyToggle.checked = items.toggleProxy == undefined ? true : items.toggleProxy;
 
     document.getElementById("adblocktext").classList.add("disable");
     document.getElementById("watching").textContent = "Waiting channel";
@@ -61,9 +61,9 @@ tabs().query({ active: true, lastFocusedWindow: true }, function (tabs) {
 
     channel = tabs[0].url.replace("https://www.twitch.tv/", "").split("/")[0].split("?")[0];
 
-    if (items.whiteList !== undefined) whiteList = items.whiteList;
+    whitelist = items.whitelist !== undefined ? items.whitelist : []
 
-    if (whiteList.includes(channel)) {
+    if (!whitelist.includes(channel)) {
       document.getElementById("adblocktext").classList.remove("disable");
       document.getElementById("watching").textContent = "Actived on : " + channel;
       return;

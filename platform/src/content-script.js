@@ -22,4 +22,4 @@ function init(items) {
   });
 }
 
-storage().get(["whiteList", "toggleProxy", "proxyUrl"], (items) => init(items));
+storage().get(["whitelist", "toggleProxy", "proxyUrl"], (items) => init(items));

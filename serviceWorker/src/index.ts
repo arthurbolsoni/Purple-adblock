@@ -5,8 +5,6 @@ import txt from "../dist/app.worker.js";
 (function () {
   let mainWorker: any;
 
-  window.postMessage({ type: "init" });
-
   window.Worker = class WorkerInjector extends Worker {
     constructor(twitchBlobUrl: any) {
       console.log("new worker intance " + twitchBlobUrl);
@@ -29,7 +27,7 @@ import txt from "../dist/app.worker.js";
         // if (typeof (event.data.type) !== "string") console.log(event.data);
 
         switch (event.data.type) {
-          case "init": {
+          case "getSetting": {
             window.postMessage({ type: "getSetting", value: null });
             break;
           }

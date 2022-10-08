@@ -12,7 +12,7 @@ export class Player {
   LogPrint = global.LogPrint;
 
   constructor() {
-    this.message.init();
+    this.message.getSetting();
   }
 
   onStartAds = () => { };
@@ -32,6 +32,10 @@ export class Player {
   currentStream = (channel: string = this.actualChannel): Stream => {
     return this.streamList.find((x: Stream) => x.channelName === channel)!;
   };
+
+  isWhitelist(): boolean {
+    return this.message.setting.whitelist.includes(this.actualChannel) && this.currentStream() == undefined ? true : false;
+  }
 
   async onfetch(url: string, response: string) {
     const currentStream: Stream = await this.currentStream();
@@ -75,20 +79,11 @@ export class Player {
   async onStartChannel(url: string, text: string) {
     const channelName: RegExpExecArray | [] = /hls\/(.*).m3u8/gm.exec(url) || [];
     let existent = false;
-    let whitelist: string[] = [];
 
-    if (!channelName[1]) return false;
+    this.LogPrint("Channel " + channelName[1])
+    this.actualChannel = channelName[1]
 
-    this.actualChannel = channelName[1];
-    this.LogPrint("Channel " + this.actualChannel);
-
-    if (!this.message.setting == undefined) {
-      if (!this.message.setting.whitelist == undefined) {
-        whitelist = this.message.setting.whitelist;
-      }
-    }
-
-    if (whitelist.includes(this.actualChannel)) return false;
+    if (this.isWhitelist()) return false
 
     if (!this.streamList.find((c: Stream) => c.channelName === this.actualChannel)) {
       let proxyUrl = "";
@@ -124,7 +119,7 @@ export class Player {
     //eslint-disable-next-line no-this-assign
     global.fetch = async function (url, options) {
       if (typeof url === "string") {
-        if (url.endsWith("m3u8") && url.includes("ttvnw.net")) {
+        if (url.endsWith("m3u8") && url.includes("ttvnw.net") && !global.player.isWhitelist()) {
           return new Promise(async (resolve, reject) => {
             try {
               await global

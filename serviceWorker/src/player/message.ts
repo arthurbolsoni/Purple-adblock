@@ -1,6 +1,6 @@
 export class PlayerMessage {
   getQuality = () => global.postMessage({ type: "getQuality" });
-  init = () => global.postMessage({ type: "init" });
+  getSetting = () => global.postMessage({ type: "getSetting" });
   pause = () => global.postMessage({ type: "pause" });
   play = () => global.postMessage({ type: "play" });
   pauseAndPlay = () => {
@@ -12,7 +12,7 @@ export class PlayerMessage {
 
   quality: string = "";
   // setting: { proxyUrl: string, toggleProxy: boolean, whiteList: Array<string>};
-  setting: any;
+  setting: { whitelist: string[], toggleProxy: boolean, proxyUrl: string } = { whitelist: [], toggleProxy: true, proxyUrl: "" }
 
   constructor() {
     global.onEventMessage = (e: any) => {
@@ -48,7 +48,8 @@ export class PlayerMessage {
           break;
         }
         case "setSetting": {
-          this.setting = e.data.value;
+          this.setting = { ...this.setting, ...e.data.value }
+          console.log(this.setting);
           break;
         }
         default: {
