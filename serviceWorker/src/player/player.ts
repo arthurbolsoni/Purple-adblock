@@ -8,17 +8,15 @@ export class Player {
   actualChannel: string = "";
   playingAds = false;
 
-  quality: string = "";
-  LogPrint = global.LogPrint;
-
   message = new PlayerMessage();
+  LogPrint = global.LogPrint;
 
   constructor() {
     this.message.init();
   }
 
-  onStartAds = () => {};
-  onEndAds = () => {};
+  onStartAds = () => { };
+  onEndAds = () => { };
 
   isAds = (x: string, allowChange: boolean = false) => {
     // const ads = x.toString().includes("stitched-ad") || x.toString().includes("twitch-client-ad") || x.toString().includes("twitch-ad-quartile");
@@ -47,18 +45,14 @@ export class Player {
       if (!local) currentStream.streamAccess(streams.local);
       if (local) return true;
 
-      const picture = await this.fetchm3u8ByStreamType(streams.picture);
-      if (picture) currentStream.hls.addPlaylist(picture);
-      if (picture) return true;
-
       const external = await this.fetchm3u8ByStreamType(streams.external);
       if (external) currentStream.hls.addPlaylist(external);
       if (external) return true;
 
       console.log("fail");
-      //if not resolve return the 480p to the user.
-      currentStream.hls.addPlaylist(local, true);
-      return true;
+
+      // currentStream.hls.addPlaylist(response, true);
+      return false;
     } catch (e: any) {
       console.log(e.message);
     }
@@ -66,33 +60,27 @@ export class Player {
 
   async fetchm3u8ByStreamType(accessType: streamType): Promise<string> {
     this.LogPrint("Stream Type: " + accessType.name);
-    //filter all server by type
-    const servers = this.currentStream().getStreamServerByStreamType(accessType);
-    if (!servers) return "";
 
-    //filter all server url by quality or bestquality
-    var streamUrlList = servers.map((x) => x.findByQuality(this.message.quality)).filter((x) => x !== undefined);
-    if (!streamUrlList.length) streamUrlList = servers.map((x) => x.bestQuality());
+    const streamUrlList: qualityUrl[] = this.currentStream().getStreamServersByStreamType(accessType, this.message.quality);
 
     //by the array order, try get m3u8 content and return if don't have ads.
     for (const streamUrl of streamUrlList) {
       const text: string = await (await global.realFetch(streamUrl?.url)).text();
       if (this.isAds(text)) continue;
-
       return text;
     }
+
     return "";
   }
   async onStartChannel(url: string, text: string) {
     const channelName: RegExpExecArray | [] = /hls\/(.*).m3u8/gm.exec(url) || [];
-    let stream: Stream;
     let existent = false;
     let whitelist: string[] = [];
 
     if (!channelName[1]) return false;
 
     this.actualChannel = channelName[1];
-    this.LogPrint("Channel " + channelName[1]);
+    this.LogPrint("Channel " + this.actualChannel);
 
     if (!this.message.setting == undefined) {
       if (!this.message.setting.whitelist == undefined) {
@@ -100,23 +88,24 @@ export class Player {
       }
     }
 
-    if (whitelist.includes(channelName[1])) return false;
+    if (whitelist.includes(this.actualChannel)) return false;
 
-    if (!this.streamList.find((c: Stream) => c.channelName === channelName[1])) {
+    if (!this.streamList.find((c: Stream) => c.channelName === this.actualChannel)) {
       let proxyUrl = "";
       if (this.message.setting) proxyUrl = this.message.setting.proxyUrl ? this.message.setting.proxyUrl : "";
-      this.streamList.push(new Stream(channelName[1], proxyUrl));
+      this.streamList.push(new Stream(this.actualChannel, proxyUrl));
     } else {
-      this.LogPrint("Exist: " + channelName[1]);
+      this.LogPrint("Exist: " + this.actualChannel);
+      this.currentStream().serverList = []
       existent = true;
     }
 
-    stream = this.currentStream();
+    const stream = this.currentStream();
     //--------------------------------------------//
 
     //--------------------------------------------//
     this.LogPrint("Local Server: Loading");
-    await stream.addStreamLink(text, "local", true);
+    await stream.addStreamLink(text, "local");
     this.LogPrint("Local Server: OK");
 
     stream.streamAccess(streams.local);
@@ -125,10 +114,8 @@ export class Player {
 
     //if the proxy option on popup is disabled, it is never called.
     if (this.message.setting) {
-      if (this.message.setting.toggleProxy == false) return;
+      if (this.message.setting.toggleProxy) stream.tryExternalPlayer();
     }
-
-    stream.tryExternalPlayer();
 
     return;
   }

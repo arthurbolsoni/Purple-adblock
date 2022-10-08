@@ -14,7 +14,6 @@ console.log("===================================================================
 //manifest build
 const manifest = JSON.parse(fs.readFileSync("./platform/" + platform + "/manifest.json"))
 manifest.version = process.env.npm_package_version;
-manifest.description = process.env.npm_package_description;
 
 if (!fs.existsSync(dirname)) fs.mkdirSync(dirname);
 
