@@ -61,7 +61,7 @@ tabs().query({ active: true, lastFocusedWindow: true }, function (tabs) {
 
     channel = tabs[0].url.replace("https://www.twitch.tv/", "").split("/")[0].split("?")[0];
 
-    whitelist = items.whitelist !== undefined ? items.whitelist : []
+    whitelist = items.whitelist !== undefined ? items.whitelist : [];
 
     if (!whitelist.includes(channel)) {
       document.getElementById("adblocktext").classList.remove("disable");

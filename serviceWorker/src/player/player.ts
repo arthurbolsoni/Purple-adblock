@@ -15,8 +15,8 @@ export class Player {
     this.message.getSetting();
   }
 
-  onStartAds = () => { };
-  onEndAds = () => { };
+  onStartAds = () => {};
+  onEndAds = () => {};
 
   isAds = (x: string, allowChange: boolean = false) => {
     // const ads = x.toString().includes("stitched-ad") || x.toString().includes("twitch-client-ad") || x.toString().includes("twitch-ad-quartile");
@@ -80,10 +80,10 @@ export class Player {
     const channelName: RegExpExecArray | [] = /hls\/(.*).m3u8/gm.exec(url) || [];
     let existent = false;
 
-    this.LogPrint("Channel " + channelName[1])
-    this.actualChannel = channelName[1]
+    this.LogPrint("Channel " + channelName[1]);
+    this.actualChannel = channelName[1];
 
-    if (this.isWhitelist()) return false
+    if (this.isWhitelist()) return false;
 
     if (!this.streamList.find((c: Stream) => c.channelName === this.actualChannel)) {
       let proxyUrl = "";
@@ -91,7 +91,7 @@ export class Player {
       this.streamList.push(new Stream(this.actualChannel, proxyUrl));
     } else {
       this.LogPrint("Exist: " + this.actualChannel);
-      this.currentStream().serverList = []
+      this.currentStream().serverList = [];
       existent = true;
     }
 

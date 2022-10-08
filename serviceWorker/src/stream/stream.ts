@@ -9,7 +9,7 @@ export class Stream {
 
   tunnel = ["https://eu1.jupter.ga/channel/{channelname}", "https://eu2.jupter.ga/channel/{channelname}"];
   currentTunnel: string = this.tunnel[0];
-  
+
   constructor(channelName: string, tunnel: string = "") {
     this.channelName = channelName;
     if (tunnel) this.currentTunnel = tunnel;
@@ -144,7 +144,7 @@ export class Stream {
     if (!servers) return [];
 
     //filter all server url by quality or bestquality
-    const streamUrlList = servers.map((x: streamServer) => x.findByQuality(quality)).filter((x) => x !== undefined) as qualityUrl[]
+    const streamUrlList = servers.map((x: streamServer) => x.findByQuality(quality)).filter((x) => x !== undefined) as qualityUrl[];
     return !streamUrlList.length ? servers.map((x) => x.bestQuality()) : streamUrlList;
   }
 }
