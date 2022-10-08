@@ -1,0 +1,3 @@
+[submodule "purpleadblockserver"]
+	path = purpleadblockserver
+	url = https://github.com/arthurbolsoni/purpleadblockserver

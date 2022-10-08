@@ -1,0 +1,103 @@
+@-moz-document url-prefix() {
+  body {
+    width: 250px;
+  }
+}
+
+html {
+  width: 250px;
+  background: rgb(27, 27, 35);
+  color: white;
+  font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+}
+
+h1 {
+  text-align: center;
+}
+
+p {
+  margin-bottom: 10px;
+}
+
+a {
+  text-align: center;
+  color: white;
+}
+
+.container {
+  height: 120px;
+  position: relative;
+}
+
+.center {
+  font-size: small;
+  margin: 0;
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  -ms-transform: translate(-50%, -50%);
+  transform: translate(-50%, -50%);
+}
+
+.icon {
+  background-color: rgb(13, 65, 133);
+  -webkit-mask: url("../img/power-off.svg") no-repeat center;
+  mask: url("../img/power-off.svg") no-repeat center;
+  width: 100px;
+  height: 100px;
+}
+
+.center:hover {
+  background-color: #363636;
+}
+
+.disable {
+  background-color: grey;
+}
+
+.buttonApply:hover {
+  text-decoration-line: underline;
+  cursor: pointer;
+}
+
+.input::placeholder {
+  color: black;
+}
+
+.textarea {
+  width: 100%;
+  max-width: 100%;
+  height: 150px;
+  background-color: grey;
+  outline: none;
+}
+
+.input {
+  width: 100%;
+  max-width: 100%;
+  height: 20px;
+  background-color: grey;
+  outline: none;
+}
+
+.text {
+  font-family: sans-serif;
+  font-size: 14px;
+}
+
+.buttonSettings {
+  margin-block-start: 0.5em;
+  margin-block-end: 0.5em;
+  color: white;
+  height: 40px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+  cursor: pointer;
+}
+
+.hover:hover {
+  background-color: #363636;
+  text-align: center;
+}

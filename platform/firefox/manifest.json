@@ -1,0 +1,30 @@
+{
+    "browser_action": {
+        "default_title": "Purple Ads Blocker",
+        "default_icon": "images/logov2-128.png",
+        "default_popup": "common/html/popup.html"
+    },
+    "icons": {
+        "128": "images/logov2-128.png"
+    },
+    "manifest_version": 2,
+    "name": "Purple Ads Blocker",
+    "description": "An adblocker for the Twitch.tv using server side signature and local m3u8 manipulation",
+    "author": "kingarthur",
+    "permissions": [
+        "https://*.twitch.tv/*",
+        "activeTab",
+        "storage"
+    ],
+    "content_scripts": [
+        {
+            "matches": [
+                "https://*.twitch.tv/*"
+            ],
+            "run_at": "document_start",
+            "js": [
+                "content-script.js"
+            ]
+        }
+    ]
+}

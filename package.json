@@ -1,18 +1,17 @@
 {
   "name": "purple-adblock",
-  "version": "2.4.2",
+  "version": "2.5.0.4",
   "description": "An adblocker for the Twitch.tv using server side signature and local m3u8 manipulation",
   "scripts": {
     "preinstall": "node cli/preinstall.js",
-    "server:build": "cd server && npm run build",
-    "server:start": "cd server && npm run start",
-    "server:dev": "cd server && npm run dev",
-    "worker:dev": "cd purpleServiceWorker && npm run worker:dev && cd ../ && npm run copyChromeBuild && npm run userscript:build",
-    "worker:prod": "cd purpleServiceWorker && npm run worker:prod && cd ../ && npm run copyChromeBuild && npm run userscript:build",
+    "dev": "set NODE_ENV=development&& npm run worker:dev --prefix serviceWorker && concurrently \"npm run chrome:build && npm run firefox:build\" \"npm run userscript:build\"",
+    "build": "set NODE_ENV=production&& npm run worker:prod --prefix serviceWorker && concurrently \"npm run chrome:build && npm run firefox:build\" \"npm run userscript:build\"",
+    "chrome:build": "node cli/chrome_builder.js",
+    "firefox:build": "node cli/firefox_builder.js",
+    "publish": "node cli/firefox_publish.mjs --input-type=module && node cli/chrome_publish.mjs --input-type=module",
     "userscript:build": "node tampermonkey/build.js",
     "lint-staged": "lint-staged",
-    "lint": "eslint --ext .js,.ts && prettier --write **/*.{js,ts,css,html} --ignore-path .gitignore",
-    "copyChromeBuild": "copyfiles -u 2 ./purpleServiceWorker/dist/bundle.js chrome/app && node cli/builder.js"
+    "lint": "eslint --ext .js,.ts && prettier --write **/*.{js,ts,css,html} --ignore-path .gitignore"
   },
   "repository": "https://github.com/arthurbolsoni/Purple-adblock.git",
   "author": "kingarthur",
@@ -31,28 +30,16 @@
     ]
   },
   "devDependencies": {
-    "@types/node": "^17.0.8",
-    "@typescript-eslint/eslint-plugin": "^5.9.1",
-    "@typescript-eslint/parser": "^5.9.1",
-    "cross-env": "^7.0.3",
-    "eslint": "^7.9.0",
-    "eslint-config-prettier": "^8.3.0",
-    "eslint-plugin-prettier": "^4.0.0",
-    "prettier": "^2.5.1",
-    "ts-loader": "^9.2.6",
-    "ts-node": "^10.4.0",
-    "typescript": "^4.5.4",
-    "webpack": "^5.67.0",
-    "webpack-dev-server": "^4.7.4",
-    "webpack-merge": "^5.8.0"
-  },
-  "dependencies": {
     "archiver": "^5.3.1",
-    "copyfiles": "^2.4.1",
-    "express-rate-limit": "^6.1.0",
+    "concurrently": "^7.4.0",
+    "dotenv": "^16.0.3",
+    "eslint": "^7.9.0",
     "html-webpack-plugin": "^5.5.0",
     "lint-staged": "^12.2.2",
-    "node-fetch": "^3.2.10",
-    "webpack-cli": "^4.9.2"
+    "prettier": "^2.5.1",
+    "sign-addon": "^5.1.0",
+    "ts-loader": "^9.4.1",
+    "typescript": "^4.5.4",
+    "fs-extra": "^10.1.0"
   }
 }

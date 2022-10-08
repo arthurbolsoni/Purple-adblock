@@ -1,16 +1,3 @@
-// ==UserScript==
-// @name         Purple Adblocker
-// @source       https://github.com/arthurbolsoni/Purple-adblock
-// @version      2.5.0.4
-// @description  Per aspera ad astra
-// @author       ArthurBolzoni
-// @downloadURL  https://raw.githubusercontent.com/arthurbolsoni/Purple-adblock/main/tampermonkey/dist/purpleadblocker.user.js
-// @updateURL    https://raw.githubusercontent.com/arthurbolsoni/Purple-adblock/main/tampermonkey/dist/purpleadblocker.user.js
-// @match        *://*.twitch.tv/*
-// @run-at       document-start
-// @grant        none
-// ==/UserScript==
-
 /******/ (() => { // webpackBootstrap
 /******/ 	"use strict";
 /******/ 	var __webpack_modules__ = ({
