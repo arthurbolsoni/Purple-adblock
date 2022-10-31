@@ -1,3 +1,3 @@
 export const Controller = (): ClassDecorator => {
-  return (target) => {}
+  return (target) => {};
 };

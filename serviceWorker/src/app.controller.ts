@@ -1,11 +1,12 @@
 import { Controller } from "./decorator/controller.decorator";
-import { Fetch } from "./decorator/handler.decorator";
+import { Fetch, Message } from "./decorator/handler.decorator";
+import { setting } from "./player/interface/setting.interface";
 import { Player } from "./player/player";
 
 @Controller()
 export class appController {
   getQuality = () => global.postMessage({ type: "getQuality" });
-  getSetting = () => global.postMessage({ type: "getSetting" });
+  getSettings = () => global.postMessage({ type: "getSettings" });
   pause = () => global.postMessage({ type: "pause" });
   play = () => global.postMessage({ type: "play" });
   pauseAndPlay = () => {
@@ -13,13 +14,8 @@ export class appController {
     this.play();
   };
 
-  isLoaded = false;
-
-  quality: string = "";
-  // setting: { proxyUrl: string, toggleProxy: boolean, whiteList: Array<string>};
-  setting: { whitelist: string[]; toggleProxy: boolean; proxyUrl: string } = { whitelist: [], toggleProxy: true, proxyUrl: "" };
-
   constructor(private readonly appService: Player) {
+    this.getSettings();
     global.onEventMessage = (e: any) => {
       // var myMessage = new MessageEvent('worker', { data: 'hello' });
 
@@ -48,13 +44,9 @@ export class appController {
           break;
         }
         case "setQuality": {
-          if (e.data.args) this.quality = e.data.args[0].name;
-          if (e.data.value) this.quality = e.data.value;
           break;
         }
         case "setSetting": {
-          this.setting = { ...this.setting, ...e.data.value };
-          console.log(this.setting);
           break;
         }
         default: {
@@ -83,11 +75,21 @@ export class appController {
         await this.appService.onfetch(url, text);
         const playlist = this.appService.currentStream().hls.getPlaylist();
         return new Response(playlist as any);
-      })
+      });
   }
 
   @Fetch("picture-by-picture")
   async onChannelPicture(url: string, options: any): Promise<Response> {
     return new Response();
+  }
+
+  @Message("setSettings")
+  async setSettings(data: any) {
+    this.appService.settings = data.value;
+  }
+
+  @Message("setQuality")
+  async setQuality(data: any) {
+    this.appService.quality = data.value;
   }
 }

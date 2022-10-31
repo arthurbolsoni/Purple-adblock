@@ -27,8 +27,8 @@ import txt from "../dist/app.worker.js";
         // if (typeof (event.data.type) !== "string") console.log(event.data);
 
         switch (event.data.type) {
-          case "getSetting": {
-            window.postMessage({ type: "getSetting", value: null });
+          case "getSettings": {
+            window.postMessage({ type: "getSettings", value: null });
             break;
           }
           case "PlayerQualityChanged": {
@@ -82,52 +82,12 @@ import txt from "../dist/app.worker.js";
       //Event listener from window and extension.
       window.addEventListener("message", (event) => {
         switch (event.data.type) {
-          case "setSetting": {
+          case "setSettings": {
             //send settings to worker
-            mainWorker.postMessage({ funcName: "setSetting", value: event.data.value });
+            mainWorker.postMessage({ funcName: "setSettings", value: event.data.value });
           }
         }
       });
     }
   };
-
-  // function videoPlayer() {
-  //   try {
-  //     var videoController = null;
-  //     var videoPlayer = null;
-
-  //     function findReactNode(root, constraint) {
-  //       if (root.stateNode && constraint(root.stateNode)) {
-  //         return root.stateNode;
-  //       }
-  //       let node = root.child;
-  //       while (node) {
-  //         const result = findReactNode(node, constraint);
-  //         if (result) {
-  //           return result;
-  //         }
-  //         node = node.sibling;
-  //       }
-  //       return null;
-  //     }
-
-  //     var reactRootNode = null;
-  //     var rootNode = document.querySelector("#root");
-  //     if (
-  //       rootNode &&
-  //       rootNode._reactRootContainer &&
-  //       rootNode._reactRootContainer._internalRoot &&
-  //       rootNode._reactRootContainer._internalRoot.current
-  //     ) {
-  //       reactRootNode = rootNode._reactRootContainer._internalRoot.current;
-  //     }
-  //     videoPlayer = findReactNode(reactRootNode, (node) => node.setPlayerActive && node.props && node.props.mediaPlayerInstance);
-  //     videoPlayer =
-  //       videoPlayer && videoPlayer.props && videoPlayer.props.mediaPlayerInstance ? videoPlayer.props.mediaPlayerInstance : null;
-
-  //     window.videoPlayer = videoPlayer;
-  //   } catch (e) {
-  //     console.log(e);
-  //   }
-  // }
 })();

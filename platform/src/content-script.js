@@ -10,10 +10,10 @@ function init(items) {
   (document.head || document.documentElement).appendChild(s);
 
   window.addEventListener("message", (event) => {
-    if (event.data.type == "getSetting") {
+    if (event.data.type == "getSettings") {
       window.postMessage(
         {
-          type: "setSetting",
+          type: "setSettings",
           value: items,
         },
         "*",

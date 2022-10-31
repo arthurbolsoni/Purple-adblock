@@ -1,12 +1,13 @@
 import { Stream } from "../stream/stream";
 import { streams, streamType } from "../stream/interface/stream.type";
 import { qualityUrl, streamServer } from "../stream/interface/streamServer.types";
+import { setting } from "./interface/setting.interface";
 
 export class Player {
   streamList: Stream[] = [];
   actualChannel: string = "";
   playingAds = false;
-  settings: { whitelist: string[]; toggleProxy: boolean; proxyUrl: string } = { whitelist: [], toggleProxy: true, proxyUrl: "" };
+  settings: setting = { whitelist: [], toggleProxy: true, proxyUrl: "" };
   quality: string = "";
 
   onStartAds = () => {};
@@ -28,6 +29,7 @@ export class Player {
   };
 
   isWhitelist(): boolean {
+    if (!this.settings.whitelist) return false;
     return this.settings.whitelist.includes(this.actualChannel) && this.currentStream() == undefined ? true : false;
   }
 
