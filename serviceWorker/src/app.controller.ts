@@ -1,4 +1,9 @@
-export class PlayerMessage {
+import { Controller } from "./decorator/controller.decorator";
+import { Fetch } from "./decorator/handler.decorator";
+import { Player } from "./player/player";
+
+@Controller()
+export class appController {
   getQuality = () => global.postMessage({ type: "getQuality" });
   getSetting = () => global.postMessage({ type: "getSetting" });
   pause = () => global.postMessage({ type: "pause" });
@@ -14,7 +19,7 @@ export class PlayerMessage {
   // setting: { proxyUrl: string, toggleProxy: boolean, whiteList: Array<string>};
   setting: { whitelist: string[]; toggleProxy: boolean; proxyUrl: string } = { whitelist: [], toggleProxy: true, proxyUrl: "" };
 
-  constructor() {
+  constructor(private readonly appService: Player) {
     global.onEventMessage = (e: any) => {
       // var myMessage = new MessageEvent('worker', { data: 'hello' });
 
@@ -57,5 +62,32 @@ export class PlayerMessage {
         }
       }
     };
+  }
+
+  @Fetch("usher.ttvnw.net/api/channel/hls/", "picture-by-picture")
+  async onChannel(url: string, options: any): Promise<Response> {
+    const response: Response = await global.realFetch(url, options);
+    if (!response.ok) return response;
+
+    return await response.text().then(async (text: string) => {
+      await this.appService.onStartChannel(url, text);
+      return new Response(text);
+    });
+  }
+
+  @Fetch("hls.ttvnw.net/v1/playlist/")
+  async onFetch(url: string, options: any): Promise<Response> {
+    return await realFetch(url, options)
+      .then(async (response: Response) => response.text())
+      .then(async (text: string) => {
+        await this.appService.onfetch(url, text);
+        const playlist = this.appService.currentStream().hls.getPlaylist();
+        return new Response(playlist as any);
+      })
+  }
+
+  @Fetch("picture-by-picture")
+  async onChannelPicture(url: string, options: any): Promise<Response> {
+    return new Response();
   }
 }

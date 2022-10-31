@@ -1,6 +1,6 @@
 import { HLS } from "../hls/HLS";
-import { streams, streamType } from "./type/stream.type";
-import { qualityUrl, streamServer } from "./type/streamServer.types";
+import { streams, streamType } from "./interface/stream.type";
+import { qualityUrl, streamServer } from "./interface/streamServer.types";
 
 export class Stream {
   serverList: streamServer[] = [];

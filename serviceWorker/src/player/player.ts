@@ -1,19 +1,13 @@
 import { Stream } from "../stream/stream";
-import { streams, streamType } from "../stream/type/stream.type";
-import { qualityUrl, streamServer } from "../stream/type/streamServer.types";
-import { PlayerMessage } from "./message";
+import { streams, streamType } from "../stream/interface/stream.type";
+import { qualityUrl, streamServer } from "../stream/interface/streamServer.types";
 
 export class Player {
   streamList: Stream[] = [];
   actualChannel: string = "";
   playingAds = false;
-
-  message = new PlayerMessage();
-  LogPrint = global.LogPrint;
-
-  constructor() {
-    this.message.getSetting();
-  }
+  settings: { whitelist: string[]; toggleProxy: boolean; proxyUrl: string } = { whitelist: [], toggleProxy: true, proxyUrl: "" };
+  quality: string = "";
 
   onStartAds = () => {};
   onEndAds = () => {};
@@ -34,7 +28,7 @@ export class Player {
   };
 
   isWhitelist(): boolean {
-    return this.message.setting.whitelist.includes(this.actualChannel) && this.currentStream() == undefined ? true : false;
+    return this.settings.whitelist.includes(this.actualChannel) && this.currentStream() == undefined ? true : false;
   }
 
   async onfetch(url: string, response: string) {
@@ -63,9 +57,9 @@ export class Player {
   }
 
   async fetchm3u8ByStreamType(accessType: streamType): Promise<string> {
-    this.LogPrint("Stream Type: " + accessType.name);
+    LogPrint("Stream Type: " + accessType.name);
 
-    const streamUrlList: qualityUrl[] = this.currentStream().getStreamServersByStreamType(accessType, this.message.quality);
+    const streamUrlList: qualityUrl[] = this.currentStream().getStreamServersByStreamType(accessType, this.quality);
 
     //by the array order, try get m3u8 content and return if don't have ads.
     for (const streamUrl of streamUrlList) {
@@ -80,17 +74,17 @@ export class Player {
     const channelName: RegExpExecArray | [] = /hls\/(.*).m3u8/gm.exec(url) || [];
     let existent = false;
 
-    this.LogPrint("Channel " + channelName[1]);
+    LogPrint("Channel " + channelName[1]);
     this.actualChannel = channelName[1];
 
     if (this.isWhitelist()) return false;
 
     if (!this.streamList.find((c: Stream) => c.channelName === this.actualChannel)) {
       let proxyUrl = "";
-      if (this.message.setting) proxyUrl = this.message.setting.proxyUrl ? this.message.setting.proxyUrl : "";
+      if (this.settings) proxyUrl = this.settings.proxyUrl ? this.settings.proxyUrl : "";
       this.streamList.push(new Stream(this.actualChannel, proxyUrl));
     } else {
-      this.LogPrint("Exist: " + this.actualChannel);
+      LogPrint("Exist: " + this.actualChannel);
       this.currentStream().serverList = [];
       existent = true;
     }
@@ -99,71 +93,19 @@ export class Player {
     //--------------------------------------------//
 
     //--------------------------------------------//
-    this.LogPrint("Local Server: Loading");
+    LogPrint("Local Server: Loading");
     await stream.addStreamLink(text, "local");
-    this.LogPrint("Local Server: OK");
+    LogPrint("Local Server: OK");
 
     stream.streamAccess(streams.local);
 
     if (existent) return;
 
     //if the proxy option on popup is disabled, it is never called.
-    if (this.message.setting) {
-      if (this.message.setting.toggleProxy) stream.tryExternalPlayer();
+    if (this.settings) {
+      if (this.settings.toggleProxy) stream.tryExternalPlayer();
     }
 
     return;
-  }
-
-  inflateFetch() {
-    //eslint-disable-next-line no-this-assign
-    global.fetch = async function (url, options) {
-      if (typeof url === "string") {
-        if (url.endsWith("m3u8") && url.includes("ttvnw.net") && !global.player.isWhitelist()) {
-          return new Promise(async (resolve, reject) => {
-            try {
-              await global
-                .realFetch(url, options)
-                .then(async (response: Response) => response.text())
-                .then(async (text: string) => {
-                  //send the flow stream to script valitor and classificator
-                  await global.player.onfetch(url, text);
-
-                  var playlist = global.player.currentStream().hls.getPlaylist();
-                  resolve(new Response(playlist as any));
-                });
-            } catch {
-              resolve(new Response());
-            }
-          });
-        }
-
-        if (url.includes("usher.ttvnw.net/api/channel/hls/") && !url.includes("picture-by-picture")) {
-          return new Promise(async (resolve, reject) => {
-            try {
-              const response = await global.realFetch(url, options);
-              if (!response.ok) {
-                resolve(response);
-                //this.LogPrint("channel offline");
-              }
-
-              response.text().then(async (text: string) => {
-                await global.player.onStartChannel(url, text);
-                resolve(new Response(text));
-              });
-            } catch {
-              resolve(new Response());
-            }
-          });
-        }
-
-        if (url.includes("picture-by-picture")) {
-          this.LogPrint("picture-by-picture");
-          return new Response();
-        }
-      }
-
-      return global.realFetch.apply(this, arguments);
-    };
   }
 }
