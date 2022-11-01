@@ -1,4 +1,4 @@
-export const Fetch = (match: string, ignore: string = ""): MethodDecorator => {
+export const Fetch = (match: string, ignore: string | null = null): MethodDecorator => {
   return (target, propertyKey) => {
     if (!global.routerList) global.routerList = [];
     global.routerList.push({ propertyKey: propertyKey as string, match: match, ignore: ignore });

@@ -5,7 +5,7 @@ declare global {
   var realFetch: any;
   var LogPrint: any;
   var onEventMessage: any;
-  var routerList: { propertyKey: string; match: string; ignore: string }[];
+  var routerList: { propertyKey: string; match: string; ignore: string | null}[];
   var messageList: { propertyKey: string; match: string }[];
   var appController: any;
 }
@@ -21,10 +21,8 @@ global.realFetch = global.fetch;
 global.fetch = async (url: any, options: any) => {
   if (typeof url === "string") {
     routerList.forEach((x) => {
-      if (url.includes(x.match)) {
-        if (!url.includes(x.ignore)) {
-          return new Promise(async (resolve, reject) => resolve(await global.appController[x.propertyKey](url, options)));
-        }
+      if (url.includes(x.match) && !url.includes(x.ignore!)) {
+        return new Promise(async (resolve, reject) => resolve(await global.appController[x.propertyKey](url, options)));
       }
     });
   }
