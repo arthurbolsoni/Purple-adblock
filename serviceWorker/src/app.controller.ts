@@ -1,7 +1,7 @@
 import { Controller } from "./decorator/controller.decorator";
 import { Fetch, Message } from "./decorator/handler.decorator";
-import { setting } from "./player/interface/setting.interface";
-import { Player } from "./player/player";
+import { setting } from "./modules/player/interface/setting.interface";
+import { Player } from "./modules/player/player";
 
 @Controller()
 export class appController {
@@ -16,44 +16,44 @@ export class appController {
 
   constructor(private readonly appService: Player) {
     this.getSettings();
-    global.onEventMessage = (e: any) => {
-      // var myMessage = new MessageEvent('worker', { data: 'hello' });
+    // global.onEventMessage = (e: any) => {
+    // var myMessage = new MessageEvent('worker', { data: 'hello' });
 
-      // if (global.onmessage) global.onmessage(this, myMessage);
+    // if (global.onmessage) global.onmessage(this, myMessage);
 
-      switch (e.data.funcName) {
-        case "Buffering": {
-          break;
-        }
-        case "onClientSinkPlaying": {
-          break;
-        }
-        case "onClientSinkUpdate": {
-          break;
-        }
-        case "pause": {
-          break;
-        }
-        case "play": {
-          break;
-        }
-        case "Ready": {
-          break;
-        }
-        case "Playing": {
-          break;
-        }
-        case "setQuality": {
-          break;
-        }
-        case "setSetting": {
-          break;
-        }
-        default: {
-          break;
-        }
-      }
-    };
+    // switch (e.data.funcName) {
+    //   case "Buffering": {
+    //     break;
+    //   }
+    //   case "onClientSinkPlaying": {
+    //     break;
+    //   }
+    //   case "onClientSinkUpdate": {
+    //     break;
+    //   }
+    //   case "pause": {
+    //     break;
+    //   }
+    //   case "play": {
+    //     break;
+    //   }
+    //   case "Ready": {
+    //     break;
+    //   }
+    //   case "Playing": {
+    //     break;
+    //   }
+    //   case "setQuality": {
+    //     break;
+    //   }
+    //   case "setSetting": {
+    //     break;
+    //   }
+    //   default: {
+    //     break;
+    //   }
+    // }
+    // };
   }
 
   @Fetch("usher.ttvnw.net/api/channel/hls/", "picture-by-picture")

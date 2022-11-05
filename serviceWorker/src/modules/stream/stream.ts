@@ -29,9 +29,9 @@ export class Stream {
     const streamList: streamServer = new streamServer({ type: type, urlList: qualityUrlSplit, sig: sig });
     this.serverList.push(streamList);
 
-    if (!sig) {
-      await this.signature();
-    }
+    // if (!sig) {
+    //   await this.signature();
+    // }
     return true;
   }
 
@@ -60,7 +60,7 @@ export class Stream {
   }
 
   //add a new player stream external
-  async externalPlayer(customIgnore: boolean = false): Promise<boolean> {
+  async externalRequest(customIgnore: boolean = false): Promise<boolean> {
     if (customIgnore) this.currentTunnel = this.tunnel[0];
     try {
       global.LogPrint("External Server: Loading");
@@ -84,15 +84,11 @@ export class Stream {
     }
   }
 
-  tryExternalPlayer = async () => {
-    if (!(await this.streamAccess(streams.external))) {
-      this.externalPlayer(true);
-    }
-  };
-
   //create a new stream access
   async streamAccess(stream: streamType): Promise<boolean> {
-    if (stream.name == streams.external.name) return await this.externalPlayer();
+    if (stream.name == streams.external.name) {
+      if (!this.externalRequest()) this.externalRequest(true);
+    }
 
     try {
       const query =

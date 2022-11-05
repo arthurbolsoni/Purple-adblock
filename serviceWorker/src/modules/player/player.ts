@@ -7,7 +7,7 @@ export class Player {
   streamList: Stream[] = [];
   actualChannel: string = "";
   playingAds = false;
-  settings: setting = { whitelist: [], toggleProxy: true, proxyUrl: "" };
+  settings: setting = { whitelist: [], toggleProxy: false, proxyUrl: "", toggleDNS: false };
   quality: string = "";
 
   onStartAds = () => {};
@@ -37,6 +37,7 @@ export class Player {
     const currentStream: Stream = await this.currentStream();
     currentStream.hls.addPlaylist(response);
 
+    if (this.isWhitelist()) return true;
     if (!this.isAds(response, true)) return true;
 
     try {
@@ -50,8 +51,6 @@ export class Player {
       if (external) return true;
 
       console.log("fail");
-
-      // currentStream.hls.addPlaylist(response, true);
       return false;
     } catch (e: any) {
       console.log(e.message);
@@ -74,40 +73,24 @@ export class Player {
   }
   async onStartChannel(url: string, text: string) {
     const channelName: RegExpExecArray | [] = /hls\/(.*).m3u8/gm.exec(url) || [];
-    let existent = false;
 
     LogPrint("Channel " + channelName[1]);
     this.actualChannel = channelName[1];
 
     if (this.isWhitelist()) return false;
 
-    if (!this.streamList.find((c: Stream) => c.channelName === this.actualChannel)) {
-      let proxyUrl = "";
-      if (this.settings) proxyUrl = this.settings.proxyUrl ? this.settings.proxyUrl : "";
-      this.streamList.push(new Stream(this.actualChannel, proxyUrl));
-    } else {
-      LogPrint("Exist: " + this.actualChannel);
-      this.currentStream().serverList = [];
-      existent = true;
-    }
+    this.streamList = [];
+    this.streamList.push(new Stream(this.actualChannel, this.settings.proxyUrl));
 
     const stream = this.currentStream();
-    //--------------------------------------------//
 
-    //--------------------------------------------//
-    LogPrint("Local Server: Loading");
-    await stream.addStreamLink(text, "local");
-    LogPrint("Local Server: OK");
+    await stream.addStreamLink(text, streams.local.name);
 
     stream.streamAccess(streams.local);
 
-    if (existent) return;
+    if (this.settings.toggleProxy) stream.streamAccess(streams.external);
+    if (this.settings.toggleDNS) stream.streamAccess(streams.dns);
 
-    //if the proxy option on popup is disabled, it is never called.
-    if (this.settings) {
-      if (this.settings.toggleProxy) stream.tryExternalPlayer();
-    }
-
-    return;
+    return true;
   }
 }
