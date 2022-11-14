@@ -16,44 +16,6 @@ export class appController {
 
   constructor(private readonly appService: Player) {
     this.getSettings();
-    // global.onEventMessage = (e: any) => {
-    // var myMessage = new MessageEvent('worker', { data: 'hello' });
-
-    // if (global.onmessage) global.onmessage(this, myMessage);
-
-    // switch (e.data.funcName) {
-    //   case "Buffering": {
-    //     break;
-    //   }
-    //   case "onClientSinkPlaying": {
-    //     break;
-    //   }
-    //   case "onClientSinkUpdate": {
-    //     break;
-    //   }
-    //   case "pause": {
-    //     break;
-    //   }
-    //   case "play": {
-    //     break;
-    //   }
-    //   case "Ready": {
-    //     break;
-    //   }
-    //   case "Playing": {
-    //     break;
-    //   }
-    //   case "setQuality": {
-    //     break;
-    //   }
-    //   case "setSetting": {
-    //     break;
-    //   }
-    //   default: {
-    //     break;
-    //   }
-    // }
-    // };
   }
 
   @Fetch("usher.ttvnw.net/api/channel/hls/", "picture-by-picture")

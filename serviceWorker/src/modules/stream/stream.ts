@@ -1,4 +1,5 @@
 import { HLS } from "../hls/HLS";
+import { flowRequest } from "./interface/flowRequest.interface";
 import { streams, streamType } from "./interface/stream.type";
 import { qualityUrl, streamServer } from "./interface/streamServer.types";
 
@@ -10,7 +11,7 @@ export class Stream {
   tunnel = ["https://eu1.jupter.ga/channel/{channelname}", "https://eu2.jupter.ga/channel/{channelname}"];
   currentTunnel: string = this.tunnel[0];
 
-  constructor(channelName: string, tunnel: string = "") {
+  constructor(channelName: string, tunnel?: string) {
     this.channelName = channelName;
     if (tunnel) this.currentTunnel = tunnel;
   }
@@ -58,7 +59,6 @@ export class Stream {
         resolve(false);
     });
   }
-
   //add a new player stream external
   async externalRequest(customIgnore: boolean = false): Promise<boolean> {
     if (customIgnore) this.currentTunnel = this.tunnel[0];
@@ -88,6 +88,7 @@ export class Stream {
   async streamAccess(stream: streamType): Promise<boolean> {
     if (stream.name == streams.external.name) {
       if (!this.externalRequest()) this.externalRequest(true);
+      return false;
     }
 
     try {
@@ -107,11 +108,11 @@ export class Stream {
 
       const gql = await global.realFetch("https://gql.twitch.tv/gql", {
         method: "POST",
-        headers: { "Client-ID": "kimne78kx3ncx6brgo4mv6wki5h1ko" },
+        headers: { "Host": "gql.twitch.tv", "Client-ID": "kimne78kx3ncx6brgo4mv6wki5h1ko" },
         body: JSON.stringify(body),
       });
       const streamDataAccess: any = await gql.json();
-
+      
       const url =
         "https://usher.ttvnw.net/api/channel/hls/" +
         this.channelName +
