@@ -30,9 +30,8 @@ if (process.env.NODE_ENV === "development") {
   const zipFile = archiver("zip", { zlib: { level: 9 } });
   zipFile.pipe(fs.createWriteStream(dirname + "/" + name + fileType));
   zipFile.directory("./platform/src", false);
-  zipFile.directory("./platform/" + platform, false);
   zipFile.file("./serviceWorker/dist/bundle.js", { name: "app/bundle.js" });
-  zipFile.append(Buffer.from(JSON.stringify(manifest)), { name: "./platform/manifest.json" });
+  zipFile.append(Buffer.from(JSON.stringify(manifest)), { name: "manifest.json" });
   zipFile.finalize();
 
   console.log("Build packed to " + dirname + "/" + name + fileType);
