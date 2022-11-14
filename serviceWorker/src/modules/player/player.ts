@@ -78,13 +78,15 @@ export class Player {
     this.actualChannel = channelName[1];
 
     this.streamList = [];
-    this.streamList.push(new Stream(this.actualChannel, this.settings.proxyUrl));
+    this.streamList.push(new Stream(this.actualChannel, this.settings.proxyUrl || ""));
 
     const stream = this.currentStream();
 
     // await stream.addStreamLink(text, streams.local.name);
 
-    if (this.settings.whitelist.includes(this.actualChannel)) return false;
+    if (this.settings.whitelist) {
+      if (this.settings.whitelist.includes(this.actualChannel)) return false;
+    }
     stream.streamAccess(streams.local);
 
     if (this.settings.toggleProxy) stream.streamAccess(streams.external);
