@@ -76,8 +76,7 @@ export class Player {
 
     LogPrint("Channel " + channelName[1]);
     this.actualChannel = channelName[1];
-
-    this.streamList = [];
+    
     this.streamList.push(new Stream(this.actualChannel, this.settings.proxyUrl || ""));
 
     const stream = this.currentStream();
