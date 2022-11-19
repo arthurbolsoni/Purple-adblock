@@ -1,0 +1,25 @@
+# name: server-run
+# on:
+#   push:
+#     branches: [ "master" ]
+#   pull_request:
+#     branches: [ "master" ]
+
+# jobs:
+#   deployToServer:
+#     runs-on: ubuntu-latest
+#     strategy:
+#       matrix:
+#         node-version: [16.x]
+#     steps:
+#       - uses: actions/checkout@v3
+#       - name: execute
+#         uses: appleboy/ssh-action@master
+#         with:
+#           host: ${{secrets.SERVER_IP}}
+#           username: ${{secrets.SSH_USERNAME}}
+#           password: ${{secrets.SSH_PASSWORD}}
+#           script: |
+#             git clone ${{secrets.REPOSITORY}}
+#             pm2 flush ${{secrets.APP_NAME}}
+#             pm2 restart ${{secrets.APP_NAME}}
