@@ -1,6 +1,6 @@
 import { Stream } from "../stream/stream";
 import { streams, streamType } from "../stream/interface/stream.type";
-import { qualityUrl, streamServer } from "../stream/interface/streamServer.types";
+import { qualityUrl } from "../stream/interface/streamServer.types";
 import { setting } from "./interface/setting.interface";
 
 export class Player {
