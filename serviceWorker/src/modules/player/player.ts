@@ -7,18 +7,26 @@ export class Player {
   streamList: Stream[] = [];
   actualChannel: string = "";
   playingAds = false;
-  settings: setting = { whitelist: [], toggleProxy: false, proxyUrl: "", toggleDNS: false };
+  settings: setting = { whitelist: [], toggleProxy: true, proxyUrl: "", toggleDNS: false };
   quality: string = "";
 
-  onStartAds = () => { };
-  onEndAds = () => { };
+  getQuality = () => global.postMessage({ type: "getQuality" });
+  getSettings = () => global.postMessage({ type: "getSettings" });
+  pause = () => global.postMessage({ type: "pause" });
+  play = () => global.postMessage({ type: "play" });
+  pauseAndPlay = () => {
+    this.pause();
+    this.play();
+  };
+  onStartAds = () => { console.log("ads started"); this.pauseAndPlay(); };
+  onEndAds = () => { console.log("ads ended"); this.pauseAndPlay(); };
 
   isAds = (x: string, allowChange: boolean = false) => {
     // const ads = x.toString().includes("stitched-ad") || x.toString().includes("twitch-client-ad") || x.toString().includes("twitch-ad-quartile");
     const ads = x.toString().includes("stitched");
     if (!allowChange) return ads;
-    if (this.playingAds != ads && ads) this.onStartAds();
-    if (this.playingAds != ads && !ads) this.onEndAds();
+    if (this.playingAds == false && this.playingAds != ads) this.onStartAds();
+    if (this.playingAds == true && this.playingAds != ads) this.onEndAds();
     this.playingAds = ads;
 
     return this.playingAds;
@@ -33,28 +41,29 @@ export class Player {
     return this.settings.whitelist.includes(this.actualChannel) && this.currentStream() == undefined ? true : false;
   }
 
-  async onfetch(url: string, response: string) {
-    const currentStream: Stream = await this.currentStream();
-    currentStream.hls.addPlaylist(response);
+  async onfetch(url: string, response: string): Promise<string> {
+    const currentStream: Stream = this.currentStream();
+    // currentStream.hls.addPlaylist(response);
 
-    if (this.isWhitelist()) return true;
-    if (!this.isAds(response, true)) return true;
+    if (this.isWhitelist()) return response;
+    if (!this.isAds(response, true)) return response;
 
     try {
       const local = await this.fetchm3u8ByStreamType(streams.local);
-      if (local) currentStream.hls.addPlaylist(local);
+      // if (local) currentStream.hls.addPlaylist(local);
       if (!local) currentStream.streamAccess(streams.local);
-      if (local) return true;
+      if (local) return local
 
       const external = await this.fetchm3u8ByStreamType(streams.external);
-      if (external) currentStream.hls.addPlaylist(external);
-      if (external) return true;
+      // if (external) currentStream.hls.addPlaylist(external);
+      if (external) return external;
 
-      console.log("fail");
-      return false;
+      console.log("All stream types failed");
     } catch (e: any) {
       console.log(e.message);
     }
+
+    return response;
   }
 
   async fetchm3u8ByStreamType(accessType: streamType): Promise<string> {
@@ -71,24 +80,21 @@ export class Player {
 
     return "";
   }
-  async onStartChannel(url: string, text: string) {
+  async onStartChannel(url: string) {
     const channelName: RegExpExecArray | [] = /hls\/(.*).m3u8/gm.exec(url) || [];
 
-    LogPrint("Channel " + channelName[1]);
+    LogPrint("Loading channel", channelName[1]);
     this.actualChannel = channelName[1];
-    
-    this.streamList.push(new Stream(this.actualChannel, this.settings.proxyUrl || ""));
 
-    const stream = this.currentStream();
+    const currentStream = new Stream(this.actualChannel, this.settings.proxyUrl || "")
 
-    // await stream.addStreamLink(text, streams.local.name);
+    this.streamList.push(currentStream);
 
     if (this.settings.whitelist) {
       if (this.settings.whitelist.includes(this.actualChannel)) return false;
     }
-    stream.streamAccess(streams.local);
 
-    if (this.settings.toggleProxy) stream.streamAccess(streams.external);
+    this.currentStream().streamAccess(streams.external);
 
     return true;
   }

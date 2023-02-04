@@ -1,23 +1,22 @@
-import { HLS } from "../hls/HLS";
-import { flowRequest } from "./interface/flowRequest.interface";
 import { streams, streamType } from "./interface/stream.type";
-import { qualityUrl, streamServer } from "./interface/streamServer.types";
+import { qualityUrl, Server, } from "./interface/streamServer.types";
 
 export class Stream {
-  serverList: streamServer[] = [];
-  hls: HLS = new HLS();
-  channelName: string = "";
-
-  tunnel = ["https://eu1.jupter.ga/channel/{channelname}", "https://eu2.jupter.ga/channel/{channelname}"];
-  currentTunnel: string = this.tunnel[0];
+  serverList: Server[] = [];
+  // hls: HLS = new HLS();
+  channelName: string;
+  currentTunnel: string;
+  tunnelList: string[];
 
   constructor(channelName: string, tunnel?: string) {
+    this.tunnelList = ["https://eu1.jupter.ga/channel/{channelname}"];
+
     this.channelName = channelName;
-    if (tunnel) this.currentTunnel = tunnel;
+    this.currentTunnel = tunnel || this.tunnelList[0];
   }
 
   //add m3u8 links with quality to the list of servers
-  async addStreamLink(text: string, type = "local", sig = true) {
+  async createServer(text: string, type = "local", sig = true) {
     const qualityUrlSplit: qualityUrl[] = [];
     let captureArray: RegExpExecArray | null;
 
@@ -27,7 +26,7 @@ export class Stream {
       qualityUrlSplit.push({ quality: captureArray[1], url: captureArray[2] });
     }
 
-    const streamList: streamServer = new streamServer({ type: type, urlList: qualityUrlSplit, sig: sig });
+    const streamList: Server = new Server({ type: type, urlList: qualityUrlSplit, sig: sig });
     this.serverList.push(streamList);
 
     // if (!sig) {
@@ -36,32 +35,34 @@ export class Stream {
     return true;
   }
 
-  async signature() {
-    const REGEX = /video-weaver.(.*).hls.ttvnw.net\/v1\/playlist\/(.*).m3u8$/gm;
+  // async signature() {
+  //   const REGEX = /video-weaver.(.*).hls.ttvnw.net\/v1\/playlist\/(.*).m3u8$/gm;
 
-    await new Promise((resolve) => {
-      this.serverList
-        .filter((x: any) => x.sig == false)
-        .forEach(async (x: any) => {
-          const match: RegExpExecArray | null = REGEX.exec(x.urlList[0].url);
-          if (match) {
-            try {
-              await fetch("https://jupter.ga/hls/v2/sig/" + match[2] + "/" + match[1]);
-              x.sig = true;
-              resolve(true);
-            } catch {
-              resolve(false);
-            }
-          } else {
-            resolve(false);
-          }
-        }),
-        resolve(false);
-    });
-  }
+  //   await new Promise((resolve) => {
+  //     this.serverList
+  //       .filter((x: any) => x.sig == false)
+  //       .forEach(async (x: any) => {
+  //         const match: RegExpExecArray | null = REGEX.exec(x.urlList[0].url);
+  //         if (match) {
+  //           try {
+  //             await fetch("https://jupter.ga/hls/v2/sig/" + match[2] + "/" + match[1]);
+  //             x.sig = true;
+  //             resolve(true);
+  //           } catch {
+  //             resolve(false);
+  //           }
+  //         } else {
+  //           resolve(false);
+  //         }
+  //       }),
+  //       resolve(false);
+  //   });
+  // }
+
   //add a new player stream external
   async externalRequest(customIgnore: boolean = false): Promise<boolean> {
-    if (customIgnore) this.currentTunnel = this.tunnel[0];
+    if (customIgnore) this.currentTunnel = this.tunnelList[0];
+
     try {
       global.LogPrint("External Server: Loading");
       const response: Response = await global.realFetch(this.currentTunnel.replace("{channelname}", this.channelName));
@@ -74,7 +75,7 @@ export class Stream {
 
       global.LogPrint("External Server: OK");
 
-      this.addStreamLink(text, streams.external.name);
+      this.createServer(text, streams.external.name);
 
       return true;
     } catch (e) {
@@ -92,27 +93,30 @@ export class Stream {
     }
 
     try {
-      const query =
-        'query PlaybackAccessToken_Template($login: String!, $isLive: Boolean!, $vodID: ID!, $isVod: Boolean!, $playerType: String!) {  streamPlaybackAccessToken(channelName: $login, params: {platform: "web", playerBackend: "mediaplayer", playerType: $playerType}) @include(if: $isLive) {    value    signature    __typename  }  videoPlaybackAccessToken(id: $vodID, params: {platform: "web", playerBackend: "mediaplayer", playerType: $playerType}) @include(if: $isVod) {    value    signature    __typename  }}';
-      const body = {
-        operationName: "PlaybackAccessToken_Template",
-        query: query,
-        variables: {
-          isLive: true,
-          login: this.channelName,
-          isVod: false,
-          vodID: "",
-          playerType: stream.playerType,
+      const query = {
+        "operationName": "PlaybackAccessToken",
+        "variables": {
+          "isLive": true,
+          "login": this.channelName,
+          "isVod": false,
+          "vodID": "",
+          "playerType": stream.playerType
         },
-      };
+        "extensions": {
+          "persistedQuery": {
+            "version": 1,
+            "sha256Hash": "0828119ded1c13477966434e15800ff57ddacf13ba1911c129dc2200705b0712"
+          }
+        }
+      }
 
       const gql = await global.realFetch("https://gql.twitch.tv/gql", {
         method: "POST",
         headers: { "Host": "gql.twitch.tv", "Client-ID": "kimne78kx3ncx6brgo4mv6wki5h1ko" },
-        body: JSON.stringify(body),
+        body: JSON.stringify(query),
       });
       const streamDataAccess: any = await gql.json();
-      
+
       const url =
         "https://usher.ttvnw.net/api/channel/hls/" +
         this.channelName +
@@ -126,7 +130,7 @@ export class Stream {
 
       global.LogPrint("Server loaded " + stream.name);
 
-      this.addStreamLink(text, stream.name);
+      this.createServer(text, stream.name);
 
       return true;
     } catch (e) {
@@ -141,7 +145,7 @@ export class Stream {
     if (!servers) return [];
 
     //filter all server url by quality or bestquality
-    const streamUrlList = servers.map((x: streamServer) => x.findByQuality(quality)).filter((x) => x !== undefined) as qualityUrl[];
+    const streamUrlList = servers.map((x: Server) => x.findByQuality(quality)).filter((x) => x !== undefined) as qualityUrl[];
     return !streamUrlList.length ? servers.map((x) => x.bestQuality()) : streamUrlList;
   }
 }
