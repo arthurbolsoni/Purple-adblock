@@ -1,5 +1,5 @@
-import { StreamType } from "./interface/stream.type";
-import { qualityUrl, Server, } from "./interface/streamServer.types";
+import { StreamType } from "./interface/stream.enum";
+import { Server, StreamUrl } from "./interface/stream.types";
 
 export class Stream {
   serverList: Server[] = [];
@@ -16,7 +16,7 @@ export class Stream {
 
   //add m3u8 links with quality to the list of servers
   createServer(text: string, type = "local", sig = true): void {
-    const qualityUrlSplit: qualityUrl[] = [];
+    const qualityUrlSplit: StreamUrl[] = [];
     let captureArray: RegExpExecArray | null;
 
     const REGEX = /NAME="((?:\S+\s+\S+|\S+))",AUTO(?:^|\S+\s+)(?:^|\S+\s+)(https:\/\/video(\S+).m3u8)/g;
@@ -56,21 +56,21 @@ export class Stream {
 
     try {
       const query = {
-        "operationName": "PlaybackAccessToken",
-        "variables": {
-          "isLive": true,
-          "login": this.channelName,
-          "isVod": false,
-          "vodID": "",
-          "playerType": stream
+        operationName: "PlaybackAccessToken",
+        variables: {
+          isLive: true,
+          login: this.channelName,
+          isVod: false,
+          vodID: "",
+          playerType: stream,
         },
-        "extensions": {
-          "persistedQuery": {
-            "version": 1,
-            "sha256Hash": "0828119ded1c13477966434e15800ff57ddacf13ba1911c129dc2200705b0712"
-          }
-        }
-      }
+        extensions: {
+          persistedQuery: {
+            version: 1,
+            sha256Hash: "0828119ded1c13477966434e15800ff57ddacf13ba1911c129dc2200705b0712",
+          },
+        },
+      };
 
       const gql = await global.realFetch("https://gql.twitch.tv/gql", {
         method: "POST",
@@ -101,13 +101,13 @@ export class Stream {
     }
   }
 
-  getStreamServersByStreamType(accessType: StreamType, quality: string): qualityUrl[] {
+  getStreamServersByStreamType(accessType: StreamType, quality: string): StreamUrl[] {
     //filter all server by type
     const servers = this.serverList.filter((x) => x.type == accessType);
     if (!servers) return [];
 
     //filter all server url by quality or bestquality
-    const streamUrlList = servers.map((x: Server) => x.findByQuality(quality)).filter((x) => x !== undefined) as qualityUrl[];
+    const streamUrlList = servers.map((x: Server) => x.findByQuality(quality)).filter((x) => x !== undefined) as StreamUrl[];
     return !streamUrlList.length ? servers.map((x) => x.bestQuality()) : streamUrlList;
   }
 }

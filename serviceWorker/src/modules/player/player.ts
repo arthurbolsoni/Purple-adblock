@@ -1,7 +1,7 @@
 import { Stream } from "../stream/stream";
 import { Setting } from "./interface/setting.interface";
-import { StreamType } from "../stream/interface/stream.type";
-import { qualityUrl } from "../stream/interface/streamServer.types";
+import { StreamType } from "../stream/interface/stream.enum";
+import { StreamUrl } from "../stream/interface/stream.types";
 
 export class Player {
   streamList: Stream[] = [];
@@ -14,7 +14,7 @@ export class Player {
     this.setting = setting;
     if (this.setting?.toggleProxy && this.setting?.proxyUrl) this.currentStream().currentTunnel = this.setting?.proxyUrl;
     LogPrint("Settings set");
-  }
+  };
   getQuality = () => global.postMessage({ type: "getQuality" });
   getSettings = () => global.postMessage({ type: "getSettings" });
   pause = () => global.postMessage({ type: "pause" });
@@ -23,8 +23,15 @@ export class Player {
     this.pause();
     this.play();
   };
-  onStartAds = () => { console.log("ads started"); this.pauseAndPlay(); };
-  onEndAds = () => { console.log("ads ended"); this.pauseAndPlay(); this.pauseAndPlay(); };
+  onStartAds = () => {
+    console.log("ads started");
+    this.pauseAndPlay();
+  };
+  onEndAds = () => {
+    console.log("ads ended");
+    this.pauseAndPlay();
+    this.pauseAndPlay();
+  };
 
   isAds = (x: string, allowChange: boolean = false) => {
     // const ads = x.toString().includes("stitched-ad") || x.toString().includes("twitch-client-ad") || x.toString().includes("twitch-ad-quartile");
@@ -43,7 +50,7 @@ export class Player {
 
   isWhitelist(): boolean {
     if (!this.setting?.whitelist) return false;
-    return this.setting?.whitelist?.includes(this.actualChannel)
+    return this.setting?.whitelist?.includes(this.actualChannel);
   }
 
   async onFetch(text: string): Promise<string> {
@@ -51,8 +58,8 @@ export class Player {
     if (!this.isAds(text, true)) return text;
 
     const local = await this.fetchm3u8ByStreamType(StreamType.EMBED);
-    if (!local) this.currentStream().CreateStreamAccess(StreamType.EMBED)
-    if (local) return local
+    if (!local) this.currentStream().CreateStreamAccess(StreamType.EMBED);
+    if (local) return local;
 
     const external = await this.fetchm3u8ByStreamType(StreamType.EXTERNAL);
     if (external) return external;
@@ -65,7 +72,7 @@ export class Player {
   async fetchm3u8ByStreamType(accessType: StreamType): Promise<string | null> {
     LogPrint("Stream Type: " + accessType);
 
-    const streamUrlList: qualityUrl[] = this.currentStream().getStreamServersByStreamType(accessType, this.quality);
+    const streamUrlList: StreamUrl[] = this.currentStream().getStreamServersByStreamType(accessType, this.quality);
 
     //by the array order, try get m3u8 content and return if don't have ads.
     for (const streamUrl of streamUrlList) {

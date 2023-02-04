@@ -1,10 +1,10 @@
-export class qualityUrl {
+export class StreamUrl {
   url: string = "";
   quality: string = "";
 }
 export class Server {
   type!: string;
-  urlList!: qualityUrl[];
+  urlList!: StreamUrl[];
   sig!: boolean;
 
   bestQuality = () => {

@@ -1,7 +1,5 @@
-import fs from "fs";
-import archiver from "archiver";
 import { signAddon } from 'sign-addon';
-import dotenv from "dotenv"
+import dotenv from "dotenv";
 
 dotenv.config()
 console.log("Signing package .xpi with AMO")
