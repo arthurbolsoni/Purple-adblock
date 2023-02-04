@@ -26,7 +26,7 @@ import txt from "../dist/app.worker.js";
         // if (typeof (event.data.type) !== "string") console.log(event.data.arg);
         // if (typeof (event.data.type) !== "string") console.log(event.data);
 
-        switch (event.data.type) {
+        switch (event?.data?.type) {
           case "getSettings": {
             window.postMessage({ type: "getSettings", value: null });
             break;
@@ -48,8 +48,7 @@ import txt from "../dist/app.worker.js";
           }
         }
 
-        if (!event.data.arg) return;
-        switch (event.data.arg.key) {
+        switch (event?.data?.arg?.key) {
           case "quality": {
             if (!event.data.arg.value.name) break;
             console.log("Changed quality by player: " + event.data.arg.value.name);
@@ -64,7 +63,7 @@ import txt from "../dist/app.worker.js";
           }
         }
 
-        switch (event.data.arg.name) {
+        switch (event?.data?.arg?.name) {
           case "pause": {
             break;
           }

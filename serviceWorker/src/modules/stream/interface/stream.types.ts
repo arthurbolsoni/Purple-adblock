@@ -1,10 +1,10 @@
-export class qualityUrl {
+export class StreamUrl {
   url: string = "";
   quality: string = "";
 }
-export class streamServer {
+export class Server {
   type!: string;
-  urlList!: qualityUrl[];
+  urlList!: StreamUrl[];
   sig!: boolean;
 
   bestQuality = () => {
@@ -12,7 +12,7 @@ export class streamServer {
   };
   findByQuality = (quality: string) => this.urlList.find((x) => x.quality == quality);
 
-  constructor(partial: Partial<streamServer>) {
+  constructor(partial: Partial<Server>) {
     Object.assign(this, partial);
   }
 }

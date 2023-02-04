@@ -1,6 +1,6 @@
 {
   "name": "purple-adblock",
-  "version": "2.5.0.10",
+  "version": "2.5.1",
   "description": "An adblocker for the Twitch.tv using server side signature and local m3u8 manipulation",
   "scripts": {
     "preinstall": "node cli/preinstall.js",
@@ -35,7 +35,6 @@
     "dotenv": "^16.0.3",
     "eslint": "^7.9.0",
     "fs-extra": "^10.1.0",
-    "html-webpack-plugin": "^5.5.0",
     "lint-staged": "^12.2.2",
     "prettier": "^2.5.1",
     "sign-addon": "^5.1.0",

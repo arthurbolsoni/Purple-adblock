@@ -1,18 +1,10 @@
 import { Controller } from "./decorator/controller.decorator";
 import { Fetch, Message } from "./decorator/handler.decorator";
-import { setting } from "./modules/player/interface/setting.interface";
 import { Player } from "./modules/player/player";
 
 @Controller()
 export class appController {
-  getQuality = () => global.postMessage({ type: "getQuality" });
   getSettings = () => global.postMessage({ type: "getSettings" });
-  pause = () => global.postMessage({ type: "pause" });
-  play = () => global.postMessage({ type: "play" });
-  pauseAndPlay = () => {
-    this.pause();
-    this.play();
-  };
 
   constructor(private readonly appService: Player) {
     this.getSettings();
@@ -20,24 +12,22 @@ export class appController {
 
   @Fetch("usher.ttvnw.net/api/channel/hls/", "picture-by-picture")
   async onChannel(url: string, options: any): Promise<Response> {
-    const response: Response = await global.realFetch(url, options);
-    if (!response.ok) return response;
+    const response: Response = await global.request(url, options);
+    if (!response.ok) {
+      console.log("Error on channel load");
+      return response;
+    }
 
-    return await response.text().then(async (text: string) => {
-      await this.appService.onStartChannel(url, text);
-      return new Response(text);
-    });
+    const text = await response.text();
+    await this.appService.onStartChannel(url);
+    return new Response(text);
   }
 
   @Fetch("hls.ttvnw.net/v1/playlist/")
   async onFetch(url: string, options: any): Promise<Response> {
-    return await realFetch(url, options)
-      .then(async (response: Response) => response.text())
-      .then(async (text: string) => {
-        await this.appService.onfetch(url, text);
-        const playlist = this.appService.currentStream().hls.getPlaylist();
-        return new Response(playlist as any);
-      });
+    const body: string = await (await request(url, options)).text();
+    const playlist = await this.appService.onFetch(body);
+    return new Response(playlist);
   }
 
   @Fetch("picture-by-picture")
@@ -47,7 +37,7 @@ export class appController {
 
   @Message("setSettings")
   async setSettings(data: any) {
-    this.appService.settings = data.value;
+    this.appService.setSettings(data);
   }
 
   @Message("setQuality")

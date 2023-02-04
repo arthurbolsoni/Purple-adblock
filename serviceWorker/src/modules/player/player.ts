@@ -1,24 +1,44 @@
 import { Stream } from "../stream/stream";
-import { streams, streamType } from "../stream/interface/stream.type";
-import { qualityUrl, streamServer } from "../stream/interface/streamServer.types";
-import { setting } from "./interface/setting.interface";
+import { Setting } from "./interface/setting.interface";
+import { StreamType } from "../stream/interface/stream.enum";
+import { StreamUrl } from "../stream/interface/stream.types";
 
 export class Player {
   streamList: Stream[] = [];
   actualChannel: string = "";
   playingAds = false;
-  settings: setting = { whitelist: [], toggleProxy: false, proxyUrl: "", toggleDNS: false };
+  setting: Setting | undefined;
   quality: string = "";
 
-  onStartAds = () => { };
-  onEndAds = () => { };
+  setSettings = (setting: Setting) => {
+    this.setting = setting;
+    if (this.setting?.toggleProxy && this.setting?.proxyUrl) this.currentStream().currentTunnel = this.setting?.proxyUrl;
+    logPrint("Settings set");
+  };
+  getQuality = () => global.postMessage({ type: "getQuality" });
+  getSettings = () => global.postMessage({ type: "getSettings" });
+  pause = () => global.postMessage({ type: "pause" });
+  play = () => global.postMessage({ type: "play" });
+  pauseAndPlay = () => {
+    this.pause();
+    this.play();
+  };
+  onStartAds = () => {
+    console.log("ads started");
+    this.pauseAndPlay();
+  };
+  onEndAds = () => {
+    console.log("ads ended");
+    this.pauseAndPlay();
+    this.pauseAndPlay();
+  };
 
   isAds = (x: string, allowChange: boolean = false) => {
     // const ads = x.toString().includes("stitched-ad") || x.toString().includes("twitch-client-ad") || x.toString().includes("twitch-ad-quartile");
     const ads = x.toString().includes("stitched");
     if (!allowChange) return ads;
-    if (this.playingAds != ads && ads) this.onStartAds();
-    if (this.playingAds != ads && !ads) this.onEndAds();
+    if (this.playingAds == false && this.playingAds != ads) this.onStartAds();
+    if (this.playingAds == true && this.playingAds != ads) this.onEndAds();
     this.playingAds = ads;
 
     return this.playingAds;
@@ -29,67 +49,48 @@ export class Player {
   };
 
   isWhitelist(): boolean {
-    if (!this.settings.whitelist) return false;
-    return this.settings.whitelist.includes(this.actualChannel) && this.currentStream() == undefined ? true : false;
+    if (!this.setting?.whitelist) return false;
+    return this.setting?.whitelist?.includes(this.actualChannel);
   }
 
-  async onfetch(url: string, response: string) {
-    const currentStream: Stream = await this.currentStream();
-    currentStream.hls.addPlaylist(response);
+  async onFetch(text: string): Promise<string> {
+    if (this.isWhitelist()) return text;
+    if (!this.isAds(text, true)) return text;
 
-    if (this.isWhitelist()) return true;
-    if (!this.isAds(response, true)) return true;
+    const local = await this.fetchm3u8ByStreamType(StreamType.EMBED);
+    if (!local) this.currentStream().CreateStreamAccess(StreamType.EMBED);
+    if (local) return local;
 
-    try {
-      const local = await this.fetchm3u8ByStreamType(streams.local);
-      if (local) currentStream.hls.addPlaylist(local);
-      if (!local) currentStream.streamAccess(streams.local);
-      if (local) return true;
+    const external = await this.fetchm3u8ByStreamType(StreamType.EXTERNAL);
+    if (external) return external;
 
-      const external = await this.fetchm3u8ByStreamType(streams.external);
-      if (external) currentStream.hls.addPlaylist(external);
-      if (external) return true;
+    console.log("All stream types failed");
 
-      console.log("fail");
-      return false;
-    } catch (e: any) {
-      console.log(e.message);
-    }
+    return text;
   }
 
-  async fetchm3u8ByStreamType(accessType: streamType): Promise<string> {
-    LogPrint("Stream Type: " + accessType.name);
+  async fetchm3u8ByStreamType(accessType: StreamType): Promise<string | null> {
+    logPrint("Stream Type: " + accessType);
 
-    const streamUrlList: qualityUrl[] = this.currentStream().getStreamServersByStreamType(accessType, this.quality);
+    const streamUrlList: StreamUrl[] = this.currentStream().getStreamServersByStreamType(accessType, this.quality);
 
     //by the array order, try get m3u8 content and return if don't have ads.
     for (const streamUrl of streamUrlList) {
-      const text: string = await (await global.realFetch(streamUrl?.url)).text();
+      const text: string = await (await global.request(streamUrl?.url)).text();
       if (this.isAds(text)) continue;
       return text;
     }
-
-    return "";
+    return null;
   }
-  async onStartChannel(url: string, text: string) {
+  async onStartChannel(url: string): Promise<void> {
     const channelName: RegExpExecArray | [] = /hls\/(.*).m3u8/gm.exec(url) || [];
 
-    LogPrint("Channel " + channelName[1]);
+    logPrint("Loading channel", channelName[1]);
     this.actualChannel = channelName[1];
-    
-    this.streamList.push(new Stream(this.actualChannel, this.settings.proxyUrl || ""));
 
-    const stream = this.currentStream();
-
-    // await stream.addStreamLink(text, streams.local.name);
-
-    if (this.settings.whitelist) {
-      if (this.settings.whitelist.includes(this.actualChannel)) return false;
-    }
-    stream.streamAccess(streams.local);
-
-    if (this.settings.toggleProxy) stream.streamAccess(streams.external);
-
-    return true;
+    const currentStream = new Stream(this.actualChannel);
+    currentStream.CreateStreamAccess(StreamType.EXTERNAL);
+    this.streamList.push(currentStream);
+    return;
   }
 }
