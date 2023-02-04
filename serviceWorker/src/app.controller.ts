@@ -1,6 +1,5 @@
 import { Controller } from "./decorator/controller.decorator";
 import { Fetch, Message } from "./decorator/handler.decorator";
-import { setting } from "./modules/player/interface/setting.interface";
 import { Player } from "./modules/player/player";
 
 @Controller()
@@ -27,8 +26,8 @@ export class appController {
   @Fetch("hls.ttvnw.net/v1/playlist/")
   async onFetch(url: string, options: any): Promise<Response> {
     const body: string = await (await realFetch(url, options)).text();
-    const playlist = await this.appService.onfetch(url, body);
-    return new Response(playlist as any);
+    const playlist = await this.appService.onFetch(body);
+    return new Response(playlist);
   }
 
   @Fetch("picture-by-picture")
@@ -38,7 +37,7 @@ export class appController {
 
   @Message("setSettings")
   async setSettings(data: any) {
-    this.appService.settings = data.value;
+    this.appService.setSettings(data);
   }
 
   @Message("setQuality")

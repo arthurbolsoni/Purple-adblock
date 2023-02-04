@@ -1,15 +1,20 @@
 import { Stream } from "../stream/stream";
-import { streams, streamType } from "../stream/interface/stream.type";
+import { Setting } from "./interface/setting.interface";
+import { StreamType } from "../stream/interface/stream.type";
 import { qualityUrl } from "../stream/interface/streamServer.types";
-import { setting } from "./interface/setting.interface";
 
 export class Player {
   streamList: Stream[] = [];
   actualChannel: string = "";
   playingAds = false;
-  settings: setting = { whitelist: [], toggleProxy: true, proxyUrl: "", toggleDNS: false };
+  setting: Setting | undefined;
   quality: string = "";
 
+  setSettings = (setting: Setting) => {
+    this.setting = setting;
+    if (this.setting?.toggleProxy && this.setting?.proxyUrl) this.currentStream().currentTunnel = this.setting?.proxyUrl;
+    LogPrint("Settings set");
+  }
   getQuality = () => global.postMessage({ type: "getQuality" });
   getSettings = () => global.postMessage({ type: "getSettings" });
   pause = () => global.postMessage({ type: "pause" });
@@ -19,7 +24,7 @@ export class Player {
     this.play();
   };
   onStartAds = () => { console.log("ads started"); this.pauseAndPlay(); };
-  onEndAds = () => { console.log("ads ended"); this.pauseAndPlay(); };
+  onEndAds = () => { console.log("ads ended"); this.pauseAndPlay(); this.pauseAndPlay(); };
 
   isAds = (x: string, allowChange: boolean = false) => {
     // const ads = x.toString().includes("stitched-ad") || x.toString().includes("twitch-client-ad") || x.toString().includes("twitch-ad-quartile");
@@ -37,37 +42,28 @@ export class Player {
   };
 
   isWhitelist(): boolean {
-    if (!this.settings.whitelist) return false;
-    return this.settings.whitelist.includes(this.actualChannel) && this.currentStream() == undefined ? true : false;
+    if (!this.setting?.whitelist) return false;
+    return this.setting?.whitelist?.includes(this.actualChannel)
   }
 
-  async onfetch(url: string, response: string): Promise<string> {
-    const currentStream: Stream = this.currentStream();
-    // currentStream.hls.addPlaylist(response);
+  async onFetch(text: string): Promise<string> {
+    if (this.isWhitelist()) return text;
+    if (!this.isAds(text, true)) return text;
 
-    if (this.isWhitelist()) return response;
-    if (!this.isAds(response, true)) return response;
+    const local = await this.fetchm3u8ByStreamType(StreamType.EMBED);
+    if (!local) this.currentStream().CreateStreamAccess(StreamType.EMBED)
+    if (local) return local
 
-    try {
-      const local = await this.fetchm3u8ByStreamType(streams.local);
-      // if (local) currentStream.hls.addPlaylist(local);
-      if (!local) currentStream.streamAccess(streams.local);
-      if (local) return local
+    const external = await this.fetchm3u8ByStreamType(StreamType.EXTERNAL);
+    if (external) return external;
 
-      const external = await this.fetchm3u8ByStreamType(streams.external);
-      // if (external) currentStream.hls.addPlaylist(external);
-      if (external) return external;
+    console.log("All stream types failed");
 
-      console.log("All stream types failed");
-    } catch (e: any) {
-      console.log(e.message);
-    }
-
-    return response;
+    return text;
   }
 
-  async fetchm3u8ByStreamType(accessType: streamType): Promise<string> {
-    LogPrint("Stream Type: " + accessType.name);
+  async fetchm3u8ByStreamType(accessType: StreamType): Promise<string | null> {
+    LogPrint("Stream Type: " + accessType);
 
     const streamUrlList: qualityUrl[] = this.currentStream().getStreamServersByStreamType(accessType, this.quality);
 
@@ -77,25 +73,17 @@ export class Player {
       if (this.isAds(text)) continue;
       return text;
     }
-
-    return "";
+    return null;
   }
-  async onStartChannel(url: string) {
+  async onStartChannel(url: string): Promise<void> {
     const channelName: RegExpExecArray | [] = /hls\/(.*).m3u8/gm.exec(url) || [];
 
     LogPrint("Loading channel", channelName[1]);
     this.actualChannel = channelName[1];
 
-    const currentStream = new Stream(this.actualChannel, this.settings.proxyUrl || "")
-
+    const currentStream = new Stream(this.actualChannel);
+    currentStream.CreateStreamAccess(StreamType.EXTERNAL);
     this.streamList.push(currentStream);
-
-    if (this.settings.whitelist) {
-      if (this.settings.whitelist.includes(this.actualChannel)) return false;
-    }
-
-    this.currentStream().streamAccess(streams.external);
-
-    return true;
+    return;
   }
 }

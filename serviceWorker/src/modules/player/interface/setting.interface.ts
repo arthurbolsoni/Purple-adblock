@@ -1,6 +1,5 @@
-export interface setting {
+export type Setting = {
   whitelist: string[];
   toggleProxy: boolean;
   proxyUrl: string;
-  toggleDNS: boolean;
 }
