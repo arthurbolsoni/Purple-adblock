@@ -66,7 +66,7 @@ export class Player {
 
     console.log("All stream types failed");
 
-    return "";
+    return text;
   }
 
   async fetchm3u8ByStreamType(accessType: StreamType): Promise<string | null> {
