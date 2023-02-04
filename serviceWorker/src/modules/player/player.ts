@@ -13,7 +13,7 @@ export class Player {
   setSettings = (setting: Setting) => {
     this.setting = setting;
     if (this.setting?.toggleProxy && this.setting?.proxyUrl) this.currentStream().currentTunnel = this.setting?.proxyUrl;
-    LogPrint("Settings set");
+    logPrint("Settings set");
   };
   getQuality = () => global.postMessage({ type: "getQuality" });
   getSettings = () => global.postMessage({ type: "getSettings" });
@@ -66,17 +66,17 @@ export class Player {
 
     console.log("All stream types failed");
 
-    return text;
+    return "";
   }
 
   async fetchm3u8ByStreamType(accessType: StreamType): Promise<string | null> {
-    LogPrint("Stream Type: " + accessType);
+    logPrint("Stream Type: " + accessType);
 
     const streamUrlList: StreamUrl[] = this.currentStream().getStreamServersByStreamType(accessType, this.quality);
 
     //by the array order, try get m3u8 content and return if don't have ads.
     for (const streamUrl of streamUrlList) {
-      const text: string = await (await global.realFetch(streamUrl?.url)).text();
+      const text: string = await (await global.request(streamUrl?.url)).text();
       if (this.isAds(text)) continue;
       return text;
     }
@@ -85,7 +85,7 @@ export class Player {
   async onStartChannel(url: string): Promise<void> {
     const channelName: RegExpExecArray | [] = /hls\/(.*).m3u8/gm.exec(url) || [];
 
-    LogPrint("Loading channel", channelName[1]);
+    logPrint("Loading channel", channelName[1]);
     this.actualChannel = channelName[1];
 
     const currentStream = new Stream(this.actualChannel);

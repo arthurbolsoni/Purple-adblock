@@ -2,22 +2,21 @@ import { appController } from "./app.controller";
 import { Player } from "./modules/player/player";
 
 declare global {
-  var realFetch: any;
-  var LogPrint: any;
-  var onEventMessage: any;
+  var request: any;
+  var logPrint: any;
   var routerList: { propertyKey: string; match: string; ignore: string | null }[];
   var messageList: { propertyKey: string; match: string }[];
   var appController: any;
 }
 
 export default function app() {
-  global.LogPrint = (x: any) => console.log("[Purple]: ", x);
+  global.logPrint = (x: any) => console.log("[Purple]: ", x);
   global.appController = new appController(new Player());
 
-  global.LogPrint("Script running");
+  global.logPrint("Script running");
 }
 
-global.realFetch = global.fetch;
+global.request = global.fetch;
 global.fetch = async (url: any, options: any) => {
   if (typeof url === "string") {
     for (var i = 0, len = routerList.length; i < len; i++) {
@@ -26,7 +25,7 @@ global.fetch = async (url: any, options: any) => {
       }
     }
   }
-  return global.realFetch.apply(this, [url, options]);
+  return global.request.apply(this, [url, options]);
 };
 
 global.addEventListener("message", (e: any) => {

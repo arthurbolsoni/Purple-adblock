@@ -12,7 +12,7 @@ export class appController {
 
   @Fetch("usher.ttvnw.net/api/channel/hls/", "picture-by-picture")
   async onChannel(url: string, options: any): Promise<Response> {
-    const response: Response = await global.realFetch(url, options);
+    const response: Response = await global.request(url, options);
     if (!response.ok) {
       console.log("Error on channel load");
       return response;
@@ -25,7 +25,7 @@ export class appController {
 
   @Fetch("hls.ttvnw.net/v1/playlist/")
   async onFetch(url: string, options: any): Promise<Response> {
-    const body: string = await (await realFetch(url, options)).text();
+    const body: string = await (await request(url, options)).text();
     const playlist = await this.appService.onFetch(body);
     return new Response(playlist);
   }

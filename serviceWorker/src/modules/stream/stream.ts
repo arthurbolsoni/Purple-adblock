@@ -32,17 +32,17 @@ export class Stream {
   //add a new player stream external
   async externalRequest(ignoreCustom: boolean = false): Promise<boolean> {
     if (ignoreCustom) this.currentTunnel = this.tunnelList[0];
-    LogPrint("External Server: Loading");
+    logPrint("External Server: Loading");
 
     try {
-      const response: Response = await global.realFetch(this.currentTunnel.replace("{channelname}", this.channelName));
-      if (!response.ok) LogPrint("Server proxy return error", this.currentTunnel, response.status);
+      const response: Response = await global.request(this.currentTunnel.replace("{channelname}", this.channelName));
+      if (!response.ok) logPrint("Server proxy return error", this.currentTunnel, response.status);
 
       this.createServer(await response.text(), StreamType.EXTERNAL);
-      LogPrint("External Server: OK");
+      logPrint("External Server: OK");
       return true;
     } catch (e) {
-      LogPrint("Server proxy return error", this.currentTunnel, e);
+      logPrint("Server proxy return error", this.currentTunnel, e);
       return false;
     }
   }
@@ -72,7 +72,7 @@ export class Stream {
         },
       };
 
-      const gql = await global.realFetch("https://gql.twitch.tv/gql", {
+      const gql = await global.request("https://gql.twitch.tv/gql", {
         method: "POST",
         headers: { "Host": "gql.twitch.tv", "Client-ID": "kimne78kx3ncx6brgo4mv6wki5h1ko" },
         body: JSON.stringify(query),
@@ -88,9 +88,9 @@ export class Stream {
         streamDataAccess.data.streamPlaybackAccessToken.signature +
         "&supported_codecs=avc1&token=" +
         streamDataAccess.data.streamPlaybackAccessToken.value;
-      const text = await (await global.realFetch(url)).text();
+      const text = await (await global.request(url)).text();
 
-      LogPrint("Server loaded " + stream);
+      logPrint("Server loaded " + stream);
 
       this.createServer(text, stream);
 
