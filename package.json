@@ -38,6 +38,7 @@
     "lint-staged": "^12.2.2",
     "prettier": "^2.5.1",
     "sign-addon": "^5.1.0",
+    "terser-webpack-plugin": "^5.3.6",
     "ts-loader": "^9.4.1",
     "typescript": "^4.5.4"
   }
