@@ -15,8 +15,7 @@
     "manifest_version": 3,
     "permissions": [
         "activeTab",
-        "storage",
-        "scripting"
+        "storage"
     ],
     "host_permissions": [
         "https://*.twitch.tv/*"
