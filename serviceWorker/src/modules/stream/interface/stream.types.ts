@@ -10,7 +10,7 @@ export class Server {
   bestQuality = () => {
     return this.urlList[0];
   };
-  findByQuality = (quality: string) => this.urlList.find((x) => x.quality == quality);
+  findByQuality = (quality: string) => this.urlList.find((x) => x.quality == quality)
 
   constructor(partial: Partial<Server>) {
     Object.assign(this, partial);

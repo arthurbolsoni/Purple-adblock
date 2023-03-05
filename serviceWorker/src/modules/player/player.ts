@@ -1,7 +1,7 @@
 import { Stream } from "../stream/stream";
 import { Setting } from "./interface/setting.interface";
 import { StreamType } from "../stream/interface/stream.enum";
-import { StreamUrl } from "../stream/interface/stream.types";
+import { Server, StreamUrl } from "../stream/interface/stream.types";
 
 export class Player {
   streamList: Stream[] = [];
@@ -12,7 +12,7 @@ export class Player {
 
   setSettings = (setting: Setting) => {
     this.setting = setting;
-    if (this.setting?.toggleProxy && this.setting?.proxyUrl) this.currentStream().currentTunnel = this.setting?.proxyUrl;
+    if (this.setting?.toggleProxy && this.setting?.proxyUrl) this.currentStream()?.tunnelList?.push(this.setting?.proxyUrl);
     logPrint("Settings set");
   };
   getQuality = () => global.postMessage({ type: "getQuality" });
@@ -37,8 +37,8 @@ export class Player {
     // const ads = x.toString().includes("stitched-ad") || x.toString().includes("twitch-client-ad") || x.toString().includes("twitch-ad-quartile");
     const ads = x.toString().includes("stitched");
     if (!allowChange) return ads;
-    if (this.playingAds == false && this.playingAds != ads) this.onStartAds();
-    if (this.playingAds == true && this.playingAds != ads) this.onEndAds();
+    // if (this.playingAds == false && this.playingAds != ads) this.onStartAds();
+    // if (this.playingAds == true && this.playingAds != ads) this.onEndAds();
     this.playingAds = ads;
 
     return this.playingAds;
@@ -67,21 +67,32 @@ export class Player {
     console.log("All stream types failed");
 
     return text;
+    // return this.currentStream().defaultScreen();
   }
 
   async fetchm3u8ByStreamType(accessType: StreamType): Promise<string | null> {
     logPrint("Stream Type: " + accessType);
 
-    const streamUrlList: StreamUrl[] = this.currentStream().getStreamServersByStreamType(accessType, this.quality);
+    let servers: Server[] = this.currentStream().getStreamByStreamType(accessType);
 
-    //by the array order, try get m3u8 content and return if don't have ads.
-    for (const streamUrl of streamUrlList) {
+    for (const server of servers) {
+      //filter server url by quality or bestquality
+      const streamUrl = server.findByQuality(this.quality) || server.bestQuality();
+
+      //try get m3u8 content and return if don't have ads.
       const text: string = await (await global.request(streamUrl?.url)).text();
-      if (this.isAds(text)) continue;
+      if (this.isAds(text)) {
+        logPrint("Stream Type: " + accessType + " - Ads found");
+        this.currentStream().removeServer(server);
+        continue;
+      }
+
       return text;
     }
+
     return null;
   }
+
   async onStartChannel(url: string): Promise<void> {
     const channelName: RegExpExecArray | [] = /hls\/(.*).m3u8/gm.exec(url) || [];
 
