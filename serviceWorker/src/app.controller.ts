@@ -19,7 +19,9 @@ export class appController {
     }
 
     const text = await response.text();
-    await this.appService.onStartChannel(url);
+    const channelName = /hls\/(.*).m3u8/gm.exec(url) || [];
+
+    await this.appService.onStartChannel(channelName[1]);
     return new Response(text);
   }
 
