@@ -2,10 +2,9 @@ import { StreamType } from "./interface/stream.enum";
 import { Server, StreamUrl } from "./interface/stream.types";
 
 export class Stream {
-  serverList: Server[] = [];
-  data: string[] = [];
-  channelName: string;
-  tunnelList: string[];
+  serverList: Server[] = []; //the list of servers links m3u8
+  tunnelList: string[]; //the list of tunnel links
+  channelName: string; //the channel name
 
   constructor(channelName: string) {
     this.tunnelList = ["https://eu1.jupter.ga/channel/{channelname}", "https://eu2.jupter.ga/channel/{channelname}"];
@@ -42,6 +41,48 @@ export class Stream {
   }
 
   //add a new player stream external
+  async localRequest(playerType: string, operationName: string): Promise<void> {
+    try {
+      const query = 'query PlaybackAccessToken_Template($login: String!, $isLive: Boolean!, $vodID: ID!, $isVod: Boolean!, $playerType: String!) { streamPlaybackAccessToken(channelName: $login, params: {platform: "web", playerBackend: "mediaplayer", playerType: $playerType}) @include(if: $isLive) { value signature __typename } videoPlaybackAccessToken(id: $vodID, params: {platform: "web", playerBackend: "mediaplayer", playerType: $playerType}) @include(if: $isVod) { value signature __typename }}'
+      const body = {
+        operationName: operationName,
+        query: query,
+        variables: {
+          isLive: true,
+          login: this.channelName,
+          isVod: false,
+          vodID: "",
+          playerType: playerType,
+        },
+      };
+
+      const gql = await global.request("https://gql.twitch.tv/gql", {
+        method: "POST",
+        headers: { "Host": "gql.twitch.tv", "Client-ID": "kimne78kx3ncx6brgo4mv6wki5h1ko" },
+        body: JSON.stringify(body),
+      });
+      const streamDataAccess: any = await gql.json();
+
+      const url =
+        "https://usher.ttvnw.net/api/channel/hls/" +
+        this.channelName +
+        ".m3u8?allow_source=true&fast_bread=true&p=" +
+        Math.floor(Math.random() * 1e7) +
+        "&player_backend=mediaplayer&playlist_include_framerate=true&reassignments_supported=false&sig=" +
+        streamDataAccess.data.streamPlaybackAccessToken.signature +
+        "&supported_codecs=avc1&token=" +
+        streamDataAccess.data.streamPlaybackAccessToken.value;
+      const text = await (await global.request(url)).text();
+
+      logPrint("Server loaded " + playerType);
+
+      this.createServer(text, playerType);
+    } catch (e) {
+      logPrint(e);
+    }
+  }
+
+  //add a new player stream external
   async externalRequest(): Promise<void> {
     logPrint("External Server: Loading");
 
@@ -63,57 +104,13 @@ export class Stream {
   }
 
   //create a new stream access
-  async CreateStreamAccess(stream: StreamType): Promise<boolean> {
+  async createStreamAccess(stream: StreamType): Promise<void> {
     if (stream == StreamType.EXTERNAL) {
       await this.externalRequest();
-      return false;
+      return;
     }
 
-    try {
-      const query = {
-        operationName: "PlaybackAccessToken",
-        variables: {
-          isLive: true,
-          login: this.channelName,
-          isVod: false,
-          vodID: "",
-          playerType: stream,
-        },
-        extensions: {
-          persistedQuery: {
-            version: 1,
-            sha256Hash: "0828119ded1c13477966434e15800ff57ddacf13ba1911c129dc2200705b0712",
-          },
-        },
-      };
-
-      const gql = await global.request("https://gql.twitch.tv/gql", {
-        method: "POST",
-        headers: { "Host": "gql.twitch.tv", "Client-ID": "kimne78kx3ncx6brgo4mv6wki5h1ko" },
-        body: JSON.stringify(query),
-      });
-      const streamDataAccess: any = await gql.json();
-
-      const url =
-        "https://usher.ttvnw.net/api/channel/hls/" +
-        this.channelName +
-        ".m3u8?allow_source=true&fast_bread=true&p=" +
-        Math.floor(Math.random() * 1e7) +
-        "&player_backend=mediaplayer&playlist_include_framerate=true&reassignments_supported=false&sig=" +
-        streamDataAccess.data.streamPlaybackAccessToken.signature +
-        "&supported_codecs=avc1&token=" +
-        streamDataAccess.data.streamPlaybackAccessToken.value;
-      const text = await (await global.request(url)).text();
-
-      logPrint("Server loaded " + stream);
-
-      this.createServer(text, stream);
-
-      return true;
-    } catch (e) {
-      console.log(e);
-      return false;
-    }
+    await this.localRequest(stream, "PlaybackAccessToken_Template");
   }
 
   getStreamByStreamType(accessType: StreamType): Server[] {

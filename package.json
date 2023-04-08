@@ -41,5 +41,8 @@
     "terser-webpack-plugin": "^5.3.6",
     "ts-loader": "^9.4.1",
     "typescript": "^4.5.4"
+  },
+  "dependencies": {
+    "m3u8-parser": "^6.0.0"
   }
 }

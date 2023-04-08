@@ -8,7 +8,10 @@
     "worker:prod": "npm run app:prod && npm run provider:prod"
   },
   "devDependencies": {
-    "webpack-cli": "^4.9.2",
-    "webpack": "^5.67.0"
+    "webpack": "^5.67.0",
+    "webpack-cli": "^4.9.2"
+  },
+  "dependencies": {
+    "m3u8-parser": "^6.0.0"
   }
 }
