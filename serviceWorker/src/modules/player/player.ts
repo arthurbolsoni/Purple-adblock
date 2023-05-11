@@ -2,7 +2,7 @@ import { Stream } from "../stream/stream";
 import { Setting } from "./interface/setting.interface";
 import { StreamType } from "../stream/interface/stream.enum";
 import { Server } from "../stream/interface/stream.types";
-import { Parser } from 'm3u8-parser';
+import { Parser } from "m3u8-parser";
 
 export class Player {
   streamList: Stream[] = []; //the list of streams that are currently being played
@@ -101,7 +101,7 @@ export class Player {
   }
 
   mergeM3u8Contents(conteudosM3u8: string[]): string {
-    const manifestos = conteudosM3u8.map(conteudo => {
+    const manifestos = conteudosM3u8.map((conteudo) => {
       const analisador = new Parser();
 
       analisador.push(conteudo);
@@ -128,20 +128,18 @@ export class Player {
     const manifestosSuporte = manifestos.slice(1);
 
     if (manifestoPrincipal.segments) {
-
       console.log("Segmentos encontrados no manifesto principal:", manifestoPrincipal.segments.length);
       console.log("Manifestos de suporte encontrados:", manifestosSuporte.length);
 
       // Percorrer os segmentos do manifesto principal e preencher as lacunas com os segmentos do manifesto de suporte
       for (let i = 0; i < manifestoPrincipal.segments.length; i++) {
-
         const segmentoPrincipal = manifestoPrincipal.segments[i];
-        const hasAmazon = segmentoPrincipal.title && (segmentoPrincipal.title.includes("Amazon") || segmentoPrincipal.title.includes("DCM"));
+        const hasAmazon =
+          segmentoPrincipal.title && (segmentoPrincipal.title.includes("Amazon") || segmentoPrincipal.title.includes("DCM"));
 
         if (hasAmazon) {
-          manifestosSuporte.forEach(manifestoSuporte => {
+          manifestosSuporte.forEach((manifestoSuporte) => {
             if (manifestoSuporte.segments) {
-
               // Encontre o primeiro segmento de suporte que NÃO contenha o título "Amazon" e tenha um tempo semelhante ao segmentoPrincipal (ignorando milissegundos)
               const segmentoSuporte = manifestoSuporte.segments.find((seg: any) => {
                 if (!seg.title.includes("Amazon") && seg.title.includes("DCM")) {
@@ -163,7 +161,7 @@ export class Player {
                 manifestoPrincipal.segments[i] = segmentoSuporte;
               }
             }
-          })
+          });
 
           manifestoPrincipal.segments.splice(i, 1);
           i--;
@@ -174,7 +172,7 @@ export class Player {
 
     // Criar uma nova lista de reprodução M3U8 com os segmentos mesclados
     const conteudoM3u8Mesclado = this.generateM3u8(manifestoPrincipal);
-    console.log("Conteúdo M3U8 mesclado:", conteudoM3u8Mesclado);
+    // console.log("Conteúdo M3U8 mesclado:", conteudoM3u8Mesclado);
     return conteudoM3u8Mesclado;
   }
 
@@ -185,7 +183,7 @@ export class Player {
     let servers: Server[] = this.currentStream().getStreamByStreamType(accessType);
 
     for (const server of servers) {
-      //filter server url by quality or bestquality 
+      //filter server url by quality or bestquality
       const streamUrl = server.findByQuality(this.quality) || server.bestQuality();
 
       //try get m3u8 content and return if don't have ads.
