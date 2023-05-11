@@ -59,19 +59,21 @@ export class Player {
     if (!this.isAds(text, true)) return this.mergeM3u8Contents([text]);
 
     let dump: string[] = [];
+    this.currentStream().createStreamAccess(StreamType.FRONTPAGE);
+    this.currentStream().createStreamAccess(StreamType.EXTERNAL);
+
     const frontpage = await this.fetchm3u8ByStreamType(StreamType.FRONTPAGE);
-    if (!frontpage.data) this.currentStream().createStreamAccess(StreamType.FRONTPAGE);
     if (frontpage.data) return this.mergeM3u8Contents([frontpage.data, ...dump]);
     dump = dump.concat(frontpage.dump);
 
     const external = await this.fetchm3u8ByStreamType(StreamType.EXTERNAL);
+    if (!external.data) this.currentStream().createStreamAccess(StreamType.EXTERNAL);
     if (external.data) return this.mergeM3u8Contents([external.data, ...dump]);
     dump = dump.concat(external.dump);
 
     console.log("All stream types failed");
 
     return this.mergeM3u8Contents([text, ...dump]);
-    // return this.currentStream().defaultScreen();
   }
 
   generateM3u8(manifest: any): string {

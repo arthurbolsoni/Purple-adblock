@@ -9,7 +9,7 @@
     "chrome:build": "node cli/chrome_builder.js",
     "firefox:build": "node cli/firefox_builder.js",
     "publish": "node cli/firefox_publish.mjs --input-type=module && node cli/chrome_publish.mjs --input-type=module",
-    "userscript:build": "node tampermonkey/build.js",
+    "userscript:build": "node platform/tampermonkey/build.js",
     "lint-staged": "lint-staged",
     "lint": "eslint --ext .js,.ts && prettier --write **/*.{js,ts,css,html} --ignore-path .gitignore"
   },
