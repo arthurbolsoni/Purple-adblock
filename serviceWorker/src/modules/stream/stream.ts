@@ -2,16 +2,20 @@ import { StreamType } from "./interface/stream.enum";
 import { Server, StreamUrl } from "./interface/stream.types";
 
 export class Stream {
-  serverList: Server[] = [];
-  channelName: string;
-  currentTunnel: string;
-  tunnelList: string[];
+  serverList: Server[] = []; //the list of servers links m3u8
+  tunnelList: string[]; //the list of tunnel links
+  tunnelListHls: string[]; //the list of tunnel links
+  channelName: string; //the channel name
 
   constructor(channelName: string) {
-    this.tunnelList = ["https://eu1.jupter.ga/channel/{channelname}"];
-
+    this.tunnelList = ["https://eu1.jupter.ga/channel/{channelname}", "https://eu2.jupter.ga/channel/{channelname}"];
+    this.tunnelListHls = ["https://eu1.jupter.ga/channel/hls/{channelname}"];
     this.channelName = channelName;
-    this.currentTunnel = this.tunnelList[0];
+  }
+
+  removeServer(server: Server): void {
+    const index = this.serverList.indexOf(server);
+    if (index > -1) this.serverList.splice(index, 1);
   }
 
   //add m3u8 links with quality to the list of servers
@@ -30,84 +34,110 @@ export class Stream {
   }
 
   //add a new player stream external
-  async externalRequest(ignoreCustom: boolean = false): Promise<boolean> {
-    if (ignoreCustom) this.currentTunnel = this.tunnelList[0];
-    logPrint("External Server: Loading");
-
+  async localRequest(playerType: string, complete = true): Promise<string> {
     try {
-      const response: Response = await global.request(this.currentTunnel.replace("{channelname}", this.channelName));
-      if (!response.ok) logPrint("Server proxy return error", this.currentTunnel, response.status);
-
-      this.createServer(await response.text(), StreamType.EXTERNAL);
-      logPrint("External Server: OK");
-      return true;
-    } catch (e) {
-      logPrint("Server proxy return error", this.currentTunnel, e);
-      return false;
-    }
-  }
-
-  //create a new stream access
-  async CreateStreamAccess(stream: StreamType): Promise<boolean> {
-    if (stream == StreamType.EXTERNAL) {
-      if (!this.externalRequest()) this.externalRequest(true);
-      return false;
-    }
-
-    try {
-      const query = {
-        operationName: "PlaybackAccessToken",
+      const query =
+        'query PlaybackAccessToken_Template($login: String!, $isLive: Boolean!, $vodID: ID!, $isVod: Boolean!, $playerType: String!) { streamPlaybackAccessToken(channelName: $login, params: {platform: "web", playerBackend: "mediaplayer", playerType: $playerType}) @include(if: $isLive) { value signature __typename } videoPlaybackAccessToken(id: $vodID, params: {platform: "web", playerBackend: "mediaplayer", playerType: $playerType}) @include(if: $isVod) { value signature __typename }}';
+      const body = {
+        operationName: "PlaybackAccessToken_Template",
+        query: query,
         variables: {
           isLive: true,
           login: this.channelName,
           isVod: false,
           vodID: "",
-          playerType: stream,
-        },
-        extensions: {
-          persistedQuery: {
-            version: 1,
-            sha256Hash: "0828119ded1c13477966434e15800ff57ddacf13ba1911c129dc2200705b0712",
-          },
+          playerType: playerType,
         },
       };
 
       const gql = await global.request("https://gql.twitch.tv/gql", {
         method: "POST",
         headers: { "Host": "gql.twitch.tv", "Client-ID": "kimne78kx3ncx6brgo4mv6wki5h1ko" },
-        body: JSON.stringify(query),
+        body: JSON.stringify(body),
       });
       const streamDataAccess: any = await gql.json();
 
-      const url =
-        "https://usher.ttvnw.net/api/channel/hls/" +
-        this.channelName +
-        ".m3u8?allow_source=true&fast_bread=true&p=" +
+      const params =
+        "allow_source=true&fast_bread=true&p=" +
         Math.floor(Math.random() * 1e7) +
         "&player_backend=mediaplayer&playlist_include_framerate=true&reassignments_supported=false&sig=" +
         streamDataAccess.data.streamPlaybackAccessToken.signature +
         "&supported_codecs=avc1&token=" +
         streamDataAccess.data.streamPlaybackAccessToken.value;
-      const text = await (await global.request(url)).text();
 
-      logPrint("Server loaded " + stream);
+      if (!complete) return params;
 
-      this.createServer(text, stream);
+      const text = await (await global.request("https://usher.ttvnw.net/api/channel/hls/" + this.channelName + ".m3u8?" + params)).text();
 
-      return true;
+      logPrint("Server loaded " + playerType);
+
+      this.createServer(text, playerType);
+
+      return text;
     } catch (e) {
-      console.log(e);
-      return false;
+      logPrint(e);
+      return "";
     }
   }
 
-  getStreamServersByStreamType(accessType: StreamType, quality: string): StreamUrl[] {
+  //add a new player stream external
+  async externalRequest(): Promise<void> {
+    logPrint("External Server: Loading");
+
+    const urls = this.tunnelList.map((x) => x.replace("{channelname}", this.channelName));
+
+    urls.forEach(async (currentTunnel) => {
+      try {
+        const response: Response = await global.request(currentTunnel);
+        if (!response.ok) logPrint("Server proxy return error", currentTunnel, response);
+
+        this.createServer(await response.text(), StreamType.EXTERNAL);
+        logPrint("External Server: OK");
+        return true;
+      } catch (e) {
+        logPrint("Server proxy return error", currentTunnel, e);
+        return false;
+      }
+    });
+  }
+
+  //add a new player stream external
+  async externalRequest2(stream: StreamType): Promise<void> {
+    logPrint("External Server 2: Loading");
+
+    const url = this.tunnelListHls[0].replace("{channelname}", this.channelName);
+    const params = await this.localRequest(stream, false);
+    const m3u8 = await fetch(url, { method: "POST", body: params });
+
+    if (!m3u8.ok) {
+      logPrint("Server proxy return error", this.tunnelListHls[0], m3u8);
+      return;
+    }
+
+    const text = await m3u8.text();
+
+    this.createServer(text, StreamType.EXTERNAL);
+
+    logPrint("External Server 2: OK");
+  }
+
+  //create a new stream access
+  async createStreamAccess(stream: StreamType): Promise<void> {
+    if (stream == StreamType.EXTERNAL) {
+      this.externalRequest2(StreamType.SITE);
+      this.externalRequest2(StreamType.FRONTPAGE);
+      this.externalRequest();
+      return;
+    }
+
+    await this.localRequest(stream);
+  }
+
+  getStreamByStreamType(accessType: StreamType): Server[] {
     //filter all server by type
     const servers = this.serverList.filter((x) => x.type == accessType);
     if (!servers) return [];
 
-    //filter all server url by quality or bestquality
-    const streamUrlList = servers.map((x: Server) => x.findByQuality(quality)).filter((x) => x !== undefined) as StreamUrl[];
-    return !streamUrlList.length ? servers.map((x) => x.bestQuality()) : streamUrlList;
+    return servers;
   }
 }

@@ -19,6 +19,6 @@ const build = `// ==UserScript==
 
 ${raw}`;
 
-if (!fs.existsSync("tampermonkey/dist")) fs.mkdirSync("tampermonkey/dist");
+if (!fs.existsSync("platform/tampermonkey/dist")) fs.mkdirSync("platform/tampermonkey/dist");
 
-fs.writeFileSync("tampermonkey/dist/purpleadblocker.user.js", build);
+fs.writeFileSync("platform/tampermonkey/dist/purpleadblocker.user.js", build);

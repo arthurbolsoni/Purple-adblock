@@ -1,6 +1,6 @@
 {
   "name": "purple-adblock",
-  "version": "2.5.1",
+  "version": "2.5.5",
   "description": "An adblocker for the Twitch.tv using server side signature and local m3u8 manipulation",
   "scripts": {
     "preinstall": "node cli/preinstall.js",
@@ -9,7 +9,7 @@
     "chrome:build": "node cli/chrome_builder.js",
     "firefox:build": "node cli/firefox_builder.js",
     "publish": "node cli/firefox_publish.mjs --input-type=module && node cli/chrome_publish.mjs --input-type=module",
-    "userscript:build": "node tampermonkey/build.js",
+    "userscript:build": "node platform/tampermonkey/build.js",
     "lint-staged": "lint-staged",
     "lint": "eslint --ext .js,.ts && prettier --write **/*.{js,ts,css,html} --ignore-path .gitignore"
   },
@@ -38,7 +38,11 @@
     "lint-staged": "^12.2.2",
     "prettier": "^2.5.1",
     "sign-addon": "^5.1.0",
+    "terser-webpack-plugin": "^5.3.6",
     "ts-loader": "^9.4.1",
     "typescript": "^4.5.4"
+  },
+  "dependencies": {
+    "m3u8-parser": "^6.0.0"
   }
 }
