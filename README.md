@@ -1,7 +1,7 @@
 <div align="center">
 
-<img src="https://github.com/arthurbolsoni/Purple-adblock/raw/main/chrome/images/logov2-128.png">
-
+<img src="https://github.com/arthurbolsoni/Purple-adblock/raw/main/platform/src/images/logov2-128.png">
+     
 # Purple Adblock
 
 An adblocker for Twitch
