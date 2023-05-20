@@ -11,21 +11,24 @@ export class Player {
   setting: Setting | undefined; //the settings
   quality: string = ""; //the quality of the stream
 
-  setSettings = (setting: Setting) => {
-    this.setting = setting;
-    if (this.setting?.toggleProxy && this.setting?.proxyUrl) this.currentStream()?.tunnelList?.push(this.setting?.proxyUrl);
-    logPrint("Settings set");
-  };
   getQuality = () => global.postMessage({ type: "getQuality" });
   getSettings = () => global.postMessage({ type: "getSettings" });
   pause = () => global.postMessage({ type: "pause" });
   play = () => global.postMessage({ type: "play" });
+
+  setSettings = (setting: Setting) => {
+    this.setting = setting;
+    if (this.setting?.toggleProxy && this.setting?.proxyUrl) this.currentStream()?.tunnelList?.push(this.setting?.proxyUrl);
+    logPrint("Settings loaded");
+  };
+
   pauseAndPlay = () => {
     this.pause();
     this.play();
   };
   onStartAds = () => {
     console.log("ads started");
+    this.pauseAndPlay();
     this.pauseAndPlay();
   };
   onEndAds = () => {
@@ -36,7 +39,7 @@ export class Player {
 
   isAds = (x: string, allowChange: boolean = false) => {
     // const ads = x.toString().includes("stitched-ad") || x.toString().includes("twitch-client-ad") || x.toString().includes("twitch-ad-quartile");
-    const ads = x.toString().includes("stitched");
+    const ads = x?.toString().includes("stitched") || x?.toString().includes("Amazon") || x?.toString().includes("DCM");
     if (!allowChange) return ads;
     if (this.playingAds == false && this.playingAds != ads) this.onStartAds();
     if (this.playingAds == true && this.playingAds != ads) this.onEndAds();
@@ -46,12 +49,11 @@ export class Player {
   };
 
   currentStream = (channel: string = this.actualChannel): Stream => {
-    return this.streamList.find((x: Stream) => x.channelName === channel)!;
+    return this.streamList?.find((x: Stream) => x.channelName === channel)!;
   };
 
   isWhitelist(): boolean {
-    if (!this.setting?.whitelist) return false;
-    return this.setting?.whitelist?.includes(this.actualChannel);
+    return this.setting?.whitelist?.includes(this.actualChannel) || false;
   }
 
   async onFetch(text: string): Promise<string> {
@@ -60,15 +62,14 @@ export class Player {
 
     let dump: string[] = [];
     this.currentStream().createStreamAccess(StreamType.FRONTPAGE);
-    this.currentStream().createStreamAccess(StreamType.EXTERNAL);
+    this.currentStream().createStreamAccess(StreamType.SITE);
 
     const frontpage = await this.fetchm3u8ByStreamType(StreamType.FRONTPAGE);
-    if (frontpage.data) return this.mergeM3u8Contents([frontpage.data, ...dump]);
+    // if (frontpage.data) return this.mergeM3u8Contents([frontpage.data, ...dump]);
     dump = dump.concat(frontpage.dump);
 
     const external = await this.fetchm3u8ByStreamType(StreamType.EXTERNAL);
-    if (!external.data) this.currentStream().createStreamAccess(StreamType.EXTERNAL);
-    if (external.data) return this.mergeM3u8Contents([external.data, ...dump]);
+    // if (external.data) return this.mergeM3u8Contents([external.data, ...dump]);
     dump = dump.concat(external.dump);
 
     console.log("All stream types failed");
@@ -201,13 +202,11 @@ export class Player {
     return { data: null, dump: dump };
   }
 
-  async onStartChannel(channelName: string): Promise<void> {
+  setChannel(channelName: string) {
     logPrint("Loading channel", channelName);
     this.actualChannel = channelName;
 
     const currentStream = new Stream(this.actualChannel);
-    currentStream.createStreamAccess(StreamType.EXTERNAL);
     this.streamList.push(currentStream);
-    return;
   }
 }

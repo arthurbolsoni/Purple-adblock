@@ -3,7 +3,7 @@ import { Fetch, Message } from "./decorator/handler.decorator";
 import { Player } from "./modules/player/player";
 
 @Controller()
-export class appController {
+export class AppController {
   getSettings = () => global.postMessage({ type: "getSettings" });
 
   constructor(private readonly appService: Player) {
@@ -21,7 +21,7 @@ export class appController {
     const text = await response.text();
     const channelName = /hls\/(.*).m3u8/gm.exec(url) || [];
 
-    await this.appService.onStartChannel(channelName[1]);
+    await this.appService.setChannel(channelName[1]);
     return new Response(text);
   }
 

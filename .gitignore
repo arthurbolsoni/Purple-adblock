@@ -158,10 +158,10 @@ out
 
 # End of https://www.toptal.com/developers/gitignore/api/node,git
 
-!tampermonkey/dist/purpleadblocker.user.js
+!platform/tampermonkey/dist/purpleadblocker.user.js
 *.zip
 *.xpi
-**/dist
+/dist/
 serviceWorker/dist/
 .env
 serviceWorker/dist/app.worker.js

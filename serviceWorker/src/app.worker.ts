@@ -1,4 +1,4 @@
-import { appController } from "./app.controller";
+import { AppController } from "./app.controller";
 import { Player } from "./modules/player/player";
 
 declare global {
@@ -11,7 +11,7 @@ declare global {
 
 export default function app() {
   global.logPrint = (x: any) => console.log("[Purple]: ", x);
-  global.appController = new appController(new Player());
+  global.appController = new AppController(new Player());
 
   global.logPrint("Script running");
 }
