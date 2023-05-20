@@ -161,7 +161,7 @@ out
 !platform/tampermonkey/dist/purpleadblocker.user.js
 *.zip
 *.xpi
-**/dist
+/dist/
 serviceWorker/dist/
 .env
 serviceWorker/dist/app.worker.js
