@@ -62,14 +62,13 @@ export class Player {
 
     let dump: string[] = [];
     this.currentStream().createStreamAccess(StreamType.FRONTPAGE);
-    this.currentStream().createStreamAccess(StreamType.EXTERNAL);
+    this.currentStream().createStreamAccess(StreamType.SITE);
 
     const frontpage = await this.fetchm3u8ByStreamType(StreamType.FRONTPAGE);
     // if (frontpage.data) return this.mergeM3u8Contents([frontpage.data, ...dump]);
     dump = dump.concat(frontpage.dump);
 
     const external = await this.fetchm3u8ByStreamType(StreamType.EXTERNAL);
-    if (!external.data) this.currentStream().createStreamAccess(StreamType.EXTERNAL);
     // if (external.data) return this.mergeM3u8Contents([external.data, ...dump]);
     dump = dump.concat(external.dump);
 
