@@ -16,7 +16,7 @@ An adblocker for Twitch
 
 # Information
 
-Purple Adblock is an adblocker for Twitch which is available on [Firefox](firefox) and [Chrome](chrome). It works by getting the stream from a proxy server, which gives the extension the original stream that doesn't include ads.
+Purple Adblock is an adblocker for Twitch which is available on [Firefox](platform/firefox) and [Chrome](platform/chromium). It works by getting the stream from a proxy server, which gives the extension the original stream that doesn't include ads.
 
 ## Installation
 
