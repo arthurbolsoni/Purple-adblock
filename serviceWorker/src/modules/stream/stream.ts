@@ -7,6 +7,8 @@ export class Stream {
   tunnelListHls: string[]; //the list of tunnel links
   channelName: string; //the channel name
 
+  integrityToken = ""; //the integrity token
+
   constructor(channelName: string) {
     this.tunnelList = ["https://eu1.jupter.ga/channel/{channelname}", "https://eu2.jupter.ga/channel/{channelname}"];
     this.tunnelListHls = ["https://eu1.jupter.ga/channel/hls/{channelname}"];
@@ -34,7 +36,7 @@ export class Stream {
   }
 
   //add a new player stream external
-  async localRequest(playerType: string, complete = true): Promise<string> {
+  async localRequest(playerType: string, complete = true): Promise<any> {
     try {
       const query =
         'query PlaybackAccessToken_Template($login: String!, $isLive: Boolean!, $vodID: ID!, $isVod: Boolean!, $playerType: String!) { streamPlaybackAccessToken(channelName: $login, params: {platform: "web", playerBackend: "mediaplayer", playerType: $playerType}) @include(if: $isLive) { value signature __typename } videoPlaybackAccessToken(id: $vodID, params: {platform: "web", playerBackend: "mediaplayer", playerType: $playerType}) @include(if: $isVod) { value signature __typename }}';
@@ -81,6 +83,49 @@ export class Stream {
   }
 
   //add a new player stream external
+  async requestPictureInPicture(integrityToken: string): Promise<any> {
+    try {
+      const query =
+        'query PlaybackAccessToken_Template($login: String!, $isLive: Boolean!, $vodID: ID!, $isVod: Boolean!, $playerType: String!) { streamPlaybackAccessToken(channelName: $login, params: {platform: "web", playerBackend: "mediaplayer", playerType: $playerType}) @include(if: $isLive) { value signature __typename } videoPlaybackAccessToken(id: $vodID, params: {platform: "web", playerBackend: "mediaplayer", playerType: $playerType}) @include(if: $isVod) { value signature __typename }}';
+      const body = {
+        operationName: "PlaybackAccessToken_Template",
+        query: query,
+        variables: {
+          isLive: true,
+          login: this.channelName,
+          isVod: false,
+          vodID: "",
+          playerType: "picture-by-picture",
+        },
+      };
+
+      const gql = await global.request("https://gql.twitch.tv/gql", {
+        method: "POST",
+        headers: { "Host": "gql.twitch.tv", "Client-ID": "kimne78kx3ncx6brgo4mv6wki5h1ko" },
+        body: JSON.stringify(body),
+      });
+      const streamDataAccess: any = await gql.json();
+
+      const params =
+        "allow_source=true&fast_bread=true&p=" +
+        Math.floor(Math.random() * 1e7) +
+        "&player_backend=mediaplayer&playlist_include_framerate=true&reassignments_supported=false&sig=" +
+        streamDataAccess.data.streamPlaybackAccessToken.signature +
+        "&supported_codecs=avc1&token=" +
+        streamDataAccess.data.streamPlaybackAccessToken.value;
+
+      const text = await (await global.request("https://usher.ttvnw.net/api/channel/hls/" + this.channelName + ".m3u8?" + params)).text();
+
+      this.createServer(text, StreamType.PICTURE);
+
+      return text;
+    } catch (e) {
+      logPrint(e);
+      return "";
+    }
+  }
+
+  //add a new player stream external
   async externalRequest(): Promise<void> {
     logPrint("External Server: Loading");
 
@@ -102,11 +147,11 @@ export class Stream {
   }
 
   //add a new player stream external
-  async externalRequest2(stream: StreamType): Promise<void> {
+  async externalRequest2(): Promise<void> {
     logPrint("External Server 2: Loading");
 
     const url = this.tunnelListHls[0].replace("{channelname}", this.channelName);
-    const params = await this.localRequest(stream, false);
+    const params = await this.localRequest(StreamType.SITE, false);
     const m3u8 = await fetch(url, { method: "POST", body: params });
 
     if (!m3u8.ok) {
@@ -122,14 +167,17 @@ export class Stream {
   }
 
   //create a new stream access
-  async createStreamAccess(stream: StreamType): Promise<void> {
+  async createStreamAccess(stream: StreamType, integrityToken: string): Promise<void> {
     if (stream == StreamType.EXTERNAL) {
-      this.externalRequest2(StreamType.SITE);
-      this.externalRequest2(StreamType.FRONTPAGE);
-      this.externalRequest();
+      await this.externalRequest2();
       return;
     }
 
+    if (stream == StreamType.PICTURE) {
+      await this.requestPictureInPicture(integrityToken);
+      return;
+    }
+    
     await this.localRequest(stream);
   }
 

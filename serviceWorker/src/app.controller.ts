@@ -10,6 +10,11 @@ export class AppController {
     this.getSettings();
   }
 
+  @Message("setIntegrity")
+  async setIntegrity(data: any) {
+    this.appService.setIntegrityToken(JSON.parse(data.value).token);
+  }
+
   @Fetch("usher.ttvnw.net/api/channel/hls/", "picture-by-picture")
   async onChannel(url: string, options: any): Promise<Response> {
     const response: Response = await global.request(url, options);
