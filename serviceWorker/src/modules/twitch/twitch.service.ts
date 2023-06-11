@@ -1,9 +1,32 @@
 export class TwitchService {
     constructor(private readonly integrityToken: string) { }
 
+    async playbackAccessToken(channelName: string, playerType: string, integrityToken: string): Promise<{ token: string; signature: string }> {
+        const body = {
+            operationName: 'PlaybackAccessToken',
+            variables: {
+                isLive: true,
+                login: channelName,
+                isVod: false,
+                vodID: '',
+                playerType: playerType
+            },
+            extensions: {
+                persistedQuery: {
+                    version: 1,
+                    sha256Hash: '0828119ded1c13477966434e15800ff57ddacf13ba1911c129dc2200705b0712'
+                }
+            }
+        }
 
-    async playbackAccessToken(playerType: string): Promise<{ value: string; signature: string }> {
-        return { value: "", signature: "" };
+        const gql = await global.request("https://gql.twitch.tv/gql#origin=twilight", {
+            method: "POST",
+            headers: { "Host": "gql.twitch.tv", "Client-ID": "kimne78kx3ncx6brgo4mv6wki5h1ko", "Client-Integrity": integrityToken },
+            body: JSON.stringify(body),
+        });
+
+        const streamDataAccess = await gql.json();
+        return { token: streamDataAccess.data.streamPlaybackAccessToken.value, signature: streamDataAccess.data.streamPlaybackAccessToken.signature };
     }
 
     async playbackAccessToken_Template(channelName: string, playerType: string): Promise<{ token: string; signature: string }> {

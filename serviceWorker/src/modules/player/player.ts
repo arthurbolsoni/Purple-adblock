@@ -52,7 +52,7 @@ export class Player {
     return this.playingAds;
   };
 
-  hasAds = (x: string) => x?.toString().includes("stitched") || x?.toString().includes("Amazon") || x?.toString().includes("DCM");
+  hasAds = (x: string) => x?.toString().includes("stitched") || x?.toString().includes("Amazon") || x?.toString().includes("DCM,");
 
   currentStream = (channel: string = this.actualChannel): Stream => {
     return this.streamList?.find((x: Stream) => x.channelName === channel)!;
@@ -68,20 +68,15 @@ export class Player {
 
     let dump: string[] = [];
 
-    this.currentStream().createStreamAccess(StreamType.FRONTPAGE, this.integrityToken);
-    this.currentStream().createStreamAccess(StreamType.PICTURE, this.integrityToken);
-
     const frontpage = await this.fetchm3u8ByStreamType(StreamType.FRONTPAGE);
-    // if (frontpage.data) return this.mergeM3u8Contents([frontpage.data, ...dump]);
-    dump = dump.concat(frontpage.dump);
+    if (!frontpage.data) this.currentStream().createStreamAccess(StreamType.FRONTPAGE, this.integrityToken);
+    if (frontpage.data) dump.push(...frontpage.dump);
 
     const picture = await this.fetchm3u8ByStreamType(StreamType.PICTURE);
-    // if (external.data) return this.mergeM3u8Contents([external.data, ...dump]);
-    dump = dump.concat(picture.dump);
+    if (!picture.data) this.currentStream().createStreamAccess(StreamType.PICTURE, this.integrityToken);
+    if (picture.data) return Promise.resolve(picture.dump?.[0] ?? "");
 
-    console.log("All stream types failed");
-
-    return this.mergeM3u8Contents([text, ...dump]);
+    return dump.length != 0 ? this.mergeM3u8Contents([text, ...dump]) : text;
   }
 
   generateM3u8(manifest: any): string {
@@ -140,6 +135,7 @@ export class Player {
       console.log("Manifestos de suporte encontrados:", manifestosSuporte.length);
 
       let segmentRemoved = 0;
+      let segmentRepleced = 0;
 
       // Percorrer os segmentos do manifesto principal e preencher as lacunas com os segmentos do manifesto de suporte
       for (let i = 0; i < manifestoPrincipal.segments.length; i++) {
@@ -175,10 +171,14 @@ export class Player {
             segmentRemoved++;
           }
 
+          if (isChanged) {
+            segmentRepleced++;
+          }
         }
       }
 
       console.log("Segmento com ads removidos:", segmentRemoved);
+      console.log("Segmento com ads substituídos:", segmentRepleced);
     }
 
     // Criar uma nova lista de reprodução M3U8 com os segmentos mesclados
@@ -216,7 +216,10 @@ export class Player {
     logPrint("Loading channel", channelName);
     this.actualChannel = channelName;
 
-    const currentStream = new Stream(this.actualChannel);
-    this.streamList.push(currentStream);
+    let currentStream = this.streamList.find((stream) => stream.channelName === channelName);
+    if (!currentStream) {
+      currentStream = new Stream(channelName);
+      this.streamList.push(currentStream);
+    }
   }
 }

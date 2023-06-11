@@ -18,7 +18,7 @@ export class Stream {
   }
 
   //add m3u8 links with quality to the list of servers
-  createServer(text: string, type = "local", sig = true): void {
+  setStreamAccess(text: string, type = "local", sig = true): void {
     const qualityUrlSplit: StreamUrl[] = [];
     let captureArray: RegExpExecArray | null;
 
@@ -35,9 +35,10 @@ export class Stream {
   //create a new stream access
   async createStreamAccess(playerType: StreamType, integrityToken: string): Promise<void> {
     try {
-      const streamDataAccess = await this.twitchService.playbackAccessToken_Template(this.channelName, playerType);
+      const streamDataAccess = await this.twitchService.playbackAccessToken(this.channelName, playerType, integrityToken);
+      console.log("New Connection: ", playerType, streamDataAccess.token.includes('"hide_ads":true'));
       const m3u8Text = await this.twitchService.getM3U8(this.channelName, streamDataAccess);
-      this.createServer(m3u8Text, playerType);
+      this.setStreamAccess(m3u8Text, playerType);
     } catch (e) {
       logPrint(e);
     }

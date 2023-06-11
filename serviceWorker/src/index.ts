@@ -39,7 +39,7 @@ import txt from "../dist/app.worker.js";
 
     declareEventWorker() {
       this.addEventListener("message", (event) => {
-        
+
         switch (event?.data?.type) {
           case "getSettings": {
             window.postMessage({ type: "getSettings", value: null });

@@ -1,6 +1,7 @@
 import { Controller } from "./decorator/controller.decorator";
 import { Fetch, Message } from "./decorator/handler.decorator";
 import { Player } from "./modules/player/player";
+import { StreamType } from "./modules/stream/interface/stream.enum";
 
 @Controller()
 export class AppController {
@@ -39,6 +40,16 @@ export class AppController {
 
   @Fetch("picture-by-picture")
   async onChannelPicture(url: string, options: any): Promise<Response> {
+    const response: Response = await global.request(url, options);
+    if (!response.ok) {
+      console.log("Error on channel load");
+      return response;
+    }
+
+    const text = await response.text();
+
+    await this.appService.currentStream().setStreamAccess(text, StreamType.PICTURE);
+    console.log("picture-by-picture", text);
     return new Response();
   }
 
