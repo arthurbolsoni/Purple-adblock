@@ -20,7 +20,6 @@ export class Player {
 
   setSettings = (setting: Setting) => {
     this.setting = setting;
-    if (this.setting?.toggleProxy && this.setting?.proxyUrl) this.currentStream()?.tunnelList?.push(this.setting?.proxyUrl);
     logPrint("Settings loaded");
   };
 
@@ -28,7 +27,7 @@ export class Player {
 
   pauseAndPlay = async () => {
     this.pause();
-    await new Promise(resolve => setTimeout(resolve, 1000));
+    await new Promise(resolve => setTimeout(resolve, 500));
     this.play();
   };
 
@@ -70,7 +69,7 @@ export class Player {
     let dump: string[] = [];
 
     this.currentStream().createStreamAccess(StreamType.FRONTPAGE, this.integrityToken);
-    this.currentStream().createStreamAccess(StreamType.PICTURE, this.integrityToken); 
+    this.currentStream().createStreamAccess(StreamType.PICTURE, this.integrityToken);
 
     const frontpage = await this.fetchm3u8ByStreamType(StreamType.FRONTPAGE);
     // if (frontpage.data) return this.mergeM3u8Contents([frontpage.data, ...dump]);
