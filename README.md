@@ -1,13 +1,13 @@
 <div align="center">
 
-<img src="https://github.com/arthurbolsoni/Purple-adblock/raw/main/chrome/images/logov2-128.png">
+<img src="https://raw.githubusercontent.com/arthurbolsoni/Purple-adblock/main/platform/src/images/logov2-128.png">
 
 # Purple Adblock
 
 An adblocker for Twitch
 
 ![GitHub Repo stars](https://img.shields.io/github/stars/arthurbolsoni/Purple-adblock?label=Stars)
-[![Discord](https://img.shields.io/discord/829993555820019773?label=Discord)](https://discord.gg/7MpUUDNxHx)
+[![Discord](https://img.shields.io/discord/829993555820019773?label=Discord)](https://discord.gg/A6CHvgtGmq)
 ![License](https://img.shields.io/badge/license-GPLv3-blue.svg?label=License)
 [![Mozilla Add-on](https://img.shields.io/amo/dw/%7Ba7399979-5203-4489-9861-b168187b52e1%7D?label=Firefox%20Users)](https://addons.mozilla.org/en-US/firefox/addon/purpleadblock/)
 [![Chrome Web Store](https://img.shields.io/chrome-web-store/users/lkgcfobnmghhbhgekffaadadhmeoindg?label=Chrome%20Users)](https://chrome.google.com/webstore/detail/purple-ads-blocker/lkgcfobnmghhbhgekffaadadhmeoindg)
@@ -16,19 +16,27 @@ An adblocker for Twitch
 
 # Information
 
-Purple Adblock is an adblocker for Twitch which is available on [Firefox](firefox) and [Chrome](chrome). It works by getting the stream from a proxy server, which gives the extension the original stream that doesn't include ads.
+Purple Adblock is an adblocker for Twitch which is available on [Firefox](https://addons.mozilla.org/pt-BR/firefox/addon/purpleadblock/), [Google Chrome](https://chrome.google.com/webstore/detail/purple-adblock/lkgcfobnmghhbhgekffaadadhmeoindg) and [User Script](https://github.com/arthurbolsoni/Purple-adblock/raw/main/tampermonkey/dist/purpleadblocker.user.js).
 
-## Installation
+## Manual Installation (Development)
 
-Download the extension here for: [Firefox](https://addons.mozilla.org/pt-BR/firefox/addon/purpleadblock/) or [Google Chrome](https://chrome.google.com/webstore/detail/purple-adblock/lkgcfobnmghhbhgekffaadadhmeoindg).
+### Firefox
 
-Download the User Script to use in Tampermonkey: [User Script](https://github.com/arthurbolsoni/Purple-adblock/raw/main/tampermonkey/dist/purpleadblocker.user.js).
+1. Download the extension from the [releases page](https://github.com/arthurbolsoni/Purple-adblock/releases) and unzip it.
+2. Go to `about:debugging#/runtime/this-firefox` in your browser.
+3. Click on `Load Temporary Add-on...` and select the `manifest.json` file from the extension folder.
+4. Done! The extension is now installed.
 
-It doesn't work with "Alternate Player for Twitch.tv", or other "twitch adblockers", but you can use generic ad blockers like "uBlock Origin".
+The extension will be removed when you close the browser. To install it permanently, you should download it from the [Firefox Add-ons page](https://addons.mozilla.org/en-US/firefox/addon/purpleadblock/) or using the zip asigned in the release page.
 
-### How it works
+### Chrome
 
-Purple proxies a link of stream through a proxy server, just if it detects an advertisement, it continue streaming from the channel you're watching, therefore avoiding buffering problems in the same connection.
+1. Download the extension here: [Google Chrome](https://chrome.google.com/webstore/detail/purple-adblock/lkgcfobnmghhbhgekffaadadhmeoindg).
+2. Go to `chrome://extensions/` in your browser.
+3. Enable `Developer mode` in the top right corner.
+4. Click on `Load unpacked` and select the extension folder.
+5. Done! The extension is now installed.
+
 
 ## Contributing & Support
 
