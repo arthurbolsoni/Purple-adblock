@@ -16,7 +16,7 @@ An adblocker for Twitch
 
 # Information
 
-Purple Adblock is an adblocker for Twitch which is available on [Firefox](https://addons.mozilla.org/pt-BR/firefox/addon/purpleadblock/), [Google Chrome](https://chrome.google.com/webstore/detail/purple-adblock/lkgcfobnmghhbhgekffaadadhmeoindg) and [User Script](https://github.com/arthurbolsoni/Purple-adblock/raw/main/tampermonkey/dist/purpleadblocker.user.js).
+Purple Adblock is an adblocker for Twitch which is available on [Firefox](https://addons.mozilla.org/pt-BR/firefox/addon/purpleadblock/), [Google Chrome](https://chrome.google.com/webstore/detail/purple-adblock/lkgcfobnmghhbhgekffaadadhmeoindg) and [User Script](https://github.com/arthurbolsoni/Purple-adblock/raw/main/platform/tampermonkey/dist/purpleadblocker.user.js).
 
 ## Manual Installation (Development)
 
