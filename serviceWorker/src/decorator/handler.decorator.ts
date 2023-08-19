@@ -7,7 +7,10 @@ export const Fetch = (match: string, ignore: string | null = null): MethodDecora
 
 export const Message = (match: string): MethodDecorator => {
   return (target, propertyKey) => {
-    if (!global.messageList) global.messageList = [];
-    global.messageList.push({ propertyKey: propertyKey as string, match: match });
+    global.addEventListener("message", (e: any) => {
+      if (e?.data?.funcName == match) {
+        global.appController[propertyKey](e.data);
+      }
+    });
   };
 };

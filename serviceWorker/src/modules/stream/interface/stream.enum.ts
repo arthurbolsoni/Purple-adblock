@@ -1,5 +1,6 @@
 export enum StreamType {
-  PICTURE = "thunderdome",
+  PICTURE = "picture-by-picture",
+  THUNDERDOME = "thunderdome",
   EMBED = "embed",
   FRONTPAGE = "frontpage",
   SITE = "site",

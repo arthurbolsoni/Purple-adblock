@@ -19,12 +19,26 @@ import txt from "../dist/app.worker.js";
       mainWorker = this;
       mainWorker.declareEventWorker();
       mainWorker.declareEventWindow();
+      mainWorker.integrity();
     }
+
+    async integrity() {
+      global.request = fetch
+      global.fetch = async (url: any, options: any) => {
+        const response = await global.request(url, options);
+        const body = await response.text();
+
+        if (url == "https://gql.twitch.tv/integrity") {
+          mainWorker.postMessage({ funcName: "setIntegrity", value: body });
+        }
+
+        return new Response(body, response);
+      };
+    }
+
 
     declareEventWorker() {
       this.addEventListener("message", (event) => {
-        // if (typeof (event.data.type) !== "string") console.log(event.data.arg);
-        // if (typeof (event.data.type) !== "string") console.log(event.data);
 
         switch (event?.data?.type) {
           case "getSettings": {

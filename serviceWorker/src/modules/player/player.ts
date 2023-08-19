@@ -5,6 +5,8 @@ import { Server } from "../stream/interface/stream.types";
 import { Parser } from "m3u8-parser";
 
 export class Player {
+  integrityToken = ""; //the integrity token
+
   streamList: Stream[] = []; //the list of streams that are currently being played
   actualChannel: string = ""; //the channel
   playingAds = false; //if the stream is playing ads
@@ -18,14 +20,17 @@ export class Player {
 
   setSettings = (setting: Setting) => {
     this.setting = setting;
-    if (this.setting?.toggleProxy && this.setting?.proxyUrl) this.currentStream()?.tunnelList?.push(this.setting?.proxyUrl);
     logPrint("Settings loaded");
   };
 
-  pauseAndPlay = () => {
+  setIntegrityToken = (integrityToken: string) => this.integrityToken = integrityToken;
+
+  pauseAndPlay = async () => {
     this.pause();
+    await new Promise(resolve => setTimeout(resolve, 500));
     this.play();
   };
+
   onStartAds = () => {
     console.log("ads started");
     this.pauseAndPlay();
@@ -38,8 +43,7 @@ export class Player {
   };
 
   isAds = (x: string, allowChange: boolean = false) => {
-    // const ads = x.toString().includes("stitched-ad") || x.toString().includes("twitch-client-ad") || x.toString().includes("twitch-ad-quartile");
-    const ads = x?.toString().includes("stitched") || x?.toString().includes("Amazon") || x?.toString().includes("DCM");
+    const ads = this.hasAds(x);
     if (!allowChange) return ads;
     if (this.playingAds == false && this.playingAds != ads) this.onStartAds();
     if (this.playingAds == true && this.playingAds != ads) this.onEndAds();
@@ -47,6 +51,8 @@ export class Player {
 
     return this.playingAds;
   };
+
+  hasAds = (x: string) => x?.toString().includes("stitched") || x?.toString().includes("Amazon") || x?.toString().includes("DCM,");
 
   currentStream = (channel: string = this.actualChannel): Stream => {
     return this.streamList?.find((x: Stream) => x.channelName === channel)!;
@@ -61,20 +67,16 @@ export class Player {
     if (!this.isAds(text, true)) return this.mergeM3u8Contents([text]);
 
     let dump: string[] = [];
-    this.currentStream().createStreamAccess(StreamType.FRONTPAGE);
-    this.currentStream().createStreamAccess(StreamType.SITE);
 
     const frontpage = await this.fetchm3u8ByStreamType(StreamType.FRONTPAGE);
-    // if (frontpage.data) return this.mergeM3u8Contents([frontpage.data, ...dump]);
-    dump = dump.concat(frontpage.dump);
+    if (!frontpage.data) this.currentStream().createStreamAccess(StreamType.FRONTPAGE, this.integrityToken);
+    if (frontpage.data) dump.push(...frontpage.dump);
 
-    const external = await this.fetchm3u8ByStreamType(StreamType.EXTERNAL);
-    // if (external.data) return this.mergeM3u8Contents([external.data, ...dump]);
-    dump = dump.concat(external.dump);
+    const picture = await this.fetchm3u8ByStreamType(StreamType.PICTURE);
+    if (!picture.data) this.currentStream().createStreamAccess(StreamType.PICTURE, this.integrityToken);
+    if (picture.data) return Promise.resolve(picture.dump?.[0] ?? "");
 
-    console.log("All stream types failed");
-
-    return this.mergeM3u8Contents([text, ...dump]);
+    return dump.length != 0 ? this.mergeM3u8Contents([text, ...dump]) : text;
   }
 
   generateM3u8(manifest: any): string {
@@ -132,43 +134,51 @@ export class Player {
       console.log("Segmentos encontrados no manifesto principal:", manifestoPrincipal.segments.length);
       console.log("Manifestos de suporte encontrados:", manifestosSuporte.length);
 
+      let segmentRemoved = 0;
+      let segmentRepleced = 0;
+
       // Percorrer os segmentos do manifesto principal e preencher as lacunas com os segmentos do manifesto de suporte
       for (let i = 0; i < manifestoPrincipal.segments.length; i++) {
         const segmentoPrincipal = manifestoPrincipal.segments[i];
-        const hasAmazon =
-          segmentoPrincipal.title && (segmentoPrincipal.title.includes("Amazon") || segmentoPrincipal.title.includes("DCM"));
 
-        if (hasAmazon) {
+        let isChanged = false;
+
+        if (this.hasAds(segmentoPrincipal.title)) {
           manifestosSuporte.forEach((manifestoSuporte) => {
-            if (manifestoSuporte.segments) {
-              // Encontre o primeiro segmento de suporte que NÃO contenha o título "Amazon" e tenha um tempo semelhante ao segmentoPrincipal (ignorando milissegundos)
-              const segmentoSuporte = manifestoSuporte.segments.find((seg: any) => {
-                if (!seg.title.includes("Amazon") && seg.title.includes("DCM")) {
-                  return false;
-                }
+            // Encontre o primeiro segmento de suporte que NÃO contenha o título "Amazon" e tenha um tempo semelhante ao segmentoPrincipal (ignorando milissegundos)
+            const segmentoSuporte = manifestoSuporte?.segments?.find((seg: any) => {
+              if (this.hasAds(seg.title)) return false;
 
-                const dataPrincipal = new Date(segmentoPrincipal.dateTimeString);
-                const dataSuporte = new Date(seg.dateTimeString);
-                dataPrincipal.setMilliseconds(0);
-                dataSuporte.setMilliseconds(0);
+              const dataPrincipal = new Date(segmentoPrincipal.dateTimeString);
+              const dataSuporte = new Date(seg.dateTimeString);
+              dataPrincipal.setMilliseconds(0);
+              dataSuporte.setMilliseconds(0);
 
-                return dataPrincipal.getTime() === dataSuporte.getTime();
-              });
+              return dataPrincipal.getTime() === dataSuporte.getTime();
+            });
 
-              console.log("Segmento suporte encontrado:", segmentoSuporte);
-
-              if (segmentoSuporte) {
-                // Substitua o segmento principal pelo segmento de suporte
-                manifestoPrincipal.segments[i] = segmentoSuporte;
-              }
+            if (segmentoSuporte) {
+              // Substitua o segmento principal pelo segmento de suporte
+              manifestoPrincipal.segments[i] = segmentoSuporte;
+              isChanged = true;
             }
           });
 
-          manifestoPrincipal.segments.splice(i, 1);
-          i--;
-          console.log("Segmento principal removido:", segmentoPrincipal);
+          // Se o segmento principal ainda contiver o título "Amazon", remova-o
+          if (!isChanged) {
+            manifestoPrincipal.segments.splice(i, 1);
+            i--;
+            segmentRemoved++;
+          }
+
+          if (isChanged) {
+            segmentRepleced++;
+          }
         }
       }
+
+      console.log("Segmento com ads removidos:", segmentRemoved);
+      console.log("Segmento com ads substituídos:", segmentRepleced);
     }
 
     // Criar uma nova lista de reprodução M3U8 com os segmentos mesclados
@@ -206,7 +216,10 @@ export class Player {
     logPrint("Loading channel", channelName);
     this.actualChannel = channelName;
 
-    const currentStream = new Stream(this.actualChannel);
-    this.streamList.push(currentStream);
+    let currentStream = this.streamList.find((stream) => stream.channelName === channelName);
+    if (!currentStream) {
+      currentStream = new Stream(channelName);
+      this.streamList.push(currentStream);
+    }
   }
 }
