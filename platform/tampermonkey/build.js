@@ -10,8 +10,8 @@ const build = `// ==UserScript==
 // @version      ${process.env.npm_package_version}
 // @description  Per aspera ad astra
 // @author       ArthurBolzoni
-// @downloadURL  https://raw.githubusercontent.com/arthurbolsoni/Purple-adblock/main/tampermonkey/dist/purpleadblocker.user.js
-// @updateURL    https://raw.githubusercontent.com/arthurbolsoni/Purple-adblock/main/tampermonkey/dist/purpleadblocker.user.js
+// @downloadURL  https://raw.githubusercontent.com/arthurbolsoni/Purple-adblock/main/platform/tampermonkey/dist/purpleadblocker.user.js
+// @updateURL    https://raw.githubusercontent.com/arthurbolsoni/Purple-adblock/main/platform/tampermonkey/dist/purpleadblocker.user.js
 // @match        *://*.twitch.tv/*
 // @run-at       document-start
 // @grant        none
