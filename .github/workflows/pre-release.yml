@@ -41,3 +41,4 @@ jobs:
             LICENSE
             dist/*.zip
             dist/*.xpi
+            platform/tampermonkey/dist/purpleadblocker.user.js
