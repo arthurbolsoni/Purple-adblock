@@ -8,14 +8,19 @@ import txt from "../dist/app.worker.js";
   window.Worker = class WorkerInjector extends Worker {
     constructor(twitchBlobUrl: any) {
       console.log("new worker intance " + twitchBlobUrl);
-
+      
       if (twitchBlobUrl == "") super(twitchBlobUrl);
       console.log("[Purple]: init " + twitchBlobUrl);
+      
+      const xhr = new XMLHttpRequest();
+      xhr.open("GET", twitchBlobUrl, false);
+      xhr.send();
 
-      const newBlobStr = `${txt}
-      importScripts('${twitchBlobUrl}');`;
+      const script = xhr.responseText;
+      const newBlobStr = `${script} \n ${txt}`;
 
-      super(URL.createObjectURL(new Blob([newBlobStr], { type: "text/javascript" })));
+      const newBlob = URL.createObjectURL(new Blob([newBlobStr], { type: "text/javascript" }));
+      super(newBlob);
       mainWorker = this;
       mainWorker.declareEventWorker();
       mainWorker.declareEventWindow();
