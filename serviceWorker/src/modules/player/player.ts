@@ -12,6 +12,7 @@ export class Player {
   playingAds = false; //if the stream is playing ads
   setting: Setting | undefined; //the settings
   quality: string = ""; //the quality of the stream
+  freeStream: boolean = false; //if the stream is free
 
   getQuality = () => global.postMessage({ type: "getQuality" });
   getSettings = () => global.postMessage({ type: "getSettings" });
@@ -27,18 +28,16 @@ export class Player {
 
   pauseAndPlay = async () => {
     this.pause();
-    await new Promise(resolve => setTimeout(resolve, 500));
+    await new Promise(resolve => setTimeout(resolve, 1500));
     this.play();
   };
 
   onStartAds = () => {
     console.log("ads started");
     this.pauseAndPlay();
-    this.pauseAndPlay();
   };
   onEndAds = () => {
     console.log("ads ended");
-    this.pauseAndPlay();
     this.pauseAndPlay();
   };
 
@@ -50,7 +49,13 @@ export class Player {
     this.playingAds = ads;
 
     return this.playingAds;
-  };
+  }
+
+  freeStreamChanged(x: boolean) {
+    // call pause and play when changed
+    if (this.freeStream != x) this.pauseAndPlay();
+    this.freeStream = x;
+  }
 
   hasAds = (x: string) => x?.toString().includes("stitched") || x?.toString().includes("Amazon") || x?.toString().includes("DCM,");
 
@@ -76,7 +81,13 @@ export class Player {
     if (!picture.data) this.currentStream().createStreamAccess(StreamType.PICTURE, this.integrityToken);
     if (picture.data) return Promise.resolve(picture.dump?.[0] ?? "");
 
-    return dump.length != 0 ? this.mergeM3u8Contents([text, ...dump]) : text;
+    if (dump?.length) {
+      this.freeStreamChanged(true);
+    } else {
+      this.freeStreamChanged(false);
+    }
+
+    return dump.length != 0 ? this.mergeM3u8Contents([JSON.parse(JSON.stringify(text)), ...dump]) : JSON.parse(JSON.stringify(text));
   }
 
   generateM3u8(manifest: any): string {
