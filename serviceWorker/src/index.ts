@@ -6,18 +6,22 @@ import txt from "../dist/app.worker.js";
   let mainWorker: any;
 
   window.Worker = class WorkerInjector extends Worker {
-    constructor(twitchBlobUrl: any) {
-      console.log("new worker intance " + twitchBlobUrl);
-      
-      if (twitchBlobUrl == "") super(twitchBlobUrl);
-      console.log("[Purple]: init " + twitchBlobUrl);
-      
+    constructor(url: string | URL, options?: WorkerOptions) {
+      console.log("new worker intance " + url);
+
+      if(url.toString() == "") super(url, options);
+
+      console.log("[Purple]: init " + url.toString());
+
       const xhr = new XMLHttpRequest();
-      xhr.open("GET", twitchBlobUrl, false);
+      xhr.open("GET", url.toString(), false);
       xhr.send();
 
       const script = xhr.responseText;
-      const newBlobStr = `${script} \n ${txt}`;
+      const newBlobStr = `${txt}
+      ${script}`;
+
+      console.log(url.toString(),script)
 
       const newBlob = URL.createObjectURL(new Blob([newBlobStr], { type: "text/javascript" }));
       super(newBlob);
