@@ -21,8 +21,11 @@ const jsAssetPlugin: BunPlugin = {
     const worker = await Bun.build({
         entrypoints: ['./src/app.worker.ts'],
         outdir: './dist',
-        minify: true,
-        format: 'esm',
+        minify: {
+            whitespace: true,
+            identifiers: true,
+            syntax: true,
+        }, sourcemap: 'inline',
     })
 
     if (worker.logs?.length) {
@@ -40,8 +43,11 @@ const jsAssetPlugin: BunPlugin = {
         loader: {
             './app.worker.js': 'text',
         },
-        minify: true,
-        format: 'esm',
+        minify: {
+            whitespace: true,
+            identifiers: true,
+            syntax: true,
+        }, sourcemap: 'inline',
     })
 
     if (inject.logs?.length) {
