@@ -1,6 +1,6 @@
 //this line gonna import the content from compile worker as string
 //@ts-expect-error
-import txt from "../dist/app.worker.js";
+import txt from "../dist/app.worker.js?raw";
 
 (function () {
   let mainWorker: any;
