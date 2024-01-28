@@ -39,7 +39,7 @@ export class Player {
   onEndAds = () => {
     console.log("ads ended");
     this.pauseAndPlay();
-  };
+    };
 
   isAds = (x: string, allowChange: boolean = false) => {
     const ads = this.hasAds(x);
@@ -69,23 +69,42 @@ export class Player {
 
   async onFetch(text: string): Promise<string> {
     if (this.isWhitelist()) return text;
-    if (!this.isAds(text, true)) return this.mergeM3u8Contents([text]);
+    if (!this.isAds(text, true)){
+      this.freeStream = false;
+      return this.mergeM3u8Contents([text]);
+    }
 
-    let dump: string[] = [];
+    // o fluxo de stream deve sempre ter 2 stream
+    // deve também fazer a requisicao de uma nova stream caso a atual tenha ads, para que a proxima requisicao tenha stream para se basear
+    // caso o fluxo for livre, nao deve fazer a requisicao, porem manter 2 fluxo de stream
+    // mesmo com ads, o fluxo da stream deve ser enviado para o mergeM3u8Contents para que seguimentos sem ads sejam mesclados
+
+    const dump: string[] = [];
 
     const frontpage = await this.fetchm3u8ByStreamType(StreamType.FRONTPAGE);
     if (!frontpage.data) this.currentStream().createStreamAccess(StreamType.FRONTPAGE, this.integrityToken);
-    if (frontpage.data) dump.push(...frontpage.dump);
+    if (frontpage.dump) dump.push(...frontpage.dump);
+    if(frontpage.data) return this.mergeM3u8Contents([JSON.parse(JSON.stringify(text)), ...frontpage.data]);
+
+    const frontpage_2 = await this.fetchm3u8ByStreamType(StreamType.FRONTPAGE);
+    if (!frontpage_2.data) this.currentStream().createStreamAccess(StreamType.FRONTPAGE, this.integrityToken);
+    if (frontpage_2.dump) dump.push(...frontpage_2.dump);
 
     const picture = await this.fetchm3u8ByStreamType(StreamType.PICTURE);
     if (!picture.data) this.currentStream().createStreamAccess(StreamType.PICTURE, this.integrityToken);
-    if (picture.data) return Promise.resolve(picture.dump?.[0] ?? "");
+    if (picture.dump) dump.push(...picture.dump);
 
-    if (dump?.length) {
-      this.freeStreamChanged(true);
-    } else {
-      this.freeStreamChanged(false);
-    }
+    const picture_2 = await this.fetchm3u8ByStreamType(StreamType.PICTURE);
+    if (!picture_2.data) this.currentStream().createStreamAccess(StreamType.PICTURE, this.integrityToken);
+    if (picture_2.dump) dump.push(...picture_2.dump);
+
+    // if (dump?.length) {
+    //   this.freeStreamChanged(true);
+    // } else {
+    //   this.freeStreamChanged(false);
+    // }
+
+
 
     return dump.length != 0 ? this.mergeM3u8Contents([JSON.parse(JSON.stringify(text)), ...dump]) : JSON.parse(JSON.stringify(text));
   }
@@ -199,11 +218,12 @@ export class Player {
   }
 
   async fetchm3u8ByStreamType(accessType: StreamType): Promise<{ data: string | null; dump: string[] }> {
-    logPrint("Stream Type: " + accessType);
-
     let dump: string[] = [];
+    let data: string = "";
+
     let servers: Server[] = this.currentStream().getStreamByStreamType(accessType);
 
+    // FAZER AS REQUISICOES TODAS AO MESMO TEMPO
     for (const server of servers) {
       //filter server url by quality or bestquality
       const streamUrl = server.findByQuality(this.quality) || server.bestQuality();
@@ -215,12 +235,15 @@ export class Player {
         logPrint("Stream Type: " + accessType + " - Ads found");
         this.currentStream().removeServer(server);
         continue;
+      }else{
+        data = text;
+        logPrint("Stream Type: " + accessType + " - Free Stream");
+        break;
       }
 
-      return { data: text, dump: dump };
     }
 
-    return { data: null, dump: dump };
+    return { data: data, dump: dump };
   }
 
   setChannel(channelName: string) {
