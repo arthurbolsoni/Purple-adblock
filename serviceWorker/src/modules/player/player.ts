@@ -84,7 +84,7 @@ export class Player {
     const frontpage = await this.fetchm3u8ByStreamType(StreamType.FRONTPAGE);
     if (!frontpage.data) this.currentStream().createStreamAccess(StreamType.FRONTPAGE, this.integrityToken);
     if (frontpage.dump) dump.push(...frontpage.dump);
-    if(frontpage.data) return this.mergeM3u8Contents([JSON.parse(JSON.stringify(text)), ...frontpage.data]);
+    if(frontpage.data) return frontpage.data;
 
     const frontpage_2 = await this.fetchm3u8ByStreamType(StreamType.FRONTPAGE);
     if (!frontpage_2.data) this.currentStream().createStreamAccess(StreamType.FRONTPAGE, this.integrityToken);
