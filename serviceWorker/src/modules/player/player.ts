@@ -127,7 +127,7 @@ export class Player {
       return manifest;
     });
 
-    let log = [];
+    let log: string[] = [];
 
     for (const manifesto of manifestos) {
       if (manifesto.segments) {
