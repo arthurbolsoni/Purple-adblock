@@ -39,7 +39,7 @@ export class Player {
   onEndAds = () => {
     console.log("ads ended");
     this.pauseAndPlay();
-    };
+  };
 
   isAds = (x: string, allowChange: boolean = false) => {
     const ads = this.hasAds(x);
@@ -69,7 +69,7 @@ export class Player {
 
   async onFetch(text: string): Promise<string> {
     if (this.isWhitelist()) return text;
-    if (!this.isAds(text, true)){
+    if (!this.isAds(text, true)) {
       this.freeStream = false;
       return this.mergeM3u8Contents([text]);
     }
@@ -84,19 +84,12 @@ export class Player {
     const frontpage = await this.fetchm3u8ByStreamType(StreamType.FRONTPAGE);
     if (!frontpage.data) this.currentStream().createStreamAccess(StreamType.FRONTPAGE, this.integrityToken);
     if (frontpage.dump) dump.push(...frontpage.dump);
-    if(frontpage.data) return frontpage.data;
-
-    const frontpage_2 = await this.fetchm3u8ByStreamType(StreamType.FRONTPAGE);
-    if (!frontpage_2.data) this.currentStream().createStreamAccess(StreamType.FRONTPAGE, this.integrityToken);
-    if (frontpage_2.dump) dump.push(...frontpage_2.dump);
+    if (frontpage.data) return frontpage.data;
 
     const picture = await this.fetchm3u8ByStreamType(StreamType.PICTURE);
     if (!picture.data) this.currentStream().createStreamAccess(StreamType.PICTURE, this.integrityToken);
     if (picture.dump) dump.push(...picture.dump);
-
-    const picture_2 = await this.fetchm3u8ByStreamType(StreamType.PICTURE);
-    if (!picture_2.data) this.currentStream().createStreamAccess(StreamType.PICTURE, this.integrityToken);
-    if (picture_2.dump) dump.push(...picture_2.dump);
+    if (picture.data) return picture.data;
 
     // if (dump?.length) {
     //   this.freeStreamChanged(true);
@@ -104,9 +97,47 @@ export class Player {
     //   this.freeStreamChanged(false);
     // }
 
-
+    this.printViewAds([text, ...dump])
 
     return dump.length != 0 ? this.mergeM3u8Contents([JSON.parse(JSON.stringify(text)), ...dump]) : JSON.parse(JSON.stringify(text));
+  }
+
+  printViewAds(conteudosM3u8: string[]) {
+    // should print the segment seconds and number with X for ads and V for no ads
+    const manifestos = conteudosM3u8.map((conteudo) => {
+      const analisador = new Parser();
+
+      analisador.push(conteudo);
+      analisador.end();
+
+      // extract titles from #EXTINF tags in each segment
+      const manifest = analisador.manifest as { targetDuration?: number; mediaSequence?: number; segments?: { uri: string; duration: number; title: string; dateTimeString: string }[] };
+      if (manifest.segments) {
+        manifest.segments.forEach((segment: any) => {
+          // Find the #EXTINF tag associated with the current segment
+          const extinfTagRegex = new RegExp(`#EXTINF:([0-9.]*)?,?(.*)(?:\n|\r\n)${segment.uri}`);
+          const match = conteudo.match(extinfTagRegex);
+
+          if (match) {
+            segment.title = match[2] ? match[2].trim() : "";
+          }
+        });
+      }
+
+      return manifest;
+    });
+
+    let log = "";
+
+    for (const manifesto of manifestos) {
+      if (manifesto.segments) {
+        manifesto.segments.forEach((segment: any) => {
+          log += `${segment.duration} ${this.hasAds(segment.title) ? "X" : "V"}`;
+        });
+      }
+    }
+
+    console.log(log);
   }
 
   generateM3u8(manifest: any): string {
@@ -141,7 +172,7 @@ export class Player {
       analisador.end();
 
       // extract titles from #EXTINF tags in each segment
-      const manifest = analisador.manifest;
+      const manifest = analisador.manifest as { targetDuration?: number; mediaSequence?: number; segments?: { uri: string; duration: number; title: string; dateTimeString: string }[] };
       if (manifest.segments) {
         manifest.segments.forEach((segment: any) => {
           // Find the #EXTINF tag associated with the current segment
@@ -160,56 +191,55 @@ export class Player {
     const manifestoPrincipal = manifestos[0];
     const manifestosSuporte = manifestos.slice(1);
 
-    if (manifestoPrincipal.segments) {
-      console.log("Segmentos encontrados no manifesto principal:", manifestoPrincipal.segments.length);
-      console.log("Manifestos de suporte encontrados:", manifestosSuporte.length);
+    console.log("Segmentos encontrados no manifesto principal:", manifestoPrincipal?.segments?.length);
+    console.log("Manifestos de suporte encontrados:", manifestosSuporte.length);
 
-      let segmentRemoved = 0;
-      let segmentRepleced = 0;
+    let segmentRemoved = 0;
+    let segmentRepleced = 0;
 
-      // Percorrer os segmentos do manifesto principal e preencher as lacunas com os segmentos do manifesto de suporte
-      for (let i = 0; i < manifestoPrincipal.segments.length; i++) {
-        const segmentoPrincipal = manifestoPrincipal.segments[i];
+    if (!manifestoPrincipal.segments?.length) return this.generateM3u8(manifestoPrincipal);
 
-        let isChanged = false;
+    // Percorrer os segmentos do manifesto principal e preencher as lacunas com os segmentos do manifesto de suporte
+    for (let i = 0; i < manifestoPrincipal.segments.length; i++) {
+      const segmentoPrincipal = manifestoPrincipal.segments[i];
 
-        if (this.hasAds(segmentoPrincipal.title)) {
-          manifestosSuporte.forEach((manifestoSuporte) => {
-            // Encontre o primeiro segmento de suporte que NÃO contenha o título "Amazon" e tenha um tempo semelhante ao segmentoPrincipal (ignorando milissegundos)
-            const segmentoSuporte = manifestoSuporte?.segments?.find((seg: any) => {
-              if (this.hasAds(seg.title)) return false;
+      let isChanged = false;
 
-              const dataPrincipal = new Date(segmentoPrincipal.dateTimeString);
-              const dataSuporte = new Date(seg.dateTimeString);
-              dataPrincipal.setMilliseconds(0);
-              dataSuporte.setMilliseconds(0);
+      if (this.hasAds(segmentoPrincipal.title)) {
+        manifestosSuporte.forEach((manifestoSuporte) => {
+          // Encontre o primeiro segmento de suporte que NÃO contenha o título "Amazon" e tenha um tempo semelhante ao segmentoPrincipal (ignorando milissegundos)
+          const segmentoSuporte = manifestoSuporte?.segments?.find((seg: any) => {
+            if (this.hasAds(seg.title)) return false;
 
-              return dataPrincipal.getTime() === dataSuporte.getTime();
-            });
+            const dataPrincipal = new Date(segmentoPrincipal.dateTimeString);
+            const dataSuporte = new Date(seg.dateTimeString);
+            dataPrincipal.setMilliseconds(0);
+            dataSuporte.setMilliseconds(0);
 
-            if (segmentoSuporte) {
-              // Substitua o segmento principal pelo segmento de suporte
-              manifestoPrincipal.segments[i] = segmentoSuporte;
-              isChanged = true;
-            }
+            return dataPrincipal.getTime() === dataSuporte.getTime();
           });
 
-          // Se o segmento principal ainda contiver o título "Amazon", remova-o
-          if (!isChanged) {
-            manifestoPrincipal.segments.splice(i, 1);
-            i--;
-            segmentRemoved++;
+          if (segmentoSuporte && manifestoPrincipal.segments?.[i]) {
+            // Substitua o segmento principal pelo segmento de suporte
+            manifestoPrincipal.segments[i] = segmentoSuporte;
+            isChanged = true;
           }
+        });
 
-          if (isChanged) {
-            segmentRepleced++;
-          }
+        // Se o segmento principal ainda contiver o título "Amazon", remova-o
+        // if (!isChanged) {
+        //   manifestoPrincipal.segments.splice(i, 1);
+        //   segmentRemoved++;
+        // }
+
+        if (isChanged) {
+          segmentRepleced++;
         }
       }
-
-      console.log("Segmento com ads removidos:", segmentRemoved);
-      console.log("Segmento com ads substituídos:", segmentRepleced);
     }
+
+    console.log("Segmento com ads removidos:", segmentRemoved);
+    console.log("Segmento com ads substituídos:", segmentRepleced);
 
     // Criar uma nova lista de reprodução M3U8 com os segmentos mesclados
     const conteudoM3u8Mesclado = this.generateM3u8(manifestoPrincipal);
@@ -235,7 +265,7 @@ export class Player {
         logPrint("Stream Type: " + accessType + " - Ads found");
         this.currentStream().removeServer(server);
         continue;
-      }else{
+      } else {
         data = text;
         logPrint("Stream Type: " + accessType + " - Free Stream");
         break;
