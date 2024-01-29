@@ -69,10 +69,10 @@ export class Player {
 
   async onFetch(text: string): Promise<string> {
     if (this.isWhitelist()) return text;
-    if (!this.isAds(text, true)) {
-      this.freeStream = false;
-      return this.mergeM3u8Contents([text]);
-    }
+    // if (!this.isAds(text, true)) {
+    //   this.freeStream = false;
+    //   return this.mergeM3u8Contents([text]);
+    // }
 
     // o fluxo de stream deve sempre ter 2 stream
     // deve também fazer a requisicao de uma nova stream caso a atual tenha ads, para que a proxima requisicao tenha stream para se basear
@@ -127,17 +127,17 @@ export class Player {
       return manifest;
     });
 
-    let log = "";
+    let log = [];
 
     for (const manifesto of manifestos) {
       if (manifesto.segments) {
         manifesto.segments.forEach((segment: any) => {
-          log += `${segment.duration} ${this.hasAds(segment.title) ? "X" : "V"}`;
+          log.push(`${this.hasAds(segment.title) ? "X" : "V"}`);
         });
       }
     }
 
-    console.log(log);
+    console.log(log.join("-"));
   }
 
   generateM3u8(manifest: any): string {
