@@ -1,6 +1,6 @@
 {
   "name": "purple-adblock",
-  "version": "2.6.3",
+  "version": "2.6.4",
   "description": "An adblocker for the Twitch.tv using server side signature and local m3u8 manipulation",
   "scripts": {
     "preinstall": "bun cli/preinstall.js",
