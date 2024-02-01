@@ -5,15 +5,16 @@ const archiver = require("archiver");
 platform = "chromium";
 fileType = ".zip";
 const dirname = "./dist";
-const name = process.env.npm_package_name + "-" + process.env.npm_package_version + "-" + platform;
+const package_name = "purple-adblock";
+const name = package_name + "-" + package_name + "-" + platform;
 
 console.log("===================================================================");
-console.log("Building " + platform + " extension version: " + process.env.npm_package_version);
+console.log("Building " + platform + " extension version: " + package_name);
 console.log("===================================================================");
 
 //manifest build
 const manifest = JSON.parse(fs.readFileSync("./platform/" + platform + "/manifest.json"));
-manifest.version = process.env.npm_package_version;
+manifest.version = require("../package.json").version;
 
 if (!fs.existsSync(dirname)) fs.mkdirSync(dirname);
 
