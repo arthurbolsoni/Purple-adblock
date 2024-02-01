@@ -1,6 +1,6 @@
 //this line gonna import the content from compile worker as string
 //@ts-expect-error
-import txt from "../dist/app.worker.js";
+import txt from "../dist/app.worker.js?raw";
 
 (function () {
   let mainWorker: any;
@@ -20,9 +20,7 @@ import txt from "../dist/app.worker.js";
       const script = xhr.responseText;
       const newBlobStr = `${txt}
       ${script}`;
-
-      console.log(url.toString(),script)
-
+      
       const newBlob = URL.createObjectURL(new Blob([newBlobStr], { type: "text/javascript" }));
       super(newBlob);
       mainWorker = this;

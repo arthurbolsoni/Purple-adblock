@@ -12,6 +12,7 @@ export class Player {
   playingAds = false; //if the stream is playing ads
   setting: Setting | undefined; //the settings
   quality: string = ""; //the quality of the stream
+  freeStream: boolean = false; //if the stream is free
 
   getQuality = () => global.postMessage({ type: "getQuality" });
   getSettings = () => global.postMessage({ type: "getSettings" });
@@ -27,18 +28,16 @@ export class Player {
 
   pauseAndPlay = async () => {
     this.pause();
-    await new Promise(resolve => setTimeout(resolve, 500));
+    await new Promise(resolve => setTimeout(resolve, 1500));
     this.play();
   };
 
   onStartAds = () => {
     console.log("ads started");
     this.pauseAndPlay();
-    this.pauseAndPlay();
   };
   onEndAds = () => {
     console.log("ads ended");
-    this.pauseAndPlay();
     this.pauseAndPlay();
   };
 
@@ -50,7 +49,13 @@ export class Player {
     this.playingAds = ads;
 
     return this.playingAds;
-  };
+  }
+
+  freeStreamChanged(x: boolean) {
+    // call pause and play when changed
+    if (this.freeStream != x) this.pauseAndPlay();
+    this.freeStream = x;
+  }
 
   hasAds = (x: string) => x?.toString().includes("stitched") || x?.toString().includes("Amazon") || x?.toString().includes("DCM,");
 
@@ -64,19 +69,75 @@ export class Player {
 
   async onFetch(text: string): Promise<string> {
     if (this.isWhitelist()) return text;
-    if (!this.isAds(text, true)) return this.mergeM3u8Contents([text]);
+    if (!this.isAds(text, true)) {
+      this.freeStream = false;
+      return this.mergeM3u8Contents([text]);
+    }
 
-    let dump: string[] = [];
+    // o fluxo de stream deve sempre ter 2 stream
+    // deve também fazer a requisicao de uma nova stream caso a atual tenha ads, para que a proxima requisicao tenha stream para se basear
+    // caso o fluxo for livre, nao deve fazer a requisicao, porem manter 2 fluxo de stream
+    // mesmo com ads, o fluxo da stream deve ser enviado para o mergeM3u8Contents para que seguimentos sem ads sejam mesclados
+
+    const dump: string[] = [];
 
     const frontpage = await this.fetchm3u8ByStreamType(StreamType.FRONTPAGE);
     if (!frontpage.data) this.currentStream().createStreamAccess(StreamType.FRONTPAGE, this.integrityToken);
-    if (frontpage.data) dump.push(...frontpage.dump);
+    if (frontpage.dump) dump.push(...frontpage.dump);
+    if (frontpage.data) return frontpage.data;
 
     const picture = await this.fetchm3u8ByStreamType(StreamType.PICTURE);
     if (!picture.data) this.currentStream().createStreamAccess(StreamType.PICTURE, this.integrityToken);
-    if (picture.data) return Promise.resolve(picture.dump?.[0] ?? "");
+    if (picture.dump) dump.push(...picture.dump);
+    if (picture.data) return picture.data;
 
-    return dump.length != 0 ? this.mergeM3u8Contents([text, ...dump]) : text;
+    // if (dump?.length) {
+    //   this.freeStreamChanged(true);
+    // } else {
+    //   this.freeStreamChanged(false);
+    // }
+
+    this.printViewAds([text, ...dump])
+
+    return dump.length != 0 ? this.mergeM3u8Contents([JSON.parse(JSON.stringify(text)), ...dump]) : JSON.parse(JSON.stringify(text));
+  }
+
+  printViewAds(conteudosM3u8: string[]) {
+    // should print the segment seconds and number with X for ads and V for no ads
+    const manifestos = conteudosM3u8.map((conteudo) => {
+      const analisador = new Parser();
+
+      analisador.push(conteudo);
+      analisador.end();
+
+      // extract titles from #EXTINF tags in each segment
+      const manifest = analisador.manifest as { targetDuration?: number; mediaSequence?: number; segments?: { uri: string; duration: number; title: string; dateTimeString: string }[] };
+      if (manifest.segments) {
+        manifest.segments.forEach((segment: any) => {
+          // Find the #EXTINF tag associated with the current segment
+          const extinfTagRegex = new RegExp(`#EXTINF:([0-9.]*)?,?(.*)(?:\n|\r\n)${segment.uri}`);
+          const match = conteudo.match(extinfTagRegex);
+
+          if (match) {
+            segment.title = match[2] ? match[2].trim() : "";
+          }
+        });
+      }
+
+      return manifest;
+    });
+
+    let log: string[] = [];
+
+    for (const manifesto of manifestos) {
+      if (manifesto.segments) {
+        manifesto.segments.forEach((segment: any) => {
+          log.push(`${this.hasAds(segment.title) ? "X" : "V"}`);
+        });
+      }
+    }
+
+    console.log(log.join("-"));
   }
 
   generateM3u8(manifest: any): string {
@@ -111,7 +172,7 @@ export class Player {
       analisador.end();
 
       // extract titles from #EXTINF tags in each segment
-      const manifest = analisador.manifest;
+      const manifest = analisador.manifest as { targetDuration?: number; mediaSequence?: number; segments?: { uri: string; duration: number; title: string; dateTimeString: string }[] };
       if (manifest.segments) {
         manifest.segments.forEach((segment: any) => {
           // Find the #EXTINF tag associated with the current segment
@@ -130,56 +191,55 @@ export class Player {
     const manifestoPrincipal = manifestos[0];
     const manifestosSuporte = manifestos.slice(1);
 
-    if (manifestoPrincipal.segments) {
-      console.log("Segmentos encontrados no manifesto principal:", manifestoPrincipal.segments.length);
-      console.log("Manifestos de suporte encontrados:", manifestosSuporte.length);
+    console.log("Segmentos encontrados no manifesto principal:", manifestoPrincipal?.segments?.length);
+    console.log("Manifestos de suporte encontrados:", manifestosSuporte.length);
 
-      let segmentRemoved = 0;
-      let segmentRepleced = 0;
+    let segmentRemoved = 0;
+    let segmentRepleced = 0;
 
-      // Percorrer os segmentos do manifesto principal e preencher as lacunas com os segmentos do manifesto de suporte
-      for (let i = 0; i < manifestoPrincipal.segments.length; i++) {
-        const segmentoPrincipal = manifestoPrincipal.segments[i];
+    if (!manifestoPrincipal.segments?.length) return this.generateM3u8(manifestoPrincipal);
 
-        let isChanged = false;
+    // Percorrer os segmentos do manifesto principal e preencher as lacunas com os segmentos do manifesto de suporte
+    for (let i = 0; i < manifestoPrincipal.segments.length; i++) {
+      const segmentoPrincipal = manifestoPrincipal.segments[i];
 
-        if (this.hasAds(segmentoPrincipal.title)) {
-          manifestosSuporte.forEach((manifestoSuporte) => {
-            // Encontre o primeiro segmento de suporte que NÃO contenha o título "Amazon" e tenha um tempo semelhante ao segmentoPrincipal (ignorando milissegundos)
-            const segmentoSuporte = manifestoSuporte?.segments?.find((seg: any) => {
-              if (this.hasAds(seg.title)) return false;
+      let isChanged = false;
 
-              const dataPrincipal = new Date(segmentoPrincipal.dateTimeString);
-              const dataSuporte = new Date(seg.dateTimeString);
-              dataPrincipal.setMilliseconds(0);
-              dataSuporte.setMilliseconds(0);
+      if (this.hasAds(segmentoPrincipal.title)) {
+        manifestosSuporte.forEach((manifestoSuporte) => {
+          // Encontre o primeiro segmento de suporte que NÃO contenha o título "Amazon" e tenha um tempo semelhante ao segmentoPrincipal (ignorando milissegundos)
+          const segmentoSuporte = manifestoSuporte?.segments?.find((seg: any) => {
+            if (this.hasAds(seg.title)) return false;
 
-              return dataPrincipal.getTime() === dataSuporte.getTime();
-            });
+            const dataPrincipal = new Date(segmentoPrincipal.dateTimeString);
+            const dataSuporte = new Date(seg.dateTimeString);
+            dataPrincipal.setMilliseconds(0);
+            dataSuporte.setMilliseconds(0);
 
-            if (segmentoSuporte) {
-              // Substitua o segmento principal pelo segmento de suporte
-              manifestoPrincipal.segments[i] = segmentoSuporte;
-              isChanged = true;
-            }
+            return dataPrincipal.getTime() === dataSuporte.getTime();
           });
 
-          // Se o segmento principal ainda contiver o título "Amazon", remova-o
-          if (!isChanged) {
-            manifestoPrincipal.segments.splice(i, 1);
-            i--;
-            segmentRemoved++;
+          if (segmentoSuporte && manifestoPrincipal.segments?.[i]) {
+            // Substitua o segmento principal pelo segmento de suporte
+            manifestoPrincipal.segments[i] = segmentoSuporte;
+            isChanged = true;
           }
+        });
 
-          if (isChanged) {
-            segmentRepleced++;
-          }
+        // Se o segmento principal ainda contiver o título "Amazon", remova-o
+        // if (!isChanged) {
+        //   manifestoPrincipal.segments.splice(i, 1);
+        //   segmentRemoved++;
+        // }
+
+        if (isChanged) {
+          segmentRepleced++;
         }
       }
-
-      console.log("Segmento com ads removidos:", segmentRemoved);
-      console.log("Segmento com ads substituídos:", segmentRepleced);
     }
+
+    console.log("Segmento com ads removidos:", segmentRemoved);
+    console.log("Segmento com ads substituídos:", segmentRepleced);
 
     // Criar uma nova lista de reprodução M3U8 com os segmentos mesclados
     const conteudoM3u8Mesclado = this.generateM3u8(manifestoPrincipal);
@@ -188,11 +248,12 @@ export class Player {
   }
 
   async fetchm3u8ByStreamType(accessType: StreamType): Promise<{ data: string | null; dump: string[] }> {
-    logPrint("Stream Type: " + accessType);
-
     let dump: string[] = [];
+    let data: string = "";
+
     let servers: Server[] = this.currentStream().getStreamByStreamType(accessType);
 
+    // FAZER AS REQUISICOES TODAS AO MESMO TEMPO
     for (const server of servers) {
       //filter server url by quality or bestquality
       const streamUrl = server.findByQuality(this.quality) || server.bestQuality();
@@ -204,12 +265,15 @@ export class Player {
         logPrint("Stream Type: " + accessType + " - Ads found");
         this.currentStream().removeServer(server);
         continue;
+      } else {
+        data = text;
+        logPrint("Stream Type: " + accessType + " - Free Stream");
+        break;
       }
 
-      return { data: text, dump: dump };
     }
 
-    return { data: null, dump: dump };
+    return { data: data, dump: dump };
   }
 
   setChannel(channelName: string) {
