@@ -69,10 +69,10 @@ export class Player {
 
   async onFetch(text: string): Promise<string> {
     if (this.isWhitelist()) return text;
-    // if (!this.isAds(text, true)) {
-    //   this.freeStream = false;
-    //   return this.mergeM3u8Contents([text]);
-    // }
+    if (!this.isAds(text, true)) {
+      this.freeStream = false;
+      return this.mergeM3u8Contents([text]);
+    }
 
     // o fluxo de stream deve sempre ter 2 stream
     // deve também fazer a requisicao de uma nova stream caso a atual tenha ads, para que a proxima requisicao tenha stream para se basear
