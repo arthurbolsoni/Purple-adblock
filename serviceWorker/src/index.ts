@@ -2,15 +2,15 @@
 //@ts-expect-error
 import txt from "../dist/app.worker.js?raw";
 
+const logger = (...args: any[]) => console.log("[Purple]:", ...args);
+
+let ok = false;
 (function () {
+  let mainWorkers: any[] = [];
   let mainWorker: any;
 
   window.Worker = class WorkerInjector extends Worker {
-    constructor(url: string | URL, options?: WorkerOptions) {
-      console.log("new worker intance " + url);
-
-      if(url.toString() == "") super(url, options);
-
+    constructor(url: string | URL) {
       console.log("[Purple]: init " + url.toString());
 
       const xhr = new XMLHttpRequest();
@@ -18,15 +18,28 @@ import txt from "../dist/app.worker.js?raw";
       xhr.send();
 
       const script = xhr.responseText;
+
+      if (typeof script !== "string") {
+        super(url);
+        return;
+      }
+
       const newBlobStr = `${txt}
       ${script}`;
-      
+
       const newBlob = URL.createObjectURL(new Blob([newBlobStr], { type: "text/javascript" }));
       super(newBlob);
-      mainWorker = this;
-      mainWorker.declareEventWorker();
-      mainWorker.declareEventWindow();
-      mainWorker.integrity();
+
+      mainWorkers.push(this);
+
+      if (!ok) {
+        mainWorker = this;
+        mainWorker.declareEventWorker();
+        mainWorker.declareEventWindow();
+        mainWorker.integrity();
+        ok = true;
+      }
+
     }
 
     async integrity() {

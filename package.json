@@ -4,7 +4,7 @@
   "description": "An adblocker for the Twitch.tv using server side signature and local m3u8 manipulation",
   "scripts": {
     "preinstall": "bun cli/preinstall.js",
-    "dev": "cd serviceWorker && node ./build.mjs && cd .. && concurrently \"bun run chrome:build && bun run firefox:build\" \"bun run userscript:build\"",
+    "dev": "set NODE_ENV=development&& cd serviceWorker && node ./build.mjs && cd .. && concurrently \"bun run chrome:build && bun run firefox:build\" \"bun run userscript:build\"",
     "build": "set NODE_ENV=production&& cd serviceWorker && node ./build.mjs && cd .. && concurrently \"bun run chrome:build && bun run firefox:build\" \"bun run userscript:build\"",
     "chrome:build": "node cli/chrome_builder.js",
     "firefox:build": "node cli/firefox_builder.js",
