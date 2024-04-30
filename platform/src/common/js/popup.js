@@ -6,7 +6,7 @@ var channel = "";
 
 document.getElementById("adblockbutton").onclick = buttonStatusChange;
 document.getElementById("inputApply").onclick = inputProxyUrl;
-document.getElementById("buttonSettings").onclick = buttonSettings;
+// document.getElementById("buttonSettings").onclick = buttonSettings;
 document.getElementById("toggleProxy").onclick = inputChangetoggleProxy;
 
 function inputChangetoggleProxy() {
