@@ -27,7 +27,7 @@ Purple Adblock is an adblocker for Twitch which is available on [Firefox](https:
 3. Click on `Load Temporary Add-on...` and select the `manifest.json` file from the extension folder.
 4. Done! The extension is now installed.
 
-The extension will be removed when you close the browser. To install it permanently, you should download it from the [Firefox Add-ons page](https://addons.mozilla.org/en-US/firefox/addon/purpleadblock/) or using the zip asigned in the release page.
+The extension will be removed when you close the browser. To install it permanently, you should download it from the [Firefox Add-ons page](https://addons.mozilla.org/firefox/addon/purpleadblock/).
 
 ### Chrome
 
