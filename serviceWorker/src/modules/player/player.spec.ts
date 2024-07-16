@@ -1,12 +1,12 @@
 import { StreamType } from '../stream/interface/stream.enum';
-import { Setting } from './interface/setting.interface';
+import { Setting } from './setting.interface';
 import { Player } from './player';
 
 describe('Player', () => {
     let player: Player;
 
     // Mock the global variable
-    global.logPrint = jest.fn();
+    global.logger = jest.fn();
 
     beforeEach(() => {
         player = new Player();

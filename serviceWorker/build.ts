@@ -1,45 +1,49 @@
 
 import { defineConfig } from 'vite'
 import { build } from 'vite'
+import path from 'path'
 
-const vitebuild = async () => {
+export async function buildServiceWorker(dev: boolean) {
     const worker = defineConfig({
+        root: __dirname,
         define: {
             global: 'self',
         },
         build: {
             rollupOptions: {
                 input: {
-                    app: './src/app.worker.ts',
+                    app: path.resolve(__dirname, 'src/app.worker.ts'),
                 },
                 output: {
                     entryFileNames: 'app.worker.js',
                 },
             },
             minify: 'terser',
-            sourcemap: true
+            sourcemap: dev,
         },
     });
 
     await build(worker);
 
     const index = defineConfig({
+        root: __dirname,
         define: {
             global: 'self',
         },
         build: {
             rollupOptions: {
                 input: {
-                    index: './src/index.ts',
+                    index: path.resolve(__dirname, 'src/index.ts'),
                 },
                 output: {
                     entryFileNames: 'bundle.js',
-                },
+                }
             },
+            sourcemap: dev
         },
     });
 
     await build(index);
 }
 
-vitebuild();
+buildServiceWorker(false);

@@ -40,7 +40,7 @@ export class Stream {
       const m3u8Text = await this.twitchService.getM3U8(this.channelName, streamDataAccess);
       this.setStreamAccess(m3u8Text, playerType);
     } catch (e) {
-      logPrint(e);
+      logger(e);
     }
   }
 

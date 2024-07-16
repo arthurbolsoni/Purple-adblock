@@ -10,5 +10,8 @@
     "experimentalDecorators": true,
     "outDir": "./dist",
     "forceConsistentCasingInFileNames": true,
+    // "noEmit": true,
+    // "allowImportingTsExtensions": true,
+    "allowJs": true,
   }
 }

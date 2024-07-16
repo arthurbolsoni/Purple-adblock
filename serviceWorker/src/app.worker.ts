@@ -3,16 +3,16 @@ import { Player } from "./modules/player/player";
 
 declare global {
   var request: any;
-  var logPrint: any;
+  var logger: any;
   var routerList: { propertyKey: string; match: string; ignore: string | null }[];
   var appController: any;
 }
 
 export default function app() {
-  global.logPrint = (x: any) => console.log("[Purple]: ", x);
+  global.logger = (x: any) => console.log("[Purple]: ", x);
   global.appController = new AppController(new Player());
 
-  global.logPrint("Script running");
+  global.logger("Script running");
 }
 
 global.request = global.fetch;

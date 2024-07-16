@@ -1,5 +1,5 @@
 import { Stream } from "../stream/stream";
-import { Setting } from "./interface/setting.interface";
+import { Setting } from "./setting.interface";
 import { StreamType } from "../stream/interface/stream.enum";
 import { Server } from "../stream/interface/stream.types";
 import { Parser } from "m3u8-parser";
@@ -21,7 +21,7 @@ export class Player {
 
   setSettings = (setting: Setting) => {
     this.setting = setting;
-    logPrint("Settings loaded");
+    logger("Settings loaded");
   };
 
   setIntegrityToken = (integrityToken: string) => this.integrityToken = integrityToken;
@@ -91,11 +91,11 @@ export class Player {
     if (picture.dump) dump.push(...picture.dump);
     if (picture.data) return picture.data;
 
-    // if (dump?.length) {
-    //   this.freeStreamChanged(true);
-    // } else {
-    //   this.freeStreamChanged(false);
-    // }
+    if (dump?.length) {
+      this.freeStreamChanged(true);
+    } else {
+      this.freeStreamChanged(false);
+    }
 
     this.printViewAds([text, ...dump])
 
@@ -253,7 +253,7 @@ export class Player {
 
     let servers: Server[] = this.currentStream().getStreamByStreamType(accessType);
 
-    // FAZER AS REQUISICOES TODAS AO MESMO TEMPO
+    // do the all request in same time
     for (const server of servers) {
       //filter server url by quality or bestquality
       const streamUrl = server.findByQuality(this.quality) || server.bestQuality();
@@ -262,12 +262,12 @@ export class Player {
       const text: string = await (await global.request(streamUrl?.url)).text();
       dump.push(text);
       if (this.isAds(text)) {
-        logPrint("Stream Type: " + accessType + " - Ads found");
+        logger("Stream Type: " + accessType + " - Ads found");
         this.currentStream().removeServer(server);
         continue;
       } else {
         data = text;
-        logPrint("Stream Type: " + accessType + " - Free Stream");
+        logger("Stream Type: " + accessType + " - Free Stream");
         break;
       }
 
@@ -277,7 +277,7 @@ export class Player {
   }
 
   setChannel(channelName: string) {
-    logPrint("Loading channel", channelName);
+    logger("Loading channel", channelName);
     this.actualChannel = channelName;
 
     let currentStream = this.streamList.find((stream) => stream.channelName === channelName);
