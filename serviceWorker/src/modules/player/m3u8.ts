@@ -1,5 +1,8 @@
 import { Parser } from "m3u8-parser";
 
+type Segment = { uri: string; duration: number; title: string; dateTimeString: string };
+type Manifest = { targetDuration?: number; mediaSequence?: number; segments?: Segment[] };
+
 const hasAds = (x: string) => x?.toString().includes("stitched") || x?.toString().includes("Amazon") || x?.toString().includes("DCM,");
 
 export function printViewAds(conteudosM3u8: string[]) {
@@ -32,32 +35,30 @@ export function printViewAds(conteudosM3u8: string[]) {
   console.log(log.join("-"));
 }
 
-export function generateM3u8(manifest: any): string {
+export function generateM3u8(manifest: Manifest): string {
   let m3u8Content = `#EXTM3U\n`;
 
-  if (manifest.targetDuration) {
-    m3u8Content += `#EXT-X-TARGETDURATION:${manifest.targetDuration}\n`;
-  }
+  m3u8Content += `#EXT-X-TARGETDURATION:${manifest.targetDuration ?? 5}\n`;
 
-  if (manifest.mediaSequence) {
-    m3u8Content += `#EXT-X-MEDIA-SEQUENCE:${manifest.mediaSequence}\n`;
-  }
+  m3u8Content += `#EXT-X-MEDIA-SEQUENCE:${manifest.mediaSequence ?? 0}\n`;
 
   if (manifest.segments) {
-    manifest.segments.forEach((segment: any) => {
+    manifest.segments.forEach((segment) => {
       if (segment.duration) {
         m3u8Content += `#EXTINF:${segment.duration}\n`;
       }
       m3u8Content += `${segment.uri}\n`;
     });
   }
+
   return m3u8Content;
 }
 
 export function mergeM3u8Contents(conteudosM3u8: string[]): string {
-  printViewAds(conteudosM3u8);
+  if (!conteudosM3u8.length) return "";
+  // printViewAds(conteudosM3u8);
 
-  const manifestos = conteudosM3u8.map((conteudo) => {
+  const manifestos: Manifest[] = conteudosM3u8.map((conteudo) => {
     const analisador = new Parser();
     analisador.push(conteudo);
     analisador.end();
@@ -89,6 +90,8 @@ export function mergeM3u8Contents(conteudosM3u8: string[]): string {
   for (let i = 0; i < manifestoPrincipal.segments.length; i++) {
     const segmentoPrincipal = manifestoPrincipal.segments[i];
     let isChanged = false;
+
+    console.log(segmentoPrincipal.title);
 
     if (hasAds(segmentoPrincipal.title)) {
       for (const manifestoSuporte of manifestosSuporte) {

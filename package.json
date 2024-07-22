@@ -1,15 +1,11 @@
 {
   "name": "purple-adblock",
-  "version": "2.6.5",
+  "version": "2.6.6",
   "description": "An adblocker for the Twitch.tv using server side signature and local m3u8 manipulation",
   "scripts": {
     "preinstall": "bun cli/preinstall.js",
-    "dev": "set NODE_ENV=development&& cd serviceWorker && node ./build.mjs && cd .. && concurrently \"bun run chrome:build && bun run firefox:build\" \"bun run userscript:build\"",
-    "build": "set NODE_ENV=production&& cd serviceWorker && node ./build.mjs && cd .. && concurrently \"bun run chrome:build && bun run firefox:build\" \"bun run userscript:build\"",
-    "chrome:build": "node cli/chrome_builder.js",
-    "firefox:build": "node cli/firefox_builder.js",
-    "userscript:build": "bun platform/tampermonkey/build.js",
-    "publish": "bun cli/firefox_publish.mjs --input-type=module && bun cli/chrome_publish.mjs --input-type=module",
+    "dev": "ts-node serviceWorker/build.ts && bun cli/build.ts dev",
+    "build": "ts-node serviceWorker/build.ts && bun cli/build.ts",
     "lint": "eslint --ext .js,.ts && prettier --write **/*.{js,ts,css,html} --ignore-path .gitignore",
     "test": "jest"
   },
@@ -51,6 +47,7 @@
   "dependencies": {
     "bun": "^1.0.25",
     "m3u8-parser": "^7.1.0",
+    "ts-node": "^10.9.2",
     "vite": "^5.0.12"
   }
 }
