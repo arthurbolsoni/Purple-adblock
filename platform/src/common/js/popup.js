@@ -38,7 +38,7 @@ function buttonStatusChange() {
     document.getElementById("watching").textContent = "Disabled on : " + channel;
   } else {
     document.getElementById("adblocktext").classList.remove("disable");
-    document.getElementById("watching").textContent = "Actived on : " + channel;
+    document.getElementById("watching").textContent = "Activated on : " + channel;
   }
 }
 
@@ -52,7 +52,7 @@ tabs().query({ active: true, lastFocusedWindow: true }, function (tabs) {
     proxyToggle.checked = items.toggleProxy == undefined ? true : items.toggleProxy;
 
     document.getElementById("adblocktext").classList.add("disable");
-    document.getElementById("watching").textContent = "Waiting channel";
+    document.getElementById("watching").textContent = "Waiting for channel";
 
     if (!tabs[0].url.includes("https://www.twitch.tv/")) {
       document.getElementById("adblockbutton").onclick = null;
@@ -65,7 +65,7 @@ tabs().query({ active: true, lastFocusedWindow: true }, function (tabs) {
 
     if (!whitelist.includes(channel)) {
       document.getElementById("adblocktext").classList.remove("disable");
-      document.getElementById("watching").textContent = "Actived on : " + channel;
+      document.getElementById("watching").textContent = "Activated on : " + channel;
       return;
     } else {
       document.getElementById("adblocktext").classList.add("disable");
