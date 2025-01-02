@@ -6,6 +6,7 @@
     "preinstall": "bun cli/preinstall.js",
     "dev": "ts-node serviceWorker/build.ts && bun cli/build.ts dev",
     "build": "ts-node serviceWorker/build.ts && bun cli/build.ts",
+    "build:tampermonkey": "bun cli/build.ts && bun platform/tampermonkey/build.js",
     "lint": "eslint --ext .js,.ts && prettier --write **/*.{js,ts,css,html} --ignore-path .gitignore",
     "test": "jest"
   },
