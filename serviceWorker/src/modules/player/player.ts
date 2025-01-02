@@ -53,6 +53,7 @@ export class Player {
     return this.playingAds;
   }
 
+  // some ads are not in the principal stream
   freeStreamChanged(x: boolean) {
     console.log("freeStreamChanged:", x);
     // call pause and play when changed
@@ -78,11 +79,6 @@ export class Player {
       this.freeStream = false;
       return mergeM3u8Contents([text]);
     }
-
-    // o fluxo de stream deve sempre ter 2 stream
-    // deve também fazer a requisicao de uma nova stream caso a atual tenha ads, para que a proxima requisicao tenha stream para se basear
-    // caso o fluxo for livre, nao deve fazer a requisicao, porem manter 2 fluxo de stream
-    // mesmo com ads, o fluxo da stream deve ser enviado para o mergeM3u8Contents para que seguimentos sem ads sejam mesclados
 
     const dump: string[] = [];
 
@@ -136,7 +132,7 @@ export class Player {
   }
 
   setChannel(channelName: string) {
-    logger("Loading channel", channelName);
+    logger(`Loading channel ${channelName}`);
     this.actualChannel = channelName;
 
     let currentStream = this.streamList.find((stream) => stream.channelName === channelName);

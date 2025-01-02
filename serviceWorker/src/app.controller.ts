@@ -31,7 +31,7 @@ export class AppController {
     return new Response(text);
   }
 
-  @Fetch("hls.ttvnw.net/v1/playlist/")
+  @Fetch("ttvnw.net/v1/playlist/")
   async onFetch(url: string, options: any): Promise<Response> {
     const body: string = await (await request(url, options)).text();
     const playlist = await this.appService.onFetch(body);
