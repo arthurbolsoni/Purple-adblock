@@ -46,12 +46,6 @@ As long as you have good code practice and a good attitude, you're welcome to co
 
 If you're looking for some help, create an issue or come join us in the [Discord server](https://discord.gg/A6CHvgtGmq)
 
-## Help cover the costs of running the server
-
-**ETHEREUM WALLET:** 0x35a8052eF440bA87DFa464e48AebD420b0635058
-
-**STRIPE DONATION :)** [Click here](https://donate.stripe.com/aEU5kwaLFeY89gI7ss)
-
 ## Recommendations
 
 1. Please don't use anothers adblocker or scripts with the same purpose.
