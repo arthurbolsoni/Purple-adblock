@@ -1,5 +1,7 @@
+import type { WorkerContext } from "../../scope";
+
 export class TwitchService {
-    constructor(private readonly integrityToken: string) { }
+    constructor(private readonly scope: WorkerContext) { }
 
     async playbackAccessToken(channelName: string, playerType: string, integrityToken: string): Promise<{ token: string; signature: string }> {
         const body = {
@@ -19,7 +21,7 @@ export class TwitchService {
             }
         }
 
-        const gql = await global.request("https://gql.twitch.tv/gql#origin=twilight", {
+        const gql = await this.scope.request("https://gql.twitch.tv/gql#origin=twilight", {
             method: "POST",
             headers: { "Host": "gql.twitch.tv", "Client-ID": "kimne78kx3ncx6brgo4mv6wki5h1ko", "Client-Integrity": integrityToken },
             body: JSON.stringify(body),
@@ -44,7 +46,7 @@ export class TwitchService {
             },
         };
 
-        const gql = await global.request("https://gql.twitch.tv/gql", {
+        const gql = await this.scope.request("https://gql.twitch.tv/gql", {
             method: "POST",
             headers: { "Host": "gql.twitch.tv", "Client-ID": "kimne78kx3ncx6brgo4mv6wki5h1ko" },
             body: JSON.stringify(body),
@@ -63,6 +65,6 @@ export class TwitchService {
             "&supported_codecs=avc1&token=" +
             playbackAccessToken.token;
 
-        return (await global.request("https://usher.ttvnw.net/api/channel/hls/" + channelName + ".m3u8?" + params)).text();
+        return (await this.scope.request("https://usher.ttvnw.net/api/channel/hls/" + channelName + ".m3u8?" + params)).text();
     }
 }

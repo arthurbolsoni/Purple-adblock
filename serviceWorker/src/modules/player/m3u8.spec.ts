@@ -1,4 +1,13 @@
+import { afterEach, beforeEach, describe, expect, jest, spyOn, test } from "bun:test";
 import { generateM3u8, mergeM3u8Contents } from "./m3u8";
+
+beforeEach(() => {
+  spyOn(console, "log").mockImplementation(() => {});
+});
+
+afterEach(() => {
+  jest.restoreAllMocks();
+});
 
 const sampleM3U8_withDates_1 = `#EXTM3U
 #EXT-X-TARGETDURATION:10
@@ -55,6 +64,7 @@ describe('m3u8-utils', () => {
     expect(generateM3u8(manifest)).toBe(expectedM3U8);
   });
 
+  // generateM3u8 defaults TARGETDURATION to 5; T-101 replaces regeneration with line edits.
   test('generateM3u8 should handle missing targetDuration and mediaSequence', () => {
     const manifest = {
       segments: [
@@ -62,7 +72,7 @@ describe('m3u8-utils', () => {
         { uri: "segment2.ts", duration: 10, title: "", dateTimeString: "" },
       ],
     };
-    const expectedM3U8 = `#EXTM3U\n#EXT-X-TARGETDURATION:0\n#EXT-X-MEDIA-SEQUENCE:0\n#EXTINF:10\nsegment1.ts\n#EXTINF:10\nsegment2.ts\n`;
+    const expectedM3U8 = `#EXTM3U\n#EXT-X-TARGETDURATION:5\n#EXT-X-MEDIA-SEQUENCE:0\n#EXTINF:10\nsegment1.ts\n#EXTINF:10\nsegment2.ts\n`;
     expect(generateM3u8(manifest)).toBe(expectedM3U8);
   });
 

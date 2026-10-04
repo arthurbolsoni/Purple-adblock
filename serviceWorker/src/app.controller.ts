@@ -2,12 +2,16 @@ import { Controller } from "./decorator/controller.decorator";
 import { Fetch, Message } from "./decorator/handler.decorator";
 import { Player } from "./modules/player/player";
 import { StreamType } from "./modules/stream/interface/stream.enum";
+import type { WorkerContext } from "./scope";
 
 @Controller()
 export class AppController {
-  getSettings = () => global.postMessage({ type: "getSettings" });
+  getSettings = () => this.scope.postMessage({ type: "getSettings" });
 
-  constructor(private readonly appService: Player) {
+  constructor(
+    private readonly appService: Player,
+    private readonly scope: WorkerContext,
+  ) {
     this.getSettings();
   }
 
@@ -18,7 +22,7 @@ export class AppController {
 
   @Fetch("usher.ttvnw.net/api/channel/hls/", "picture-by-picture")
   async onChannel(url: string, options: any): Promise<Response> {
-    const response: Response = await global.request(url, options);
+    const response: Response = await this.scope.request(url, options);
     if (!response.ok) {
       console.log("Error on channel load");
       return response;
@@ -33,14 +37,14 @@ export class AppController {
 
   @Fetch("ttvnw.net/v1/playlist/")
   async onFetch(url: string, options: any): Promise<Response> {
-    const body: string = await (await request(url, options)).text();
+    const body: string = await (await this.scope.request(url, options)).text();
     const playlist = await this.appService.onFetch(body);
     return new Response(playlist);
   }
 
   @Fetch("picture-by-picture")
   async onChannelPicture(url: string, options: any): Promise<Response> {
-    const response: Response = await global.request(url, options);
+    const response: Response = await this.scope.request(url, options);
     if (!response.ok) {
       console.log("Error on channel load");
       return response;

@@ -68,12 +68,14 @@ cargo test --manifest-path sim/Cargo.toml   # sim/ unit tests (after T-006)
 python e2e/run.py <L2-xx|L3-xx>             # levels 2 and 3 (after T-004)
 ```
 
-The `package.json` scripts still call `ts-node` and Jest; T-001 and T-701 move them to Bun. Until then, run the commands above directly.
+The `dev` and `build` scripts in `package.json` still call `ts-node`; T-701 moves them to Bun. Until then, run the build commands above directly.
 
 ## Code map
 
 - `serviceWorker/src/index.ts`: runs in the page (main world, `document_start`). Replaces `window.Worker`, injects the worker code, bridges messages and hooks the page `fetch`.
-- `serviceWorker/src/app.worker.ts`: runs inside the Twitch player worker. Hooks `fetch` and dispatches to the `@Fetch` routes of `AppController`.
+- `serviceWorker/src/app.worker.ts`: entry of the worker bundle, runs inside the Twitch player worker and calls `bootstrapWorker(self)`.
+- `serviceWorker/src/bootstrap.ts`: `bootstrapWorker(scope)` keeps the original `fetch` as `scope.request`, creates `AppController`, binds `@Message` handlers and hooks `fetch` with the `@Fetch` routes.
+- `serviceWorker/src/scope.ts`: `WorkerContext` (`request`, `postMessage`, `logger`), passed to the controller and modules.
 - `serviceWorker/src/app.controller.ts`: routes (usher, media playlist, picture-by-picture) and messages (`@Message`).
 - `serviceWorker/src/modules/player/`: ad decision, backup selection, playlist assembly (`m3u8.ts`).
 - `serviceWorker/src/modules/stream/`: backup streams per playerType.
@@ -101,8 +103,8 @@ The `package.json` scripts still call `ts-node` and Jest; T-001 and T-701 move t
 ## Environment notes
 
 - Vite replaces `global` with `self` (`serviceWorker/build.ts`). Under `bun test`, `global` is Bun's global object.
-- `@Fetch` and `@Message` currently register routes and listeners on `global` when the class loads. `bun test` has no `isolateModules`/`resetModules` and runs every test file in one process, so T-001 changes the decorators to store metadata on the class and adds explicit `createRouter(controller)` / `bindMessages(scope, controller)`.
+- `@Fetch` and `@Message` store routes on the class; `createRouter(controller)` and `bindMessages(scope, controller)` register them for one instance. Worker modules get the scope through their constructors and never read globals, so tests boot several workers in one process (`bun test` has no `isolateModules`/`resetModules`).
 - `index.ts` imports `../dist/app.worker.js?raw` (a Vite feature). In tests, a Bun plugin in the test preload resolves `?raw`.
 - Bun's `Response` accepts a body with status 204; browsers throw. Page-hook tests assert that the original response is returned unread instead of relying on constructor errors.
 - The worker code is concatenated in front of Twitch's original worker script inside a blob: it cannot depend on the DOM or on runtime `import`.
-- `global.request` keeps the original `fetch`. The extension's own requests go through `global.request` so they skip its own hook.
+- In the worker, `scope.request` (`self.request` in the browser) keeps the original `fetch`. The extension's own requests go through it so they skip its own hook. In the page, `index.ts` keeps its own `global.request`.

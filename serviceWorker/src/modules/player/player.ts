@@ -2,8 +2,8 @@ import { Stream } from "../stream/stream";
 import { Setting } from "./setting.interface";
 import { StreamType } from "../stream/interface/stream.enum";
 import { Server } from "../stream/interface/stream.types";
-import { Parser } from "m3u8-parser";
 import { mergeM3u8Contents } from "./m3u8";
+import type { WorkerContext } from "../../scope";
 
 export class Player {
   integrityToken = ""; //the integrity token
@@ -15,14 +15,16 @@ export class Player {
   quality: string = ""; //the quality of the stream
   freeStream: boolean = false; //if the stream is free
 
-  getQuality = () => global.postMessage({ type: "getQuality" });
-  getSettings = () => global.postMessage({ type: "getSettings" });
-  pause = () => global.postMessage({ type: "pause" });
-  play = () => global.postMessage({ type: "play" });
+  constructor(private readonly scope: WorkerContext) {}
+
+  getQuality = () => this.scope.postMessage({ type: "getQuality" });
+  getSettings = () => this.scope.postMessage({ type: "getSettings" });
+  pause = () => this.scope.postMessage({ type: "pause" });
+  play = () => this.scope.postMessage({ type: "play" });
 
   setSettings = (setting: Setting) => {
     this.setting = setting;
-    logger("Settings loaded");
+    this.scope.logger("Settings loaded");
   };
 
   setIntegrityToken = (integrityToken: string) => this.integrityToken = integrityToken;
@@ -114,15 +116,15 @@ export class Player {
       const streamUrl = server.findByQuality(this.quality) || server.bestQuality();
 
       //try get m3u8 content and return if don't have ads.
-      const text: string = await (await global.request(streamUrl?.url)).text();
+      const text: string = await (await this.scope.request(streamUrl?.url)).text();
       dump.push(text);
       if (this.isAds(text)) {
-        logger("Stream Type: " + accessType + " - Ads found");
+        this.scope.logger("Stream Type: " + accessType + " - Ads found");
         this.currentStream().removeServer(server);
         continue;
       } else {
         data = text;
-        logger("Stream Type: " + accessType + " - Free Stream");
+        this.scope.logger("Stream Type: " + accessType + " - Free Stream");
         break;
       }
 
@@ -132,12 +134,12 @@ export class Player {
   }
 
   setChannel(channelName: string) {
-    logger(`Loading channel ${channelName}`);
+    this.scope.logger(`Loading channel ${channelName}`);
     this.actualChannel = channelName;
 
     let currentStream = this.streamList.find((stream) => stream.channelName === channelName);
     if (!currentStream) {
-      currentStream = new Stream(channelName);
+      currentStream = new Stream(channelName, this.scope);
       this.streamList.push(currentStream);
     }
   }

@@ -2,6 +2,10 @@
 //@ts-expect-error
 import txt from "../dist/app.worker.js?raw";
 
+declare global {
+  var request: any;
+}
+
 const logger = (...args: any[]) => console.log("[Purple]:", ...args);
 
 let ok = false;

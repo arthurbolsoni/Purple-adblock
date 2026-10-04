@@ -21,7 +21,7 @@ Phases run in order. Inside a phase, the "Depends on" column says what must come
 ## Phase 0: test base
 
 ### T-001 Move the suite to `bun test`
-- [ ] Status
+- [x] Status · done 2026-10-03: `bootstrapWorker` lives in `serviceWorker/src/bootstrap.ts`; modules receive the scope (`WorkerContext` in `serviceWorker/src/scope.ts`) instead of reading globals; the `TARGETDURATION` spec expects `5`, the current default; findings in `docs/findings/2026-10-03-worker-unit-tests.md`
 - Files: `package.json`, `bunfig.toml` (new), `serviceWorker/test/preload.ts` (new), `jest.config.js` (removed), `serviceWorker/src/decorator/*.ts`, `serviceWorker/src/app.worker.ts`, `serviceWorker/src/modules/player/player.spec.ts`, `serviceWorker/src/modules/stream/stream.spec.ts`, `serviceWorker/src/modules/player/m3u8.spec.ts`
 - Done when:
   - `bunfig.toml` sets `[test] preload` to `serviceWorker/test/preload.ts`, which registers the `?raw` plugin;
@@ -153,6 +153,7 @@ Runs in parallel with phases 1 to 7. Phase 1 to 6 tasks list L2/L3 scenarios tha
   - the current regex becomes a fallback, used only when the parser finds no variants;
   - a `variant URL → stream` map identifies media playlists by URL (the current `v1/playlist` route stays as fallback);
   - a master without variants creates no `Server`; `request(undefined)` never happens;
+  - variant URLs on `<edge>.playlist.ttvnw.net` (B-003) are read, not only `https://video…` (Q-013);
   - a network error on one backup drops only that backup.
 - Tests: TS-104
 
@@ -344,9 +345,11 @@ Runs in parallel with phases 1 to 7. Phase 1 to 6 tasks list L2/L3 scenarios tha
 - Tests: TS-601
 
 ### T-602 Settings without reload
-- [ ] Status · F-16 · E7
-- Files: `platform/src/content-script.js`, `serviceWorker/src/index.ts`
-- Done when a `storage` change (`onChanged`) reaches every live worker and the whitelist applies on the next playlist.
+- [ ] Status · F-16 · E7 · C-10
+- Files: `platform/src/content-script.js`, `serviceWorker/src/index.ts`, `serviceWorker/src/app.controller.ts`
+- Done when:
+  - `Player.setting` holds the `value` of the `setSettings` message, so `isWhitelist()` sees the list (C-10; starts with a failing test, see `docs/findings/2026-10-03-worker-unit-tests.md`);
+  - a `storage` change (`onChanged`) reaches every live worker and the whitelist applies on the next playlist.
 - Tests: TS-602
 
 ### T-603 Channel in the popup

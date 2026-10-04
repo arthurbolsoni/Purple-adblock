@@ -6,7 +6,7 @@
 | --- | --- | --- |
 | Content script | `platform/src/content-script.js` | extension isolated world; reads `storage` and injects `app/bundle.js` |
 | Page | `serviceWorker/src/index.ts` (built into `bundle.js`) | twitch.tv main world, `document_start` |
-| Worker | `serviceWorker/src/app.worker.ts` + modules (built into `app.worker.js`) | inside the Twitch player worker, ahead of the original script |
+| Worker | `serviceWorker/src/app.worker.ts` → `bootstrap.ts` + modules (built into `app.worker.js`) | inside the Twitch player worker, ahead of the original script |
 | Popup | `platform/src/common/js/popup.js` | extension popup |
 
 The userscript has no content script or popup: `bundle.js` is the whole script and settings use their defaults.
@@ -16,12 +16,12 @@ The userscript has no content script or popup: `bundle.js` is the whole script a
 1. The content script injects `app/bundle.js` into the page.
 2. `index.ts` replaces `window.Worker`. When a worker is created, it downloads the script with a synchronous XHR and builds a blob with `app.worker.js` followed by the original script.
 3. The first worker becomes `mainWorker`: it gets the message listeners and triggers the page `fetch` hook that captures `https://gql.twitch.tv/integrity`.
-4. In the worker, `app.worker.ts` replaces `fetch` and dispatches through `routerList`:
+4. In the worker, `app.worker.ts` calls `bootstrapWorker(self)`, which keeps the original `fetch` as `self.request`, creates `AppController` and replaces `fetch` with a dispatcher over the `@Fetch` routes (first match in declaration order):
    - `usher.ttvnw.net/api/channel/hls/` (except `picture-by-picture`) → `onChannel` → `Player.setChannel`;
    - `ttvnw.net/v1/playlist/` → `onFetch` → `Player.onFetch`;
    - `picture-by-picture` → `onChannelPicture` → stores the PbP stream and returns an empty response.
 5. `Player.onFetch`:
-   - channel on the whitelist → original text;
+   - channel on the whitelist → original text (never reached in 2.6.7, C-10);
    - no ads → `mergeM3u8Contents([text])` (rewrites the playlist);
    - ads → tries a `frontpage` backup, then `picture-by-picture`; the first one without ads replaces the whole playlist;
    - none clean → merges the main playlist with the backups by `PROGRAM-DATE-TIME`.

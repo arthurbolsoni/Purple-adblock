@@ -1,15 +1,19 @@
 import { TwitchService } from "../twitch/twitch.service";
 import { StreamType } from "./interface/stream.enum";
 import { Server, StreamUrl } from "./interface/stream.types";
+import type { WorkerContext } from "../../scope";
 
 export class Stream {
   serverList: Server[] = []; //the list of servers links m3u8
   channelName: string; //the channel name
   twitchService: TwitchService;
 
-  constructor(channelName: string) {
+  constructor(
+    channelName: string,
+    private readonly scope: WorkerContext,
+  ) {
     this.channelName = channelName;
-    this.twitchService = new TwitchService("");
+    this.twitchService = new TwitchService(scope);
   }
 
   removeServer(server: Server): void {
@@ -40,7 +44,7 @@ export class Stream {
       const m3u8Text = await this.twitchService.getM3U8(this.channelName, streamDataAccess);
       this.setStreamAccess(m3u8Text, playerType);
     } catch (e) {
-      logger(e);
+      this.scope.logger(e);
     }
   }
 
