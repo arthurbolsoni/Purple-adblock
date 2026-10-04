@@ -202,12 +202,21 @@ Tests against the real twitch.tv run in Python with nodriver driving Microsoft E
 | Library | nodriver 0.50.3 on Python 3.14 (its `cdp/network.py` ships in cp1252 and must be re-saved as UTF-8 after install or upgrade) |
 | Code | `e2e/` (T-004) |
 
-Two modes:
+No other extension runs under nodriver. Every launch passes `--disable-component-extensions-with-background-pages`, plus:
 
-- **Extension:** `bun serviceWorker/build.ts && bun cli/build.ts dev`, then Edge starts with `--load-extension=<repo>/dist/purple-adblock-purple-adblock-chromium`. Checked on 2026-10-03: Edge 154 accepts the switch and lists the extension as `UNPACKED`/`ENABLED` (read through `chrome.developerPrivate.getExtensionsInfo` on `edge://extensions`).
-- **Userscript:** Edge starts with `--disable-extensions` and the built userscript is injected with `Page.addScriptToEvaluateOnNewDocument`, which runs it in the main world at document start, as Tampermonkey does with `@run-at document-start` and `@grant none`.
+| Mode | Extra flags | Purpose |
+| --- | --- | --- |
+| Extension | `--load-extension=<build> --disable-extensions-except=<build>` | Purple as an extension; `<build>` is `<repo>/dist/purple-adblock-purple-adblock-chromium` from `bun serviceWorker/build.ts && bun cli/build.ts dev` |
+| Userscript | `--disable-extensions` | Purple as a userscript, injected with `Page.addScriptToEvaluateOnNewDocument` (main world, document start, like Tampermonkey with `@run-at document-start` and `@grant none`) |
+| Record | `--disable-extensions` | raw Twitch traffic, Purple off |
+| Replay | as Extension or Userscript | recorded traffic served to the real player |
 
-A new profile is launched once before any assertion. On 2026-10-03 the first launch of a fresh profile did not patch the worker; every later launch did.
+Checked on 2026-10-03 with Edge 154:
+
+- extension mode: `chrome.developerPrivate.getExtensionsInfo` on `edge://extensions` lists only Purple Ads Blocker (`UNPACKED`, `ENABLED`);
+- the first launch of a fresh profile did not patch the worker; every later launch did, so a new profile gets one warm-up launch before assertions;
+- a run killed before `browser.stop()` leaves Edge processes on the profile and the next launch fails; the harness first stops `msedge.exe` processes whose command line contains `profile-edge-purple`, and nothing else;
+- the page `Network` domain does not report the player worker's requests (usher, playlists, segments, `.wasm`); the `Fetch` domain on the page target intercepts all of them.
 
 ### Reading state
 
@@ -235,3 +244,39 @@ Ads are not deterministic. Every scenario asserts the invariants that always hol
 | E2E-09 | Logged in (after a one-time manual login in the dedicated profile) | extension | E2E-01 and E2E-02 checks | F-05 |
 
 Before ticking a task that changes behavior on twitch.tv (phases 1 to 6), run the scenarios listed for it in the Covers column. Before a release, run all of them. Results go in the PR description.
+
+### Recorded sessions and replay
+
+The Twitch player is the Amazon IVS player compiled to WebAssembly (`assets.twitch.tv/assets/amazon-ivs-wasmworker.min-<hash>.wasm`), running inside the worker that Purple hooks. All video traffic it receives is plain HTTP fetched from that worker: usher master playlist, media playlists polled every ~2 s, MPEG-TS segments from `*.j.cloudfront.hls.ttvnw.net`. Reproducing the server side therefore needs recording and replaying that HTTP traffic, not decompiling the player.
+
+Checked on 2026-10-03 (Edge 154, logged out, 30 s on one channel):
+
+- `Fetch` interception paused and released 1 usher, 27 media playlist, 18 segment and 2 `.wasm` requests with no errors, and playback continued;
+- that session was a preroll: 232 `#EXTINF` titles `Amazon|<id>` against 37 `live`, `DATERANGE` classes `twitch-stitched-ad`, `twitch-trigger`, `twitch-ad-quartile`, and 22 distinct `X-TV-TWITCH-AD-*` attributes;
+- answering every media playlist with `Fetch.fulfillRequest` (22 responses) kept the real player playing (`currentTime` 8.2 → 18.3 → 28.3 s).
+
+Recorder (T-005), in Record mode or with Purple on (to also capture backup requests):
+
+- intercepts usher, media playlists, segments, GQL `PlaybackAccessToken` and `edge.ads.twitch.tv`, and saves each response with its offset from the session start;
+- writes to `~/purple-recordings/<date>-<channel>/` (`manifest.json` + bodies), outside the repo: recordings carry tokens, ad ids and Twitch media and are never committed;
+- sanitized media playlists from a recording (no segments) can become fixtures through `harness/sanitize.ts`.
+
+Replay (T-006):
+
+- answers the same requests with `Fetch.fulfillRequest`, matching by host and path (query tokens ignored);
+- serves media playlists by elapsed time and shifts `PROGRAM-DATE-TIME` to the current clock;
+- can serve edited recordings for cases that are rare live: a midroll in the middle of a clean stream, backup types that also return ads, CSAI-marked-live playlists, GQL errors.
+
+The page itself (twitch.tv HTML, scripts, GQL for the UI) still loads live; only video and token traffic is replayed. Recordings are dated and re-made when Twitch changes the player or the playlist format.
+
+| ID | Scenario | Mode | Asserts | Covers |
+| --- | --- | --- | --- | --- |
+| E2E-R1 | Recorded preroll | Replay + extension | no ad segment reaches the player (checked against the recording's ad URIs); playback continues; events show a backup, a merge or blank segments | F-02 to F-14 |
+| E2E-R2 | Recorded midroll inside a clean stream | Replay + extension | same as E2E-R1, plus pause/play or reload once at the break edges | T-601 |
+| E2E-R3 | Every backup type returns ads | Replay + extension | blank segments replace the ads; no ad URI reaches the player | F-14 |
+| E2E-R4 | CSAI-marked-live playlist | Replay + extension | playlist passes untouched; no backup lookup | T-202 |
+| E2E-R5 | Same recording without Purple | Replay with `--disable-extensions` | ad URIs reach the player (control case for E2E-R1 to E2E-R4) | - |
+
+"Reaches the player" is measured with `Fetch` at the request stage: the segment URLs the player asks for during replay are compared with the ad URIs in the recording.
+
+Not planned: decompiling the `.wasm`. The file name changes with each player release, and the replay rig answers behavior questions (how the player reacts to discontinuities, `EXT-X-MAP` changes, missing segments) by observation.

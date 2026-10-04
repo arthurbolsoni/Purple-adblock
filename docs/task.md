@@ -8,7 +8,7 @@ Phases run in order. Inside a phase, the "Depends on" column says what must come
 
 | Phase | Tasks | Depends on |
 | --- | --- | --- |
-| 0. Test base | T-001 to T-004 | - |
+| 0. Test base | T-001 to T-006 | - |
 | 1. Fixes to existing code | T-101 to T-110 | Phase 0 |
 | 2. Detection | T-201, T-202 | T-101 |
 | 3. CSAI blocking | T-301, T-302 | T-106 |
@@ -51,11 +51,34 @@ Phases run in order. Inside a phase, the "Depends on" column says what must come
 - Files: `e2e/` (new), `package.json` (`e2e` script calling `python e2e/run.py`)
 - Done when:
   - nodriver starts Edge with `user_data_dir=~/nodriver/profile-edge-purple`, a profile used only by these tests;
-  - extension mode loads `dist/purple-adblock-purple-adblock-chromium` with `--load-extension`; userscript mode runs with `--disable-extensions` and injects the built userscript with `Page.addScriptToEvaluateOnNewDocument`;
+  - no other extension runs: every launch passes `--disable-component-extensions-with-background-pages`; extension mode adds `--load-extension=<build> --disable-extensions-except=<build>`; userscript mode adds `--disable-extensions` and injects the built userscript with `Page.addScriptToEvaluateOnNewDocument`;
+  - before launching, leftover `msedge.exe` processes whose command line contains `profile-edge-purple` are stopped (only those);
   - a fresh profile gets one warm-up launch before assertions;
   - state is read as JSON (hook installed, video state, overlays, `window.__purple.events` once T-110 exists); no screenshots;
   - E2E-01 passes in both modes.
 - Tests: E2E-01
+
+### T-005 Traffic recorder
+- [ ] Status
+- Depends on: T-004
+- Files: `e2e/record.py` (new)
+- Done when:
+  - `python e2e/record.py <channel> --seconds N [--with-purple]` intercepts usher, media playlists, segments, GQL `PlaybackAccessToken` and `edge.ads.twitch.tv` with `Fetch` and keeps every request flowing;
+  - each response is saved with its offset from session start in `~/purple-recordings/<date>-<channel>/` (`manifest.json` + bodies), outside the repo;
+  - the manifest marks which segment URIs are ads (by the F-02 markers) so replay assertions can use it;
+  - a recording containing an ad break exists and E2E-R5 runs on it.
+- Tests: E2E-R5
+
+### T-006 Replay against the real player
+- [ ] Status
+- Depends on: T-005, T-110
+- Files: `e2e/replay.py` (new), `e2e/scenarios/`
+- Done when:
+  - `Fetch.fulfillRequest` answers usher, media playlists, segments and GQL token requests from a recording, matching host and path and ignoring query tokens;
+  - media playlists follow elapsed time and `PROGRAM-DATE-TIME` is shifted to the current clock;
+  - edited recordings can be served (midroll inside a clean stream, all backups with ads, CSAI-marked-live, GQL errors);
+  - E2E-R1 to E2E-R4 pass with Purple on, and E2E-R5 shows the ads reaching the player with Purple off.
+- Tests: E2E-R1 to E2E-R5
 
 ## Phase 1: fixes to existing code
 

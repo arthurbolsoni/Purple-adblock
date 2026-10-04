@@ -16,7 +16,7 @@ Bun for everything: install, scripts, build and tests (`bun test` with `bun:test
 
 Jest is the fallback when `bun test` cannot cover a case (missing API or a runtime difference that matters for the test). The reason goes at the top of that test file and in the "Jest exceptions" table in `docs/tests.md`.
 
-Browser tests against twitch.tv use nodriver (Python) with Microsoft Edge and the dedicated profile `~/nodriver/profile-edge-purple`, used only for these tests. See "Browser tests" in `docs/tests.md`.
+Browser tests against twitch.tv use nodriver (Python) with Microsoft Edge and the dedicated profile `~/nodriver/profile-edge-purple`, used only for these tests. No other extension runs under nodriver (`--disable-extensions` or `--disable-extensions-except=<our build>`, plus `--disable-component-extensions-with-background-pages`). Recorded Twitch sessions live in `~/purple-recordings/`, never in the repo. See "Browser tests" in `docs/tests.md`.
 
 ## Reference implementation
 
