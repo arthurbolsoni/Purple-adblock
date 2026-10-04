@@ -63,6 +63,7 @@ Runs in parallel with phases 1 to 7. Phase 1 to 6 tasks list L2/L3 scenarios tha
   - nodriver starts Edge with `user_data_dir=~/nodriver/profile-edge-purple`, a profile used only by these tests;
   - no other extension runs: every launch passes `--disable-component-extensions-with-background-pages`; extension mode adds `--load-extension=<build> --disable-extensions-except=<build>`; userscript mode adds `--disable-extensions` and injects the built userscript with `Page.addScriptToEvaluateOnNewDocument`;
   - before launching, leftover `msedge.exe` processes whose command line contains `profile-edge-purple` are stopped (only those);
+  - on Windows, Edge starts on a separate hidden Win32 desktop (`CreateDesktopW` + `STARTUPINFO.lpDesktop`; not headless), so runs never show a window or take the user's input; pages get focus emulation (`Emulation.setFocusEmulationEnabled`);
   - a fresh profile gets one warm-up launch before assertions;
   - state is read as JSON (hook installed, video state, overlays, `window.__purple.events` once T-110 exists); no screenshots;
   - L3-01 passes in extension and userscript modes.

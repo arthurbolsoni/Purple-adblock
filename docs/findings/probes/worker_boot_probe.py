@@ -4,6 +4,7 @@
 # installed before any page script records it.
 # Finding: docs/findings/2026-10-03-worker-unit-tests.md
 # Edge + nodriver, dedicated profile ~/nodriver/profile-edge-purple, only the Purple build loaded.
+# Can run on a hidden Win32 desktop (separate desktop, not headless): the script emulates focus.
 # Run: bun serviceWorker/build.ts && bun cli/build.ts dev && python -u docs/findings/probes/worker_boot_probe.py [<unpacked build>] [--spa]
 import json, os, sys
 
@@ -75,6 +76,8 @@ async def main():
     try:
         tab = browser.main_tab
         await tab.send(uc.cdp.page.enable())
+        # the page keeps focus when Edge runs on a hidden desktop
+        await tab.send(uc.cdp.emulation.set_focus_emulation_enabled(enabled=True))
         await tab.send(uc.cdp.page.add_script_to_evaluate_on_new_document(source=RECORDER))
         await tab.send(uc.cdp.page.navigate('https://www.twitch.tv/directory/all'))
         channel = None
