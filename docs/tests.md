@@ -209,6 +209,7 @@ Builds a fake worker scope and boots the worker code on it, the way it runs insi
 | TS-108 | T-108 | unit | URIs with `?`, `+`, `(` and `[` keep the right title |
 | TS-109 | T-109 | unit + int | with `debug` off, a full poll does not call `console.log`; with it on, it does; no `console.log` outside the logger in `serviceWorker/src` (file scan) |
 | TS-110 | T-110 | unit (happy-dom) + int | with `debug` off the worker posts no events; with it on, each event type reaches `window.__purple.events` with channel and timestamp; buffer keeps the last 500 |
+| TS-111 | T-111 | unit | the Chromium manifest declares `app/bundle.js` as a `MAIN` world content script at `document_start`; on Chromium the isolated content script no longer appends a `<script src>` and still answers `getSettings` |
 | TS-201 | T-201 | unit | each F-02 marker detected; non-ad markers give `NONE`; `stitched` outside the title gives `NONE`; `stitched`, `Amazon` and `DCM,` in the title give `SSAI`; URI patterns give `SSAI`; correct indexes on `media-ssai-midroll`; `media-marked-live` gives `MARKED_LIVE` |
 | TS-202 | T-202 | int | `media-marked-live` comes out identical, zero GQL calls, no pause/play messages |
 | TS-301 | T-301 | unit (happy-dom) | `fetch` to `edge.ads.twitch.tv` never reaches the real `fetch` and gets an empty 200; XHR ends with `readyState 4`, status 200 and `onload` without network; with `blockCsai` off it passes; counters for `preroll` and `midroll` |
@@ -303,7 +304,7 @@ Ads are not deterministic. Every scenario asserts what always holds (hook instal
 
 | ID | Scenario | Mode | Asserts | Covers |
 | --- | --- | --- | --- | --- |
-| L3-01 | Open a live channel picked from the directory | extension, userscript | hook installed; video playing; no player error | E1, T-101, T-107 |
+| L3-01 | Open a live channel picked from the directory, by direct load and by client-side navigation | extension, userscript | every player worker created through the injector and running Purple's code (boot message seen); video playing; no player error | E1, T-101, T-107, T-111 |
 | L3-02 | Preroll (technique TR-001) | extension | for each recorded break: no ad overlay, playback resumes, events show a backup, a merge or blank segments | F-02 to F-14 |
 | L3-03 | Soak: one channel for 20 minutes (TR-002) | extension | every recorded break ends with a backup, a merge or blank segments; no player error | midrolls, T-601 |
 | L3-04 | HEVC/AV1 channel (TR-006) | extension | master has an HEVC or AV1 variant; video playing; no player error | T-101, T-407 |

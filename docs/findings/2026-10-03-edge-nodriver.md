@@ -23,3 +23,5 @@ Date: 2026-10-03 · Edge 154.0.4258.53 · nodriver 0.50.3 · Python 3.14.2 · Pr
 | All | `--disable-component-extensions-with-background-pages` |
 | Extension | `--load-extension=<build> --disable-extensions-except=<build>` |
 | No extension (record, userscript) | `--disable-extensions` |
+
+Note 2026-10-04: "worker patched" in this file means the page hook (`window.Worker` replaced). Whether the player worker runs Purple's code is a separate check; on a direct channel load it does not ([worker injection race](2026-10-04-worker-injection-race.md)).

@@ -17,3 +17,4 @@ Each question names the level 3 session or probe that answers it. Answers go to 
 | Q-011 | Keys of the 23 `EXT-X-SESSION-DATA` lines | Save the sanitized master in the recorder |
 | Q-012 | Do the observed preroll segment URIs match `/adsquared/`, `/_404/` or `/processing`? | Save sanitized ad segment paths in the recorder |
 | Q-013 | Full URLs (host and path) of master variants and media playlists, main and backup: do they match Purple 2.6.7's variant regex (`https://video…`) and its `ttvnw.net/v1/playlist/` route? | Save the sanitized master and the media playlist URLs in the recorder; see [finding](../findings/2026-10-03-worker-unit-tests.md) |
+| Q-014 | Why does the player stay at `readyState 0` in some runs with Purple's code in the worker (1 of 3 on both 2.6.7 and the T-001 build)? | Worker console and the playlists returned during a stalled run (recorder T-005, debug events T-110); see [finding](../findings/2026-10-04-worker-injection-race.md) |

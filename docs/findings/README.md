@@ -13,4 +13,5 @@ New discoveries are added here as they happen. A later finding that contradicts 
 | [2026-10-03-host-resolver-mapping.md](2026-10-03-host-resolver-mapping.md) | Mapping `*.ttvnw.net` to a local server | open |
 | [2026-10-03-ivs-player-sdk.md](2026-10-03-ivs-player-sdk.md) | Public Amazon IVS player SDK as the level 2 player | open |
 | [2026-10-03-worker-unit-tests.md](2026-10-03-worker-unit-tests.md) | Worker behavior seen while writing the T-001 unit tests: whitelist, variant regex | open |
+| [2026-10-04-worker-injection-race.md](2026-10-04-worker-injection-race.md) | On a direct channel load the player workers start before Purple's hook; live check of `bootstrapWorker` | open |
 | [../research.md](../research.md) | Brave's Twitch scriptlet | closed |

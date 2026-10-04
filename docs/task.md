@@ -10,7 +10,7 @@ Phases run in order. Inside a phase, the "Depends on" column says what must come
 | --- | --- | --- |
 | 0. Test base (level 1) | T-001 to T-003 | - |
 | 0b. Levels 2 and 3 | T-004 to T-009 | - (parallel with phases 1 to 7) |
-| 1. Fixes to existing code | T-101 to T-110 | Phase 0 |
+| 1. Fixes to existing code | T-101 to T-111 | Phase 0 |
 | 2. Detection | T-201, T-202 | T-101 |
 | 3. CSAI blocking | T-301, T-302 | T-106 |
 | 4. Backup streams | T-401 to T-408 | T-104, T-105, T-106, T-107 |
@@ -213,6 +213,16 @@ Runs in parallel with phases 1 to 7. Phase 1 to 6 tasks list L2/L3 scenarios tha
   - the page keeps them in `window.__purple.events`, last 500 only;
   - with `debug` off, no events are posted and `window.__purple` is not created.
 - Tests: TS-110
+
+### T-111 Inject before the player creates its workers
+- [ ] Status · C-11 · E1
+- Files: `platform/chromium/manifest.json`, `platform/src/content-script.js`, `platform/firefox/manifest.json`, `platform/tampermonkey/build.js`, `cli/chrome_builder.js`
+- Context: on a direct channel load the player workers start at 0.45 to 0.8 s and Purple's hook at about 0.77 s, so Purple never runs in them ([finding](findings/2026-10-04-worker-injection-race.md)).
+- Done when:
+  - Chromium: `app/bundle.js` is a content script with `"world": "MAIN"` and `"run_at": "document_start"`; the isolated content script keeps answering `getSettings` from storage;
+  - Firefox and the userscript: the earliest injection each one allows, with the result of the same check recorded in a finding;
+  - L3-01 on a direct load: every player worker is created through the injector and runs Purple's code (checks of `docs/findings/probes/worker_boot_probe.py`).
+- Tests: TS-111, L3-01
 
 ## Phase 2: detection
 

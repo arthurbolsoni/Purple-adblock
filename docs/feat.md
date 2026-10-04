@@ -6,7 +6,7 @@ Three groups: strategies that already exist (E-xx, none is removed), fixes to ex
 
 | ID | Strategy | Where | State in 2.6.7 | Tasks |
 | --- | --- | --- | --- | --- |
-| E1 | Player worker injection (replaces `window.Worker`, prepends our code to the original script) | `index.ts` | synchronous XHR; only the first worker gets messages | T-107 |
+| E1 | Player worker injection (replaces `window.Worker`, prepends our code to the original script) | `index.ts`, `content-script.js` | on a direct channel load the hook arrives after the player created its workers, so Purple never runs in them (C-11); synchronous XHR; only the first worker gets messages | T-107, T-111 |
 | E2 | Worker `fetch` interception with `@Fetch` routes | `app.worker.ts`, `app.controller.ts` | `includes(null)`; usher `/api/channel/hls/` only | T-102, T-103 |
 | E3 | Backup stream by requesting `PlaybackAccessToken` with another playerType (`frontpage`, `picture-by-picture`) | `player.ts`, `stream.ts`, `twitch.service.ts` | fixed hash, no page headers, duplicate requests; the variant regex expects `https://video…` URLs, current masters may use `*.playlist.ttvnw.net` (Q-013) | T-104, T-105, T-401 to T-407 |
 | E4 | Replace the whole playlist with the first backup without ads | `player.ts` | kept | T-405 |
@@ -33,6 +33,7 @@ Three groups: strategies that already exist (E-xx, none is removed), fixes to ex
 | C-08 | Segment title regex with escaped URI (or read from the parser) | T-108 |
 | C-09 | Logs behind the `debug` flag | T-109 |
 | C-10 | The worker stores the `setSettings` value, not the whole message, so the whitelist applies | T-602 |
+| C-11 | Page hook installed before the player creates its workers, also on a direct channel load | T-111 |
 
 ## New features
 

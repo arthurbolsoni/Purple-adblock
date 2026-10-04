@@ -4,7 +4,7 @@ Date: 2026-10-03 · Purple 2.6.7 worker code on branch `melhorias-bloqueio` · `
 
 ## Method
 
-Unit tests for `Player`, `Stream`, the decorators and `bootstrapWorker` (T-001), written against the 2.6.7 code without changing its logic. A built worker bundle (Vite, terser) was also booted on a fake scope (`EventTarget` with `fetch` and `postMessage`) to check the new entry: no `export`/`import` in the output, usher routed to `onChannel`, `setQuality` dispatched, `getSettings` posted once.
+Unit tests for `Player`, `Stream`, the decorators and `bootstrapWorker` (T-001), written against the 2.6.7 code without changing its logic. A built worker bundle (Vite, terser) was also booted on a fake scope (`EventTarget` with `fetch` and `postMessage`) to check the new entry: no `export`/`import` in the output, usher routed to `onChannel`, `setQuality` dispatched, `getSettings` posted once. Live check in the Twitch player worker: [worker injection race](2026-10-04-worker-injection-race.md) (the code boots when the hook is installed in time).
 
 ## Results
 
