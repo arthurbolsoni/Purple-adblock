@@ -36,7 +36,7 @@ Phases run in order. Inside a phase, the "Depends on" column says what must come
 - Tests: TS-001
 
 ### T-002 Fixtures and harness
-- [ ] Status
+- [x] Status · done 2026-10-04: fixtures hand-written from `docs/server/` (provenance in `serviceWorker/test/fixtures/README.md`), plus `master-video-weaver.m3u8` for the 2.6.7 variant regex; harness adds `fixtures.ts` and `console.ts`; integration specs characterize the 2.6.7 worker pipeline, `index.ts` and `content-script.js`
 - Files: `serviceWorker/test/fixtures/`, `serviceWorker/test/harness/`
 - Done when the fixtures and harness pieces listed in `docs/tests.md` exist and each one is used by at least one test.
 - Tests: TS-002
@@ -364,7 +364,7 @@ Runs in parallel with phases 1 to 7. Phase 1 to 6 tasks list L2/L3 scenarios tha
 - [ ] Status · E11
 - Files: `package.json`, `serviceWorker/build.ts`, `cli/*.js`, `cli/preinstall.js`, `platform/tampermonkey/build.js`
 - Done when:
-  - every script runs on Bun: `build` calls `bun serviceWorker/build.ts`; `ts-node` and the `bun` npm package leave `package.json`;
+  - every script runs on Bun: `build` calls `bun serviceWorker/build.ts`; `ts-node` and the `bun` npm package leave `package.json` (the package pins `^1.4.1` until then, so `bun run` scripts do not fall back to Bun 1.1.20; see `docs/findings/2026-10-03-bun-test.md`);
   - the `preinstall` hook (recursive `npm install`) is removed;
   - `bun run build` produces the worker, both zips and the userscript;
   - `dev` reaches the worker build (sourcemaps);

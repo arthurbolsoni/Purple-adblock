@@ -138,7 +138,7 @@ describe("Player.isAds", () => {
     expect(context.posted).toEqual([{ type: "pause" }]);
 
     jest.advanceTimersByTime(1500);
-    await Promise.resolve();
+    for (let i = 0; i < 10; i++) await Promise.resolve();
     expect(context.posted).toEqual([{ type: "pause" }, { type: "play" }, { type: "play" }]);
 
     // same state again: no new messages

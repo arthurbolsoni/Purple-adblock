@@ -24,7 +24,8 @@ Level 3 discovers behaviors and writes them to `docs/findings/` and `docs/server
 
 - Runner: `bun test`, APIs from `bun:test` (`describe`, `test`, `expect`, `mock`, `spyOn`, `beforeAll`, `afterEach`, `setSystemTime`, `jest.useFakeTimers`, `jest.advanceTimersByTime`). Checked on Bun 1.4.1: legacy decorators (`experimentalDecorators` in `tsconfig.json`), fake timers, the `?raw` plugin, and global `fetch`, `Response`, `addEventListener` and `Bun.YAML`.
 - Worker code runs on Bun's globals (`fetch`, `Response`, `Blob`, `URL.createObjectURL`, `EventTarget`).
-- Page and platform code (`index.ts`, `content-script.js`, `popup.js`) runs on happy-dom through `@happy-dom/global-registrator`, registered per file with `useDom()` from `harness/dom.ts` (register in `beforeAll`, unregister in `afterAll`).
+- Page and platform code (`index.ts`, `content-script.js`, `popup.js`) runs on happy-dom through `@happy-dom/global-registrator`, registered per file with `useDom()` from `harness/dom.ts` or `usePageEnv()` from `harness/page-env.ts` (register in `beforeAll`, unregister in `afterAll`). File loading is off, so nothing reaches the network. happy-dom calls `on*` handler properties without binding `this`; tests that depend on it call the handler with the element as `this`.
+- Package scripts (`bun run test`) use the `bun` binary from `node_modules/.bin` while the `bun` npm package is a dependency; it pins the same version as the local runtime until T-701 removes it.
 - `bun test` runs every file in one process. A test that changes a global restores it in `afterEach`; the harness helpers do this themselves.
 - There is no `isolateModules`/`resetModules`. Tests build fresh instances through `createRouter(controller)`, `bindMessages(scope, controller)` and `bootstrapWorker(scope)` (T-001) instead of re-importing modules.
 - `Date.now`-based logic (cooldowns) uses `setSystemTime`; `setTimeout`-based logic uses `jest.useFakeTimers()`.
@@ -52,19 +53,18 @@ preload = ["./serviceWorker/test/preload.ts"]
 
 ### `serviceWorker/test/preload.ts`
 
-Resolves Vite's `?raw` imports (used by `index.ts`) to a fixed string:
+Resolves Vite's `?raw` imports (used by `index.ts`) to `test/stubs/worker-bundle.ts`, which exports a fixed string; tests import the same stub to compare against it.
 
 ```ts
 import { plugin } from "bun";
+import { join } from "path";
+
+const STUB = join(import.meta.dir, "stubs", "worker-bundle.ts");
 
 plugin({
   name: "raw-suffix",
   setup(build) {
-    build.onResolve({ filter: /\?raw$/ }, (args) => ({ path: args.path, namespace: "raw" }));
-    build.onLoad({ filter: /.*/, namespace: "raw" }, () => ({
-      contents: "export default '/* worker bundle stub */';",
-      loader: "js",
-    }));
+    build.onResolve({ filter: /\?raw$/ }, () => ({ path: STUB }));
   },
 });
 ```
@@ -76,15 +76,19 @@ serviceWorker/
   src/**/x.spec.ts                 # unit tests next to the code
   test/
     preload.ts
-    integration/*.int.spec.ts      # integration tests
+    stubs/worker-bundle.ts         # stands in for the built worker (`?raw`)
+    integration/*.int.spec.ts      # integration tests (worker pipeline, page)
+    fixtures/README.md             # provenance of every fixture
     fixtures/m3u8/*.m3u8
     fixtures/gql/*.json
-    harness/
+    harness/                       # each piece is covered by a spec here or in integration/
       fake-twitch.ts
       worker-scope.ts
       page-env.ts
       dom.ts
       sanitize.ts
+      fixtures.ts                  # fixture(), fixtureJson(), listFixtures()
+      console.ts                   # silenceConsole() for the whole file
 platform/src/**/x.spec.ts          # platform scripts (happy-dom)
 sim/                               # level 2 server (Rust)
   Cargo.toml
@@ -108,13 +112,14 @@ Scripts under `platform/src` load as classic scripts in the browser. To test the
 
 | File | Content |
 | --- | --- |
-| `master-avc.m3u8` | master with `EXT-X-MEDIA` (`NAME`) and chunked, 720p60, 480p30, 360p30, 160p30 variants, `avc1` codecs |
+| `master-avc.m3u8` | master with `EXT-X-MEDIA` (`NAME`) and chunked, 720p60, 480p30, 360p30, 160p30 variants, `avc1` codecs, URLs on `edge.playlist.ttvnw.net` (B-003) |
+| `master-video-weaver.m3u8` | same variants on `video-weaver.example.hls.ttvnw.net`, the host Purple 2.6.7's variant regex reads |
 | `master-hevc.m3u8` | master with HEVC and AV1 variants besides AVC |
 | `master-empty.m3u8` | master with no variants |
 | `media-live-ts.m3u8` | live TS media playlist with `PROGRAM-DATE-TIME` and `EXT-X-TWITCH-PREFETCH` |
 | `media-live-fmp4.m3u8` | live fMP4 media playlist with `EXT-X-MAP` |
 | `media-ll-hls.m3u8` | media playlist with `EXT-X-PART` and `EXT-X-PRELOAD-HINT` |
-| `media-ssai-preroll.m3u8` | every segment is an ad: `DATERANGE` `stitched-ad` with `X-TV-TWITCH-AD-*`, `stitched` titles, `/adsquared/` URIs |
+| `media-ssai-preroll.m3u8` | every segment is an ad: `DATERANGE` `twitch-stitched-ad`, `twitch-trigger`, `twitch-ad-quartile` with `X-TV-TWITCH-AD-*`, `Amazon\|AD_ID` titles, `/adsquared/` URIs |
 | `media-ssai-midroll.m3u8` | live and ad segments mixed |
 | `media-marked-live.m3u8` | `DATERANGE` `twitch-stitched-ad` with no ad segment |
 | `media-false-positive.m3u8` | `stitched` outside the segment title, `twitch-session`, `twitch-stream-source` |
@@ -133,9 +138,19 @@ Scripts under `platform/src` load as classic scripts in the browser. To test the
 | `page-gql-init.json` | `init` of a page GQL request carrying the F-05 headers |
 | `page-token-batch.json` | batched body with `PlaybackAccessToken` and other operations |
 
+Provenance (observed, reported by Brave, or synthetic) is in `serviceWorker/test/fixtures/README.md`. The current files are hand-written from `docs/server/`; captures from the recorder (T-005) replace them once they exist.
+
 ### Sanitizing
 
-Fixtures captured from Twitch go through `harness/sanitize.ts` before commit: `token`, `sig`, `X-TV-TWITCH-AD-*` ids, `user_id`, `device_id` and `video-edge-*` hosts become fixed values (`TOKEN`, `SIG`, `video-edge.example`). `sanitize.ts` has its own test (TS-002).
+Fixtures captured from Twitch go through `harness/sanitize.ts` before commit (`sanitizeFile(name, text)`):
+
+- query `token`, `sig`, `user_id`, `device_id`, `play_session_id` → `TOKEN`, `SIG`, `USER_ID`, `DEVICE_ID`, `PLAY_SESSION_ID`;
+- `X-TV-TWITCH-AD-*` attributes that identify the ad or the viewer → the attribute name (`AD_SESSION_ID`, `CREATIVE_ID`, ...); break descriptors (`ROLL-TYPE`, `POD-*`, `QUARTILE`, ...) stay;
+- other `X-TV-TWITCH-*ID` attributes → the attribute name; `Amazon|<id>` titles → `Amazon|AD_ID`;
+- `video-edge-*` hosts → `video-edge.example`; IPv4 → `203.0.113.1`; `OAuth <token>` → `OAuth OAUTH`; path components of 32 or more opaque characters → `opaque-<n>`;
+- JSON by key: token `value`, `signature`, ids and the F-05 headers (`Client-Integrity`, `X-Device-Id`, `Authorization`, `Client-Version`, `Client-Session-Id`); the public `Client-ID` stays.
+
+Every committed fixture satisfies `sanitizeFile(name, text) === text` (checked by `harness/fixtures.spec.ts`).
 
 To capture: turn `debug` on and copy the playlist printed by the logger.
 
@@ -143,39 +158,44 @@ To capture: turn `debug` on and copy the playlist printed by the logger.
 
 ### `fake-twitch.ts`
 
-In-memory Twitch exposed as a `fetch(url, init)` function:
+In-memory Twitch exposed as a `fetch(input, init)` function (string, `URL` or `Request` input):
 
-- usher (`/api/channel/hls/` and `/api/v2/channel/hls/`) → master per channel;
-- media playlist → queue of responses per variant and per playerType (one per poll);
-- `gql.twitch.tv/gql` → response per `playerType` in the body;
-- `edge.ads.twitch.tv` → records the call;
-- `calls`: every call with URL, headers and body, for assertions.
+- usher (`/api/channel/hls/` and `/api/v2/channel/hls/`) → master per channel and playerType (`master(channel, text, playerType = "site")`); the playerType comes from the token FakeTwitch issued (`TOKEN-<playerType>`), so a backup usher request gets the backup master;
+- media playlist → queue of responses per URL, query ignored (`mediaPlaylist(url, ...responses)`); one per poll, the last one repeats;
+- `gql.twitch.tv/gql` → `PlaybackAccessToken` per `playerType` in the body, single or batched; `token(playerType, body, status)` overrides the reply (errors, other shapes);
+- `gql.twitch.tv/integrity` → integrity token; `edge.ads.twitch.tv` → empty 200;
+- any other URL → 404;
+- `calls` / `callsOf(kind)`: every call with kind, URL, method, lower-case headers, body, channel and playerType.
 
 ### `worker-scope.ts`
 
 Builds a fake worker scope and boots the worker code on it, the way it runs inside Twitch:
 
-- the scope is an `EventTarget` with `postMessage` (records worker → page messages) and `fetch` set to `FakeTwitch.fetch`;
+- `createWorkerScope(twitch = new FakeTwitch())`: the scope is an `EventTarget` with `postMessage` (records worker → page messages) and `fetch` set to `FakeTwitch.fetch`;
 - calls `bootstrapWorker(scope)` (T-001), which creates the controller, the router and the message bindings for that scope only;
-- exposes `send(funcName, value)` (page → worker), `posted` (worker → page) and `fetch(url)` (the hooked `fetch`).
+- exposes `send(funcName, value)` (page → worker), `posted` (worker → page), `fetch(url)` and `text(url)` (the hooked `fetch`), `player`, `controller`, `router`, `twitch`.
 
 ### `page-env.ts`
 
-- `FakeWorker`: records `postMessage`, can emit messages as the worker, counts `terminate`;
-- fake synchronous XHR for the worker script;
-- fake page `fetch`;
-- `chrome.storage.local` mock with `get`, `set` and `onChanged`.
+- `usePageEnv({ url, chrome, fetchRoutes })`: registers happy-dom and installs the fakes below in `beforeAll`; restores them and unregisters happy-dom in `afterAll`;
+- `FakeWorker`: records `postMessage`, `emit(data)` sends a message as the worker, counts `terminate`; installed as `Worker` before `index.ts` is imported;
+- `FakeXMLHttpRequest`: synchronous XHR for the worker script (`scripts` map, `requests` log);
+- fake page `fetch` (`pageFetch.calls`, responses by URL prefix);
+- `URL.createObjectURL` recording blobs (`blobText(url)`);
+- `chrome.storage.local` mock with `get`, `set` and `onChanged`; `chrome.runtime.getURL`.
+
+`index.ts` keeps module state (the first worker is the main worker), so only `integration/page.int.spec.ts` imports it.
 
 ### `dom.ts`
 
-`useDom()` registers happy-dom in `beforeAll` and unregisters it in `afterAll`.
+`useDom()` registers happy-dom in `beforeAll` and unregisters it in `afterAll`, with JavaScript, CSS and iframe file loading disabled.
 
 ## Matrix
 
 | Test | Task | Type | Cases |
 | --- | --- | --- | --- |
 | TS-001 | T-001 | unit | `Player.setChannel` creates and reuses a stream; `isWhitelist`; `Stream.removeServer`; `getStreamByStreamType`; decorators store metadata and `createRouter` returns routes in declaration order; two `bootstrapWorker` calls on two scopes do not share state |
-| TS-002 | T-002 | unit | every fixture loads in `m3u8-parser` without errors; `FakeTwitch` serves usher, media and GQL; `worker-scope` registers the routes; `sanitize` removes token, sig, ids and hosts |
+| TS-002 | T-002 | unit + int | every fixture loads in `m3u8-parser` without warnings, is sanitized and is listed in the fixtures README; `FakeTwitch` serves usher, media, GQL (single and batch), integrity and ads; `sanitize` removes token, sig, ids and hosts and is idempotent; worker pipeline on `worker-scope` + `FakeTwitch` (routes, usher, no-ad poll, backup by playerType, merge by `PROGRAM-DATE-TIME`, picture-by-picture); `index.ts` on `page-env` (injection, settings, quality, pause/play, integrity); `content-script.js` on `page-env` |
 | TS-003 | T-003 | unit | the test workflow runs on `push` and `pull_request`, uses `oven-sh/setup-bun` and runs `bun test` (read with `Bun.YAML.parse`) |
 | TS-101 | T-101 | unit + int | `media-live-ts`, `media-live-fmp4` and `media-ll-hls` without ads come out byte-identical through the worker; with ads, output keeps `EXT-X-VERSION`, `EXT-X-MAP`, `PROGRAM-DATE-TIME`, `TWITCH-PREFETCH`, `PRELOAD-HINT`, `PART`, `DATERANGE`, `DISCONTINUITY` and an unknown tag; `#EXTINF` has the comma |
 | TS-102 | T-102 | unit | channel `nullbyte` goes through the usher hook; `fetch(new Request(url))` and `fetch(new URL(url))` are routed; an unrouted URL calls `global.request` with the same arguments |

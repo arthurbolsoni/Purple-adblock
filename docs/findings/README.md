@@ -7,7 +7,7 @@ New discoveries are added here as they happen. A later finding that contradicts 
 | File | Topic | Status |
 | --- | --- | --- |
 | [2026-10-03-purple-2.6.7-review.md](2026-10-03-purple-2.6.7-review.md) | Purple 2.6.7 code review and repo state | closed |
-| [2026-10-03-bun-test.md](2026-10-03-bun-test.md) | What `bun test` supports for this repo | closed |
+| [2026-10-03-bun-test.md](2026-10-03-bun-test.md) | What `bun test` supports for this repo; `bun run` and the `bun` npm package; happy-dom notes (2026-10-04) | closed |
 | [2026-10-03-edge-nodriver.md](2026-10-03-edge-nodriver.md) | Edge 154 + nodriver: extension loading, isolation, cleanup | closed |
 | [2026-10-03-twitch-live-traffic.md](2026-10-03-twitch-live-traffic.md) | Player traffic on twitch.tv, preroll markers, CDP interception | closed |
 | [2026-10-03-host-resolver-mapping.md](2026-10-03-host-resolver-mapping.md) | Mapping `*.ttvnw.net` to a local server | open |

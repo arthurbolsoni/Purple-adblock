@@ -43,7 +43,7 @@
     "typescript": "^4.5.4"
   },
   "dependencies": {
-    "bun": "^1.0.25",
+    "bun": "^1.4.1",
     "m3u8-parser": "^7.1.0",
     "ts-node": "^10.9.2",
     "vite": "^5.0.12"
