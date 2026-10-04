@@ -1,6 +1,6 @@
 # Tasks
 
-Status: `[ ]` open, `[~]` in progress, `[x]` done. Each task lists the tests that close it (TS-xxx in `docs/tests.md`); a task is not ticked until those tests pass under `bun test`.
+Status: `[ ]` open, `[~]` in progress, `[x]` done. Each task lists the tests that close it (`docs/tests.md`): TS-xxx (level 1, `bun test`), L2-xx (player + server), L3-xx (live site), `cargo test` for `sim/`. A task is not ticked until those tests pass.
 
 Phases run in order. Inside a phase, the "Depends on" column says what must come first.
 
@@ -8,7 +8,8 @@ Phases run in order. Inside a phase, the "Depends on" column says what must come
 
 | Phase | Tasks | Depends on |
 | --- | --- | --- |
-| 0. Test base | T-001 to T-006 | - |
+| 0. Test base (level 1) | T-001 to T-003 | - |
+| 0b. Levels 2 and 3 | T-004 to T-009 | - (parallel with phases 1 to 7) |
 | 1. Fixes to existing code | T-101 to T-110 | Phase 0 |
 | 2. Detection | T-201, T-202 | T-101 |
 | 3. CSAI blocking | T-301, T-302 | T-106 |
@@ -46,7 +47,11 @@ Phases run in order. Inside a phase, the "Depends on" column says what must come
 - Done when push and pull request run `oven-sh/setup-bun`, `bun install --frozen-lockfile` and `bun test`, and a failing test turns the check red.
 - Tests: TS-003
 
-### T-004 Browser test harness (nodriver + Edge)
+## Phase 0b: levels 2 and 3
+
+Runs in parallel with phases 1 to 7. Phase 1 to 6 tasks list L2/L3 scenarios that become required once these tasks are done.
+
+### T-004 Browser harness (nodriver + Edge)
 - [ ] Status
 - Files: `e2e/` (new), `package.json` (`e2e` script calling `python e2e/run.py`)
 - Done when:
@@ -55,30 +60,60 @@ Phases run in order. Inside a phase, the "Depends on" column says what must come
   - before launching, leftover `msedge.exe` processes whose command line contains `profile-edge-purple` are stopped (only those);
   - a fresh profile gets one warm-up launch before assertions;
   - state is read as JSON (hook installed, video state, overlays, `window.__purple.events` once T-110 exists); no screenshots;
-  - E2E-01 passes in both modes.
-- Tests: E2E-01
+  - L3-01 passes in extension and userscript modes.
+- Tests: L3-01
 
-### T-005 Traffic recorder
+### T-005 Level 3 recorder
 - [ ] Status
 - Depends on: T-004
 - Files: `e2e/record.py` (new)
 - Done when:
-  - `python e2e/record.py <channel> --seconds N [--with-purple]` intercepts usher, media playlists, segments, GQL `PlaybackAccessToken` and `edge.ads.twitch.tv` with `Fetch` and keeps every request flowing;
+  - `python e2e/record.py <channel> --seconds N [--with-purple] [--technique TR-xxx]` intercepts usher, media playlists, segments, GQL `PlaybackAccessToken` and `edge.ads.twitch.tv` with `Fetch` and keeps every request flowing;
   - each response is saved with its offset from session start in `~/purple-recordings/<date>-<channel>/` (`manifest.json` + bodies), outside the repo;
-  - the manifest marks which segment URIs are ads (by the F-02 markers) so replay assertions can use it;
-  - a recording containing an ad break exists and E2E-R5 runs on it.
-- Tests: E2E-R5
+  - the manifest marks which segment URIs are ads (F-02 markers) and logs the full usher URL and master (sanitized copies feed Q-005 and Q-011);
+  - one L3-10 run produces a finding in `docs/findings/` and updates `docs/server/behaviors.md`, `docs/server/techniques.md` and `docs/server/open-questions.md`.
+- Tests: L3-10
 
-### T-006 Replay against the real player
+### T-006 `sim/` server (Rust)
 - [ ] Status
-- Depends on: T-005, T-110
-- Files: `e2e/replay.py` (new), `e2e/scenarios/`
+- Files: `sim/` (new Cargo project)
 - Done when:
-  - `Fetch.fulfillRequest` answers usher, media playlists, segments and GQL token requests from a recording, matching host and path and ignoring query tokens;
-  - media playlists follow elapsed time and `PROGRAM-DATE-TIME` is shifted to the current clock;
-  - edited recordings can be served (midroll inside a clean stream, all backups with ads, CSAI-marked-live, GQL errors);
-  - E2E-R1 to E2E-R4 pass with Purple on, and E2E-R5 shows the ads reaching the player with Purple off.
-- Tests: E2E-R1 to E2E-R5
+  - a scenario file (`sim/scenarios/*.json`) describes the stream timeline (live and ad periods, SSAI or CSAI), the variants and codecs, the response per `playerType`, and GQL errors;
+  - endpoints follow `docs/server/endpoints.md`: usher v1 and v2 (master), media playlists generated on a live clock with the tags in `docs/server/playlists.md` and the ad markers in `docs/server/ads.md`, segments from `sim/media/`, GQL `PlaybackAccessToken` per `playerType`, `/integrity`, `edge.ads.twitch.tv`;
+  - `/_sim/scenario` loads a scenario and `/_sim/log` returns every request received (URL, headers, time, whether the URI is an ad);
+  - every behavior it reproduces has its scenario ID written in the "sim" column of `docs/server/behaviors.md`;
+  - `cargo test` covers playlist generation, the timeline, token responses and the request log.
+- Tests: `cargo test`, L2-01
+
+### T-007 Synthetic media
+- [ ] Status
+- Files: `sim/media.sh` or `sim/src/bin/media.rs` (new), `.gitignore`
+- Done when:
+  - ffmpeg generates into `sim/media/` (gitignored): live and ad renditions in H.264/AAC MPEG-TS at the variant sizes used by the scenarios, and an HEVC rendition in fMP4 with an init segment for `EXT-X-MAP`;
+  - live and ad segments differ in content so a frame can be told apart if ever needed;
+  - a `cargo test` checks the generated files exist with the expected container and codec (ffprobe).
+- Tests: `cargo test`
+
+### T-008 Isolated player page
+- [ ] Status
+- Depends on: T-006, T-007
+- Files: `sim/page/` (new)
+- Done when:
+  - `sim/` serves a page that runs Purple's bundle first, then the Amazon IVS player SDK (`amazon-ivs-player`, installed with bun, not committed), and loads `https://usher.ttvnw.net/api/channel/hls/<scenario channel>.m3u8`;
+  - the page never contacts twitch.tv;
+  - L2-01 passes: Purple's hook attached to the SDK worker, video playing.
+- Tests: L2-01
+
+### T-009 Level 2 routing to `sim/`
+- [ ] Status
+- Depends on: T-006
+- Files: `e2e/lib.py`, `sim/src/`
+- Done when:
+  - requests to `*.ttvnw.net`, `gql.twitch.tv` and `edge.ads.twitch.tv` from the isolated page reach `sim/` under their real hostnames, so Purple's URL matching runs unchanged;
+  - first option: Edge host mapping with the `sim/` certificate accepted (see `docs/findings/2026-10-03-host-resolver-mapping.md`); otherwise a CDP `Fetch` bridge answering those requests from `sim/`;
+  - the choice and the reason are written to a finding;
+  - L2-02 to L2-08 run.
+- Tests: L2-01 to L2-08
 
 ## Phase 1: fixes to existing code
 

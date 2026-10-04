@@ -1,12 +1,24 @@
 # Tests
 
+## Test levels
+
+| Level | What runs | Where | Tooling | Test IDs |
+| --- | --- | --- | --- | --- |
+| 1. Unit | Purple modules and the worker pipeline against the in-process `FakeTwitch` | Bun process | `bun test` (Jest fallback); `cargo test` for `sim/` | TS-xxx |
+| 2. Player + server | real player (Amazon IVS SDK) with Purple on an isolated local page, against `sim/`, our Rust server reproducing Twitch's server | Edge via nodriver, localhost only | `sim/`, nodriver | L2-xx |
+| 3. Live site | Purple on twitch.tv, using known techniques to trigger behaviors, with the recorder on | Edge via nodriver, twitch.tv | nodriver, recorder | L3-xx |
+
+Level 3 discovers behaviors and writes them to `docs/findings/` and `docs/server/`. Level 2 reproduces them deterministically in `sim/`. Level 1 covers the logic with fixtures taken from both.
+
 ## Rules
 
-1. Every task in `docs/task.md` closes with its TS-xxx tests passing under `bun test`.
+1. Every task in `docs/task.md` closes with its listed tests passing: TS-xxx under `bun test`, plus any L2-xx or L3-xx it lists.
 2. Bug fix: first the failing test that reproduces the bug, then the fix.
 3. Logic that crosses page and worker, or spans more than one module, gets an integration test on top of unit tests.
-4. Tests never hit the network. Every Twitch response comes from the `FakeTwitch` harness and the fixtures.
-5. Browser tests on twitch.tv (end of this file) add to unit and integration tests; they do not replace them.
+4. Level 1 never hits the network. Every Twitch response comes from the `FakeTwitch` harness and the fixtures.
+5. Level 2 never opens twitch.tv.
+6. Levels 2 and 3 add to level 1; they never replace it.
+7. Every discovery made while testing goes to `docs/findings/`; server behavior goes to `docs/server/`.
 
 ## Tooling
 
@@ -74,7 +86,13 @@ serviceWorker/
       dom.ts
       sanitize.ts
 platform/src/**/x.spec.ts          # platform scripts (happy-dom)
-e2e/                               # browser tests (Python + nodriver + Edge)
+sim/                               # level 2 server (Rust)
+  Cargo.toml
+  src/                             # cargo test
+  scenarios/*.json                 # one scenario per reproduced behavior set
+  media/                           # generated with ffmpeg, gitignored
+  page/                            # isolated player page (Purple bundle + IVS SDK)
+e2e/                               # levels 2 and 3 drivers (Python + nodriver + Edge)
   run.py                           # entry: python e2e/run.py <scenario|all> [--mode extension|userscript]
   lib.py                           # Edge launch, dedicated profile, extension/userscript modes, JSON reads
   selectors.py
@@ -189,11 +207,9 @@ Builds a fake worker scope and boots the worker code on it, the way it runs insi
 | TS-701 | T-701 | int | `bun run build` produces both zips with the version in the name and the userscript with `@version` equal to `package.json`; `package.json` has no `ts-node`, `jest` or `preinstall` |
 | TS-702 | T-702 | unit | `pull_request` has no release step; releases only on push to `main` or a tag; `oven-sh/setup-bun` used; no `marvinpinto/action-automatic-releases` (read with `Bun.YAML.parse`) |
 
-## Browser tests (nodriver + Edge)
+## Browser setup (levels 2 and 3)
 
-Tests against the real twitch.tv run in Python with nodriver driving Microsoft Edge.
-
-### Setup
+Both levels run in Python with nodriver driving Microsoft Edge.
 
 | Item | Value |
 | --- | --- |
@@ -204,79 +220,78 @@ Tests against the real twitch.tv run in Python with nodriver driving Microsoft E
 
 No other extension runs under nodriver. Every launch passes `--disable-component-extensions-with-background-pages`, plus:
 
-| Mode | Extra flags | Purpose |
+| Mode | Extra flags | Used by |
 | --- | --- | --- |
-| Extension | `--load-extension=<build> --disable-extensions-except=<build>` | Purple as an extension; `<build>` is `<repo>/dist/purple-adblock-purple-adblock-chromium` from `bun serviceWorker/build.ts && bun cli/build.ts dev` |
-| Userscript | `--disable-extensions` | Purple as a userscript, injected with `Page.addScriptToEvaluateOnNewDocument` (main world, document start, like Tampermonkey with `@run-at document-start` and `@grant none`) |
-| Record | `--disable-extensions` | raw Twitch traffic, Purple off |
-| Replay | as Extension or Userscript | recorded traffic served to the real player |
+| Extension | `--load-extension=<build> --disable-extensions-except=<build>` (`<build>` = `<repo>/dist/purple-adblock-purple-adblock-chromium` from `bun serviceWorker/build.ts && bun cli/build.ts dev`) | level 3 |
+| Userscript | `--disable-extensions`; the built userscript is injected with `Page.addScriptToEvaluateOnNewDocument` (main world, document start, like Tampermonkey with `@run-at document-start` and `@grant none`) | levels 2 and 3 |
+| Record | `--disable-extensions` (Purple off) | level 3 recorder |
 
-Checked on 2026-10-03 with Edge 154:
-
-- extension mode: `chrome.developerPrivate.getExtensionsInfo` on `edge://extensions` lists only Purple Ads Blocker (`UNPACKED`, `ENABLED`);
-- the first launch of a fresh profile did not patch the worker; every later launch did, so a new profile gets one warm-up launch before assertions;
-- a run killed before `browser.stop()` leaves Edge processes on the profile and the next launch fails; the harness first stops `msedge.exe` processes whose command line contains `profile-edge-purple`, and nothing else;
-- the page `Network` domain does not report the player worker's requests (usher, playlists, segments, `.wasm`); the `Fetch` domain on the page target intercepts all of them.
+Edge facts these modes rely on are in [findings/2026-10-03-edge-nodriver.md](findings/2026-10-03-edge-nodriver.md): only Purple enabled in extension mode, warm-up launch for a fresh profile, stopping leftover `msedge.exe` processes on this profile (and only those), `RemoteObject` handling.
 
 ### Reading state
 
-- Page state is read as JSON through `tab.evaluate(..., return_by_value=True)`, wrapping the value in `JSON.stringify` (nodriver returns `RemoteObject` for `null` and for some objects).
-- `Worker.toString().includes("Purple")` tells whether the worker hook is installed.
+- Page state is read as JSON through `tab.evaluate(..., return_by_value=True)` around `JSON.stringify(...)`.
+- `Worker.toString().includes("Purple")`: worker hook installed.
 - `document.querySelector("video")`: `readyState`, `currentTime` advancing between two reads, `paused`.
-- `window.__purple.events` (T-110): what the worker did during the session.
-- Twitch's ad overlay and player error overlay: selectors kept in `e2e/selectors.py`, checked against the live page when T-004 is written.
+- `window.__purple.events` (T-110): what the worker did.
+- Level 2: the `sim/` request log (`/_sim/log`) says exactly which URLs the player and Purple requested.
+- Level 3: Twitch's ad overlay and player error overlay, with selectors kept in `e2e/selectors.py`.
 - No screenshots unless the problem is visual.
 
-Ads are not deterministic. Every scenario asserts the invariants that always hold (hook installed, playback, no player error); ad-specific assertions apply to the ad breaks recorded in `window.__purple.events` during the run.
+## Level 2: player + server
+
+An isolated local page runs the real player with Purple against `sim/`, our Rust server that reproduces Twitch's server behavior. twitch.tv is never opened.
+
+### Components
+
+| Component | Content |
+| --- | --- |
+| `sim/` (Rust) | Implements the behaviors in [server/behaviors.md](server/behaviors.md) as scenarios (`sim/scenarios/*.json`). Endpoints follow [server/endpoints.md](server/endpoints.md): usher v1 and v2, media playlists on a live clock, segments, GQL `PlaybackAccessToken` per `playerType`, `/integrity`, `edge.ads.twitch.tv`. Control and log API under `/_sim/` (load a scenario, read the request log). Serves the isolated page and the player SDK files. Covered by `cargo test`. |
+| Media | Synthetic, generated with ffmpeg into `sim/media/` (gitignored): live and ad renditions in H.264/AAC MPEG-TS; an HEVC rendition in fMP4 with `EXT-X-MAP`. No Twitch media. |
+| Player | Public Amazon IVS player SDK (`amazon-ivs-player`, installed with bun, never committed). Its `.wasm` contains Twitch's HLS parser (`twitch::hls`, `EXT-X-TWITCH-PREFETCH`, `stitched-ad-break-*`); see [findings/2026-10-03-ivs-player-sdk.md](findings/2026-10-03-ivs-player-sdk.md). |
+| Page | `sim/page/`: Purple's bundle runs first (userscript mode), then the SDK loads `https://usher.ttvnw.net/api/channel/hls/<scenario channel>.m3u8`. |
+| Routing | Requests to `*.ttvnw.net`, `gql.twitch.tv` and `edge.ads.twitch.tv` must reach `sim/` under their real hostnames, so Purple's URL matching runs unchanged. Preferred: Edge host mapping (open, see [findings/2026-10-03-host-resolver-mapping.md](findings/2026-10-03-host-resolver-mapping.md)). Fallback: CDP `Fetch` bridge that answers those requests from `sim/` with `Fetch.fulfillRequest` (mechanism checked on live Twitch). |
 
 ### Scenarios
 
-| ID | Scenario | Mode | Asserts | Covers |
+"Ad URI requested" is read from the `sim/` request log: the scenario knows which segment URIs are ads.
+
+| ID | Scenario | Behaviors | Asserts | Covers |
 | --- | --- | --- | --- | --- |
-| E2E-01 | Open a live channel picked from the directory | extension, userscript | hook installed; video playing; no player error | E1, T-101, T-107 |
-| E2E-02 | Preroll: open a channel in a new tab, logged out | extension | for each recorded ad break: no ad overlay, playback resumes, events show a backup, a merge or blank segments | F-02 to F-14 |
-| E2E-03 | Soak: watch one channel for 20 minutes | extension | every recorded ad break ends with a backup, a merge or blank segments; no player error; no ad overlay | midrolls, T-601 |
-| E2E-04 | HEVC/AV1 channel (`PURPLE_E2E_HEVC_CHANNEL`) | extension | master has an HEVC or AV1 variant; video playing; no player error | T-101, T-407 |
-| E2E-05 | Popout player | extension | E2E-01 checks on the popout URL | F-12 |
-| E2E-06 | Switch channel by clicking, without reload | extension | second channel playing; events tagged with the new channel | T-107 |
-| E2E-07 | Whitelist: channel added through `chrome.storage.local` from the extension popup page | extension | `whitelisted` events; no playlist rewrites for that channel | E7, T-602 |
-| E2E-08 | CSAI | extension | requests to `edge.ads.twitch.tv` recorded as blocked | F-04 |
-| E2E-09 | Logged in (after a one-time manual login in the dedicated profile) | extension | E2E-01 and E2E-02 checks | F-05 |
+| L2-01 | Clean live stream | B-001, B-003, B-004, B-006 | hook attached to the SDK worker; video playing; playlists reach the player unchanged | E1, T-101 |
+| L2-02 | SSAI preroll | B-007 to B-010 | no ad URI requested; playback continues; events show a backup, a merge or blank segments | F-02 to F-14 |
+| L2-03 | SSAI midroll inside a clean stream | B-007 to B-010 | as L2-02, plus pause/play or reload once at the break edges | T-601 |
+| L2-04 | Every backup `playerType` returns ads | B-012 | blank segments replace the ads; no ad URI requested | F-14 |
+| L2-05 | CSAI: markers with live segments | B-011 | playlist untouched; no backup lookup; no request reaches `edge.ads.twitch.tv` | T-202, F-04 |
+| L2-06 | HEVC in fMP4 with `EXT-X-MAP` | Q-007 (until observed) | video playing; no player error (issue #105) | T-101, T-407 |
+| L2-07 | GQL errors: `PersistedQueryNotFound`, `embed` server error | B-014, B-015 | fallback query used; next `playerType` tried | T-403 |
+| L2-08 | L2-02 to L2-05 without Purple | - | ad URIs requested (control case) | - |
 
-Before ticking a task that changes behavior on twitch.tv (phases 1 to 6), run the scenarios listed for it in the Covers column. Before a release, run all of them. Results go in the PR description.
+## Level 3: live site
 
-### Recorded sessions and replay
+Purple on twitch.tv, using known techniques to make Twitch show a behavior, with the recorder on. Each run states the techniques used ([server/techniques.md](server/techniques.md)) and the behaviors or questions it targets ([server/behaviors.md](server/behaviors.md), [server/open-questions.md](server/open-questions.md)). Results go to `docs/findings/` and `docs/server/`.
 
-The Twitch player is the Amazon IVS player compiled to WebAssembly (`assets.twitch.tv/assets/amazon-ivs-wasmworker.min-<hash>.wasm`), running inside the worker that Purple hooks. All video traffic it receives is plain HTTP fetched from that worker: usher master playlist, media playlists polled every ~2 s, MPEG-TS segments from `*.j.cloudfront.hls.ttvnw.net`. Reproducing the server side therefore needs recording and replaying that HTTP traffic, not decompiling the player.
+Recorder (T-005):
 
-Checked on 2026-10-03 (Edge 154, logged out, 30 s on one channel):
+- intercepts usher, media playlists, segments, GQL `PlaybackAccessToken` and `edge.ads.twitch.tv` with CDP `Fetch` and keeps every request flowing;
+- writes to `~/purple-recordings/<date>-<channel>/` (`manifest.json` + bodies), outside the repo; recordings carry tokens, ad ids and Twitch media and are never committed;
+- sanitized excerpts (no tokens, ids or media) go to `docs/server/` and, as playlists, to level 1 fixtures through `harness/sanitize.ts`.
 
-- `Fetch` interception paused and released 1 usher, 27 media playlist, 18 segment and 2 `.wasm` requests with no errors, and playback continued;
-- that session was a preroll: 232 `#EXTINF` titles `Amazon|<id>` against 37 `live`, `DATERANGE` classes `twitch-stitched-ad`, `twitch-trigger`, `twitch-ad-quartile`, and 22 distinct `X-TV-TWITCH-AD-*` attributes;
-- answering every media playlist with `Fetch.fulfillRequest` (22 responses) kept the real player playing (`currentTime` 8.2 → 18.3 → 28.3 s).
-
-Recorder (T-005), in Record mode or with Purple on (to also capture backup requests):
-
-- intercepts usher, media playlists, segments, GQL `PlaybackAccessToken` and `edge.ads.twitch.tv`, and saves each response with its offset from the session start;
-- writes to `~/purple-recordings/<date>-<channel>/` (`manifest.json` + bodies), outside the repo: recordings carry tokens, ad ids and Twitch media and are never committed;
-- sanitized media playlists from a recording (no segments) can become fixtures through `harness/sanitize.ts`.
-
-Replay (T-006):
-
-- answers the same requests with `Fetch.fulfillRequest`, matching by host and path (query tokens ignored);
-- serves media playlists by elapsed time and shifts `PROGRAM-DATE-TIME` to the current clock;
-- can serve edited recordings for cases that are rare live: a midroll in the middle of a clean stream, backup types that also return ads, CSAI-marked-live playlists, GQL errors.
-
-The page itself (twitch.tv HTML, scripts, GQL for the UI) still loads live; only video and token traffic is replayed. Recordings are dated and re-made when Twitch changes the player or the playlist format.
+Ads are not deterministic. Every scenario asserts what always holds (hook installed, playback, no player error); ad-specific checks apply to the breaks recorded during the run.
 
 | ID | Scenario | Mode | Asserts | Covers |
 | --- | --- | --- | --- | --- |
-| E2E-R1 | Recorded preroll | Replay + extension | no ad segment reaches the player (checked against the recording's ad URIs); playback continues; events show a backup, a merge or blank segments | F-02 to F-14 |
-| E2E-R2 | Recorded midroll inside a clean stream | Replay + extension | same as E2E-R1, plus pause/play or reload once at the break edges | T-601 |
-| E2E-R3 | Every backup type returns ads | Replay + extension | blank segments replace the ads; no ad URI reaches the player | F-14 |
-| E2E-R4 | CSAI-marked-live playlist | Replay + extension | playlist passes untouched; no backup lookup | T-202 |
-| E2E-R5 | Same recording without Purple | Replay with `--disable-extensions` | ad URIs reach the player (control case for E2E-R1 to E2E-R4) | - |
+| L3-01 | Open a live channel picked from the directory | extension, userscript | hook installed; video playing; no player error | E1, T-101, T-107 |
+| L3-02 | Preroll (technique TR-001) | extension | for each recorded break: no ad overlay, playback resumes, events show a backup, a merge or blank segments | F-02 to F-14 |
+| L3-03 | Soak: one channel for 20 minutes (TR-002) | extension | every recorded break ends with a backup, a merge or blank segments; no player error | midrolls, T-601 |
+| L3-04 | HEVC/AV1 channel (TR-006) | extension | master has an HEVC or AV1 variant; video playing; no player error | T-101, T-407 |
+| L3-05 | Popout player (TR-003) | extension | L3-01 checks on the popout URL | F-12 |
+| L3-06 | Switch channel by clicking, without reload (TR-004) | extension | second channel playing; events tagged with the new channel | T-107 |
+| L3-07 | Whitelist through `chrome.storage.local` from the extension popup page | extension | `whitelisted` events; no rewrites for that channel | E7, T-602 |
+| L3-08 | CSAI | extension | requests to `edge.ads.twitch.tv` blocked | F-04 |
+| L3-09 | Logged in (TR-007) | extension | L3-01 and L3-02 checks | F-05 |
+| L3-10 | Behavior hunt: recorder with Purple off, techniques chosen for open questions | record | new finding written; behaviors and questions updated | `docs/server/` |
 
-"Reaches the player" is measured with `Fetch` at the request stage: the segment URLs the player asks for during replay are compared with the ad URIs in the recording.
+Before ticking a task that changes behavior on twitch.tv (phases 1 to 6), run its level 2 scenarios and the level 3 scenarios in its Covers column. Before a release, run all of them. Results go in the PR description.
 
-Not planned: decompiling the `.wasm`. The file name changes with each player release, and the replay rig answers behavior questions (how the player reacts to discontinuities, `EXT-X-MAP` changes, missing segments) by observation.
+Not planned: decompiling the `.wasm`. The file name changes with each player release; level 2 answers behavior questions (discontinuities, `EXT-X-MAP` changes, missing segments) by observation.
