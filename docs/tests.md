@@ -6,7 +6,7 @@
 2. Bug fix: first the failing test that reproduces the bug, then the fix.
 3. Logic that crosses page and worker, or spans more than one module, gets an integration test on top of unit tests.
 4. Tests never hit the network. Every Twitch response comes from the `FakeTwitch` harness and the fixtures.
-5. Manual validation on Twitch (end of this file) complements automated tests; it does not replace them.
+5. Browser tests on twitch.tv (end of this file) add to unit and integration tests; they do not replace them.
 
 ## Tooling
 
@@ -17,6 +17,19 @@
 - There is no `isolateModules`/`resetModules`. Tests build fresh instances through `createRouter(controller)`, `bindMessages(scope, controller)` and `bootstrapWorker(scope)` (T-001) instead of re-importing modules.
 - `Date.now`-based logic (cooldowns) uses `setSystemTime`; `setTimeout`-based logic uses `jest.useFakeTimers()`.
 - Bun's `Response` accepts a body with status 204, while browsers throw. Page-hook tests assert that the original response object is returned with `bodyUsed === false`.
+
+### Jest fallback
+
+`bun test` is the default. A test file may use Jest when `bun test` cannot cover the case (missing API, or a runtime difference that changes the result). In that case:
+
+- the file is named `*.jest.spec.ts` and starts with a comment giving the reason;
+- `jest` and `@swc/jest` are added to `devDependencies` with a `test:jest` script, and `bun test` ignores `*.jest.spec.ts`;
+- CI runs both `bun test` and `bun run test:jest`;
+- the file is listed below.
+
+| File | Reason |
+| --- | --- |
+| (none yet) | |
 
 ### `bunfig.toml`
 
@@ -61,6 +74,12 @@ serviceWorker/
       dom.ts
       sanitize.ts
 platform/src/**/x.spec.ts          # platform scripts (happy-dom)
+e2e/                               # browser tests (Python + nodriver + Edge)
+  run.py                           # entry: python e2e/run.py <scenario|all> [--mode extension|userscript]
+  lib.py                           # Edge launch, dedicated profile, extension/userscript modes, JSON reads
+  selectors.py
+  scenarios/
+  requirements.txt
 ```
 
 Scripts under `platform/src` load as classic scripts in the browser. To test them, pure functions are exported with `if (typeof module !== "undefined") module.exports = { ... }`, which does not change browser behavior.
@@ -149,6 +168,7 @@ Builds a fake worker scope and boots the worker code on it, the way it runs insi
 | TS-107 | T-107 | unit (happy-dom) | two workers get `setSettings`; `terminate` removes from the registry; a worker created later gets the current settings; a message from worker B is answered to B; XHR failure creates the worker with the original URL |
 | TS-108 | T-108 | unit | URIs with `?`, `+`, `(` and `[` keep the right title |
 | TS-109 | T-109 | unit + int | with `debug` off, a full poll does not call `console.log`; with it on, it does; no `console.log` outside the logger in `serviceWorker/src` (file scan) |
+| TS-110 | T-110 | unit (happy-dom) + int | with `debug` off the worker posts no events; with it on, each event type reaches `window.__purple.events` with channel and timestamp; buffer keeps the last 500 |
 | TS-201 | T-201 | unit | each F-02 marker detected; non-ad markers give `NONE`; `stitched` outside the title gives `NONE`; `stitched`, `Amazon` and `DCM,` in the title give `SSAI`; URI patterns give `SSAI`; correct indexes on `media-ssai-midroll`; `media-marked-live` gives `MARKED_LIVE` |
 | TS-202 | T-202 | int | `media-marked-live` comes out identical, zero GQL calls, no pause/play messages |
 | TS-301 | T-301 | unit (happy-dom) | `fetch` to `edge.ads.twitch.tv` never reaches the real `fetch` and gets an empty 200; XHR ends with `readyState 4`, status 200 and `onload` without network; with `blockCsai` off it passes; counters for `preroll` and `midroll` |
@@ -169,16 +189,49 @@ Builds a fake worker scope and boots the worker code on it, the way it runs insi
 | TS-701 | T-701 | int | `bun run build` produces both zips with the version in the name and the userscript with `@version` equal to `package.json`; `package.json` has no `ts-node`, `jest` or `preinstall` |
 | TS-702 | T-702 | unit | `pull_request` has no release step; releases only on push to `main` or a tag; `oven-sh/setup-bun` used; no `marvinpinto/action-automatic-releases` (read with `Bun.YAML.parse`) |
 
-## Manual validation
+## Browser tests (nodriver + Edge)
 
-Before publishing a version, on Chromium, Firefox and the userscript (Tampermonkey and Violentmonkey), with `debug` on:
+Tests against the real twitch.tv run in Python with nodriver driving Microsoft Edge.
 
-- channel with a preroll on open;
-- channel with a midroll;
-- channel streaming HEVC or AV1 (enhanced broadcasting);
-- player popout;
-- switching channels without reloading the page;
-- whitelisted channel;
-- logged in and logged out.
+### Setup
 
-Results go in the PR description.
+| Item | Value |
+| --- | --- |
+| Browser | `C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe` (Edge 154 on 2026-10-03) |
+| Profile | `~/nodriver/profile-edge-purple`, used only by these tests; never the general `~/nodriver/profile-edge` |
+| Library | nodriver 0.50.3 on Python 3.14 (its `cdp/network.py` ships in cp1252 and must be re-saved as UTF-8 after install or upgrade) |
+| Code | `e2e/` (T-004) |
+
+Two modes:
+
+- **Extension:** `bun serviceWorker/build.ts && bun cli/build.ts dev`, then Edge starts with `--load-extension=<repo>/dist/purple-adblock-purple-adblock-chromium`. Checked on 2026-10-03: Edge 154 accepts the switch and lists the extension as `UNPACKED`/`ENABLED` (read through `chrome.developerPrivate.getExtensionsInfo` on `edge://extensions`).
+- **Userscript:** Edge starts with `--disable-extensions` and the built userscript is injected with `Page.addScriptToEvaluateOnNewDocument`, which runs it in the main world at document start, as Tampermonkey does with `@run-at document-start` and `@grant none`.
+
+A new profile is launched once before any assertion. On 2026-10-03 the first launch of a fresh profile did not patch the worker; every later launch did.
+
+### Reading state
+
+- Page state is read as JSON through `tab.evaluate(..., return_by_value=True)`, wrapping the value in `JSON.stringify` (nodriver returns `RemoteObject` for `null` and for some objects).
+- `Worker.toString().includes("Purple")` tells whether the worker hook is installed.
+- `document.querySelector("video")`: `readyState`, `currentTime` advancing between two reads, `paused`.
+- `window.__purple.events` (T-110): what the worker did during the session.
+- Twitch's ad overlay and player error overlay: selectors kept in `e2e/selectors.py`, checked against the live page when T-004 is written.
+- No screenshots unless the problem is visual.
+
+Ads are not deterministic. Every scenario asserts the invariants that always hold (hook installed, playback, no player error); ad-specific assertions apply to the ad breaks recorded in `window.__purple.events` during the run.
+
+### Scenarios
+
+| ID | Scenario | Mode | Asserts | Covers |
+| --- | --- | --- | --- | --- |
+| E2E-01 | Open a live channel picked from the directory | extension, userscript | hook installed; video playing; no player error | E1, T-101, T-107 |
+| E2E-02 | Preroll: open a channel in a new tab, logged out | extension | for each recorded ad break: no ad overlay, playback resumes, events show a backup, a merge or blank segments | F-02 to F-14 |
+| E2E-03 | Soak: watch one channel for 20 minutes | extension | every recorded ad break ends with a backup, a merge or blank segments; no player error; no ad overlay | midrolls, T-601 |
+| E2E-04 | HEVC/AV1 channel (`PURPLE_E2E_HEVC_CHANNEL`) | extension | master has an HEVC or AV1 variant; video playing; no player error | T-101, T-407 |
+| E2E-05 | Popout player | extension | E2E-01 checks on the popout URL | F-12 |
+| E2E-06 | Switch channel by clicking, without reload | extension | second channel playing; events tagged with the new channel | T-107 |
+| E2E-07 | Whitelist: channel added through `chrome.storage.local` from the extension popup page | extension | `whitelisted` events; no playlist rewrites for that channel | E7, T-602 |
+| E2E-08 | CSAI | extension | requests to `edge.ads.twitch.tv` recorded as blocked | F-04 |
+| E2E-09 | Logged in (after a one-time manual login in the dedicated profile) | extension | E2E-01 and E2E-02 checks | F-05 |
+
+Before ticking a task that changes behavior on twitch.tv (phases 1 to 6), run the scenarios listed for it in the Covers column. Before a release, run all of them. Results go in the PR description.

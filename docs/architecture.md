@@ -50,6 +50,7 @@ E-xx are existing strategies; F-xx and C-xx are features and fixes from `docs/fe
   - `edge.ads.twitch.tv`: blocked (F-04).
 - GQL executor for worker requests, using the page credentials (F-06).
 - Ad break state machine: pause/play (E6), optional reload (F-15).
+- With `debug` on, worker events kept in `window.__purple.events` (F-17), read by the browser tests.
 
 ### Worker
 

@@ -8,8 +8,8 @@ Phases run in order. Inside a phase, the "Depends on" column says what must come
 
 | Phase | Tasks | Depends on |
 | --- | --- | --- |
-| 0. Test base | T-001 to T-003 | - |
-| 1. Fixes to existing code | T-101 to T-109 | Phase 0 |
+| 0. Test base | T-001 to T-004 | - |
+| 1. Fixes to existing code | T-101 to T-110 | Phase 0 |
 | 2. Detection | T-201, T-202 | T-101 |
 | 3. CSAI blocking | T-301, T-302 | T-106 |
 | 4. Backup streams | T-401 to T-408 | T-104, T-105, T-106, T-107 |
@@ -24,7 +24,7 @@ Phases run in order. Inside a phase, the "Depends on" column says what must come
 - Files: `package.json`, `bunfig.toml` (new), `serviceWorker/test/preload.ts` (new), `jest.config.js` (removed), `serviceWorker/src/decorator/*.ts`, `serviceWorker/src/app.worker.ts`, `serviceWorker/src/modules/player/player.spec.ts`, `serviceWorker/src/modules/stream/stream.spec.ts`, `serviceWorker/src/modules/player/m3u8.spec.ts`
 - Done when:
   - `bunfig.toml` sets `[test] preload` to `serviceWorker/test/preload.ts`, which registers the `?raw` plugin;
-  - `jest`, `@swc/jest`, `@types/jest`, `@types/mocha` and `jest.config.js` are gone; `@happy-dom/global-registrator` is added for page tests;
+  - `jest`, `@swc/jest`, `@types/jest`, `@types/mocha` and `jest.config.js` are gone (Jest comes back only under the fallback rule in `docs/tests.md`); `@happy-dom/global-registrator` is added for page tests;
   - specs import from `bun:test`;
   - `@Fetch` and `@Message` store metadata on the class; `createRouter(controller)` and `bindMessages(scope, controller)` do the registration, so tests build fresh instances without re-importing modules;
   - `app.worker.ts` is split into `bootstrapWorker(scope)` (exported, no side effects on import) and an entry that calls `bootstrapWorker(self)`;
@@ -45,6 +45,17 @@ Phases run in order. Inside a phase, the "Depends on" column says what must come
 - Files: `.github/workflows/test.yml`
 - Done when push and pull request run `oven-sh/setup-bun`, `bun install --frozen-lockfile` and `bun test`, and a failing test turns the check red.
 - Tests: TS-003
+
+### T-004 Browser test harness (nodriver + Edge)
+- [ ] Status
+- Files: `e2e/` (new), `package.json` (`e2e` script calling `python e2e/run.py`)
+- Done when:
+  - nodriver starts Edge with `user_data_dir=~/nodriver/profile-edge-purple`, a profile used only by these tests;
+  - extension mode loads `dist/purple-adblock-purple-adblock-chromium` with `--load-extension`; userscript mode runs with `--disable-extensions` and injects the built userscript with `Page.addScriptToEvaluateOnNewDocument`;
+  - a fresh profile gets one warm-up launch before assertions;
+  - state is read as JSON (hook installed, video state, overlays, `window.__purple.events` once T-110 exists); no screenshots;
+  - E2E-01 passes in both modes.
+- Tests: E2E-01
 
 ## Phase 1: fixes to existing code
 
@@ -129,6 +140,15 @@ Phases run in order. Inside a phase, the "Depends on" column says what must come
   - no direct `console.log` remains in `serviceWorker/src` outside the logger;
   - with `debug` off, nothing is printed per segment or per request.
 - Tests: TS-109
+
+### T-110 Debug event log in the page
+- [ ] Status · F-17
+- Files: `serviceWorker/src/modules/player/player.ts`, `serviceWorker/src/index.ts`
+- Done when:
+  - with `debug` on, the worker posts events to the page: `adDetected`, `backupUsed`, `segmentsReplaced`, `blankInserted`, `csaiBlocked`, `whitelisted`, each with channel, playerType (when relevant) and timestamp;
+  - the page keeps them in `window.__purple.events`, last 500 only;
+  - with `debug` off, no events are posted and `window.__purple` is not created.
+- Tests: TS-110
 
 ## Phase 2: detection
 

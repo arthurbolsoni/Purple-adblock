@@ -12,7 +12,11 @@ English only: code, comments, docs, commit messages, PR text and chat replies.
 
 ## Tooling
 
-Bun for everything: install, scripts, build and tests (`bun test` with `bun:test`). Do not use npm, Node, ts-node or Jest.
+Bun for everything: install, scripts, build and tests (`bun test` with `bun:test`). Do not use npm, Node or ts-node.
+
+Jest is the fallback when `bun test` cannot cover a case (missing API or a runtime difference that matters for the test). The reason goes at the top of that test file and in the "Jest exceptions" table in `docs/tests.md`.
+
+Browser tests against twitch.tv use nodriver (Python) with Microsoft Edge and the dedicated profile `~/nodriver/profile-edge-purple`, used only for these tests. See "Browser tests" in `docs/tests.md`.
 
 ## Reference implementation
 
@@ -42,6 +46,8 @@ bun test serviceWorker/src/modules/player   # one directory
 bun test --coverage
 bun serviceWorker/build.ts                  # builds serviceWorker/dist/bundle.js
 bun platform/tampermonkey/build.js          # userscript from serviceWorker/dist/bundle.js
+bun cli/build.ts dev                        # unpacked extensions in dist/ (used by browser tests)
+python e2e/run.py <scenario>                # browser tests (after T-004)
 ```
 
 The `package.json` scripts still call `ts-node` and Jest; T-001 and T-701 move them to Bun. Until then, run the commands above directly.
@@ -59,7 +65,7 @@ The `package.json` scripts still call `ts-node` and Jest; T-001 and T-701 move t
 
 ## Rules
 
-1. Every implemented part ships with a unit or integration test (`bun:test`) in the same commit. A bug fix starts with a failing test that reproduces the bug.
+1. Every implemented part ships with a unit or integration test (`bun:test`, Jest only as the documented fallback) in the same commit. A bug fix starts with a failing test that reproduces the bug. Browser tests add to these; they never replace them.
 2. No existing strategy (E-xx in `docs/feat.md`) is removed. A new strategy is an extra step in the chain or sits behind a `Setting` flag, with its default recorded in `docs/feat.md`.
 3. HLS playlists: with no ads, return the original text untouched. With ads, edit line by line and keep every tag that is not part of the ad (`EXT-X-MAP`, `EXT-X-PROGRAM-DATE-TIME`, `EXT-X-TWITCH-PREFETCH`, `EXT-X-PRELOAD-HINT`, `EXT-X-PART`, `EXT-X-DATERANGE`, `EXT-X-DISCONTINUITY`, `EXT-X-VERSION`). `m3u8-parser` is for reading only; output is never regenerated from scratch.
 4. Page `fetch`/XHR hooks only touch target URLs. Never read the body of a response we do not own; when a body is needed, read `response.clone()`.
@@ -68,6 +74,7 @@ The `package.json` scripts still call `ts-node` and Jest; T-001 and T-701 move t
 7. Fixtures captured from Twitch are sanitized (token, sig, user id, device id) before commit. See `docs/tests.md`.
 8. Code taken from Brave's scriptlet keeps a comment with the source URL and its license notice. See `docs/research.md`.
 9. When a task is done, tick it in `docs/task.md` and update `docs/feat.md` if behavior changed.
+10. Browser tests read page state as JSON (DOM, `window.__purple`, network events). No screenshots unless the problem is visual.
 
 ## Environment notes
 

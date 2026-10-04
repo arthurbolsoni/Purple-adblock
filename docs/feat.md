@@ -53,6 +53,7 @@ Three groups: strategies that already exist (E-xx, none is removed), fixes to ex
 | F-14 | Last resort: ad segments replaced by a blank segment, numbering kept | Brave | `stripFallback = true` | T-502 |
 | F-15 | Ad break state machine: pause/play (E6) and reload at most once every 30 s | Brave | `reloadAfterAd = false` | T-601 |
 | F-16 | Settings applied without reloading the page | Purple | - | T-602 |
+| F-17 | Debug event log in the page (`window.__purple.events`), read by the browser tests | Purple | `debug = false` | T-110 |
 
 ### F-02: markers
 
@@ -81,7 +82,7 @@ Three groups: strategies that already exist (E-xx, none is removed), fixes to ex
 | `whitelist` | `string[]` | `[]` | E7 |
 | `toggleProxy` | `boolean` | `true` | E12 |
 | `proxyUrl` | `string` | `""` | E12 |
-| `debug` | `boolean` | `false` | C-09 |
+| `debug` | `boolean` | `false` | C-09, F-17 |
 | `blockCsai` | `boolean` | `true` | F-04 |
 | `forcePopoutToken` | `boolean` | `true` | F-12 |
 | `backupPlayerTypes` | `string[]` | see F-09 | F-09 |
