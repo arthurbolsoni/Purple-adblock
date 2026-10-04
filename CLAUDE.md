@@ -58,6 +58,8 @@ Brave syncs that script from `ryanbr/TwitchAdSolutions`. `pixeltris/TwitchAdSolu
 
 ```bash
 bun install
+bun run hooks:install                       # once per clone: pre-commit hook runs `bun run check`
+bun run check                               # every local check (bun test; cargo test after T-006)
 bun test                                    # all tests
 bun test serviceWorker/src/modules/player   # one directory
 bun test --coverage
@@ -99,6 +101,7 @@ The `dev` and `build` scripts in `package.json` still call `ts-node`; T-701 move
 10. Browser tests read page state as JSON (DOM, `window.__purple`, the `sim/` request log). No screenshots unless the problem is visual.
 11. Every discovery goes to a dated file in `docs/findings/`, with the probe that produced it in `docs/findings/probes/`. Server behavior also goes to `docs/server/` (behavior, evidence level, source) before `sim/` reproduces it.
 12. Level 2 never opens twitch.tv.
+13. Tests run locally (`bun run check`, pre-commit hook). Never add a GitHub Actions workflow that runs tests, and never skip the hook with `--no-verify`.
 
 ## Environment notes
 

@@ -9,7 +9,9 @@
     "build:tampermonkey": "bun cli/build.ts && bun platform/tampermonkey/build.js",
     "lint": "eslint --ext .js,.ts && prettier --write **/*.{js,ts,css,html} --ignore-path .gitignore",
     "test": "bun test",
-    "test:coverage": "bun test --coverage"
+    "test:coverage": "bun test --coverage",
+    "check": "bun test",
+    "hooks:install": "git config core.hooksPath .githooks"
   },
   "repository": "https://github.com/arthurbolsoni/Purple-adblock.git",
   "author": "kingarthur",

@@ -41,10 +41,15 @@ Phases run in order. Inside a phase, the "Depends on" column says what must come
 - Done when the fixtures and harness pieces listed in `docs/tests.md` exist and each one is used by at least one test.
 - Tests: TS-002
 
-### T-003 Tests in CI
-- [ ] Status
-- Files: `.github/workflows/test.yml`
-- Done when push and pull request run `oven-sh/setup-bun`, `bun install --frozen-lockfile` and `bun test`, and a failing test turns the check red.
+### T-003 Local checks before every commit
+- [x] Status · done 2026-10-04: a commit with a failing test was blocked by the hook (exit 1, HEAD unchanged)
+- Files: `.githooks/pre-commit` (new), `package.json`, `.gitattributes`
+- Tests run on this machine, not on GitHub Actions (the account's Actions minutes are limited). No workflow runs tests.
+- Done when:
+  - `bun run check` runs every local check (`bun test` now; `cargo test` for `sim/` joins it with T-006);
+  - `.githooks/pre-commit` runs `bun run check`; `bun run hooks:install` sets `core.hooksPath` to `.githooks` (once per clone);
+  - a failing test blocks the commit;
+  - no workflow in `.github/workflows` runs tests.
 - Tests: TS-003
 
 ## Phase 0b: levels 2 and 3
@@ -377,7 +382,7 @@ Runs in parallel with phases 1 to 7. Phase 1 to 6 tasks list L2/L3 scenarios tha
 - Files: `.github/workflows/release.yml`, `.github/workflows/pre-release.yml`
 - Done when:
   - workflows use `oven-sh/setup-bun` and Bun commands only;
-  - pull requests run tests and build, without publishing a release;
+  - no workflow runs on `pull_request` and none runs tests: tests run locally (T-003), Actions minutes are limited;
   - releases only on push to `main` or on a tag;
   - `actions/checkout` v4; `marvinpinto/action-automatic-releases` (archived) is replaced by a maintained action.
 - Tests: TS-702

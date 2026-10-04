@@ -17,6 +17,7 @@ LICENSE text eol=lf
 *.yml text eol=lf
 *.m3u8 text eol=lf
 *.toml text eol=lf
+.githooks/* text eol=lf
 
 *.bmp binary
 *.gif binary

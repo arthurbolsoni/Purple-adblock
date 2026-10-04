@@ -13,12 +13,13 @@ Level 3 discovers behaviors and writes them to `docs/findings/` and `docs/server
 ## Rules
 
 1. Every task in `docs/task.md` closes with its listed tests passing: TS-xxx under `bun test`, plus any L2-xx or L3-xx it lists.
-2. Bug fix: first the failing test that reproduces the bug, then the fix.
-3. Logic that crosses page and worker, or spans more than one module, gets an integration test on top of unit tests.
-4. Level 1 never hits the network. Every Twitch response comes from the `FakeTwitch` harness and the fixtures.
-5. Level 2 never opens twitch.tv.
-6. Levels 2 and 3 add to level 1; they never replace it.
-7. Every discovery made while testing goes to `docs/findings/`; server behavior goes to `docs/server/`.
+2. Tests run on this machine: `bun run check`, also run by the pre-commit hook (`.githooks/pre-commit`, installed with `bun run hooks:install`). No GitHub Actions workflow runs tests.
+3. Bug fix: first the failing test that reproduces the bug, then the fix.
+4. Logic that crosses page and worker, or spans more than one module, gets an integration test on top of unit tests.
+5. Level 1 never hits the network. Every Twitch response comes from the `FakeTwitch` harness and the fixtures.
+6. Level 2 never opens twitch.tv.
+7. Levels 2 and 3 add to level 1; they never replace it.
+8. Every discovery made while testing goes to `docs/findings/`; server behavior goes to `docs/server/`.
 
 ## Tooling
 
@@ -37,7 +38,7 @@ Level 3 discovers behaviors and writes them to `docs/findings/` and `docs/server
 
 - the file is named `*.jest.spec.ts` and starts with a comment giving the reason;
 - `jest` and `@swc/jest` are added to `devDependencies` with a `test:jest` script, and `bun test` ignores `*.jest.spec.ts`;
-- CI runs both `bun test` and `bun run test:jest`;
+- `bun run check` runs both `bun test` and `bun run test:jest`;
 - the file is listed below.
 
 | File | Reason |
@@ -81,6 +82,7 @@ serviceWorker/
     fixtures/README.md             # provenance of every fixture
     fixtures/m3u8/*.m3u8
     fixtures/gql/*.json
+    repo/local-checks.spec.ts      # scripts, pre-commit hook, workflows without tests (TS-003)
     harness/                       # each piece is covered by a spec here or in integration/
       fake-twitch.ts
       worker-scope.ts
@@ -196,7 +198,7 @@ Builds a fake worker scope and boots the worker code on it, the way it runs insi
 | --- | --- | --- | --- |
 | TS-001 | T-001 | unit | `Player.setChannel` creates and reuses a stream; `isWhitelist`; `Stream.removeServer`; `getStreamByStreamType`; decorators store metadata and `createRouter` returns routes in declaration order; two `bootstrapWorker` calls on two scopes do not share state |
 | TS-002 | T-002 | unit + int | every fixture loads in `m3u8-parser` without warnings, is sanitized and is listed in the fixtures README; `FakeTwitch` serves usher, media, GQL (single and batch), integrity and ads; `sanitize` removes token, sig, ids and hosts and is idempotent; worker pipeline on `worker-scope` + `FakeTwitch` (routes, usher, no-ad poll, backup by playerType, merge by `PROGRAM-DATE-TIME`, picture-by-picture); `index.ts` on `page-env` (injection, settings, quality, pause/play, integrity); `content-script.js` on `page-env` |
-| TS-003 | T-003 | unit | the test workflow runs on `push` and `pull_request`, uses `oven-sh/setup-bun` and runs `bun test` (read with `Bun.YAML.parse`) |
+| TS-003 | T-003 | unit | `test`, `test:coverage`, `check` and `hooks:install` scripts; `.githooks/pre-commit` runs `bun run check` with LF endings; the `bun` npm package is not older than the runtime; no workflow in `.github/workflows` runs tests (read with `Bun.YAML.parse`) |
 | TS-101 | T-101 | unit + int | `media-live-ts`, `media-live-fmp4` and `media-ll-hls` without ads come out byte-identical through the worker; with ads, output keeps `EXT-X-VERSION`, `EXT-X-MAP`, `PROGRAM-DATE-TIME`, `TWITCH-PREFETCH`, `PRELOAD-HINT`, `PART`, `DATERANGE`, `DISCONTINUITY` and an unknown tag; `#EXTINF` has the comma |
 | TS-102 | T-102 | unit | channel `nullbyte` goes through the usher hook; `fetch(new Request(url))` and `fetch(new URL(url))` are routed; an unrouted URL calls `global.request` with the same arguments |
 | TS-103 | T-103 | unit + int | usher v1 and v2 store the channel; channel with a query string; a media playlist before the usher comes back unchanged and does not throw |
@@ -225,7 +227,7 @@ Builds a fake worker scope and boots the worker code on it, the way it runs insi
 | TS-602 | T-602 | unit (happy-dom) + int | a `setSettings` message with `value.whitelist` makes `isWhitelist()` true; `storage.onChanged` sends `setSettings` to every worker; a channel added to the whitelist mid-session gets the original playlist on the next poll |
 | TS-603 | T-603 | unit (happy-dom) | channel parsed from `www.twitch.tv/<channel>`, `m.twitch.tv/<channel>`, `www.twitch.tv/popout/<channel>/chat` and URLs with a query string |
 | TS-701 | T-701 | int | `bun run build` produces both zips with the version in the name and the userscript with `@version` equal to `package.json`; `package.json` has no `ts-node`, `jest` or `preinstall` |
-| TS-702 | T-702 | unit | `pull_request` has no release step; releases only on push to `main` or a tag; `oven-sh/setup-bun` used; no `marvinpinto/action-automatic-releases` (read with `Bun.YAML.parse`) |
+| TS-702 | T-702 | unit | no workflow triggers on `pull_request`; no step runs tests; releases only on push to `main` or a tag; `oven-sh/setup-bun` used; no `marvinpinto/action-automatic-releases` (read with `Bun.YAML.parse`) |
 
 ## Browser setup (levels 2 and 3)
 
