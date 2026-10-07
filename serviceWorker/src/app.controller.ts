@@ -4,6 +4,9 @@ import { Player } from "./modules/player/player";
 import { StreamType } from "./modules/stream/interface/stream.enum";
 import type { WorkerContext } from "./scope";
 
+// /api/channel/hls/<channel>.m3u8 or /api/v2/channel/hls/<channel>.m3u8; the query string is ignored
+const channelFromUsher = (url: string) => decodeURIComponent(new URL(url).pathname.split("/").pop()!.replace(/\.m3u8$/, ""));
+
 @Controller()
 export class AppController {
   getSettings = () => this.scope.postMessage({ type: "getSettings" });
@@ -21,6 +24,7 @@ export class AppController {
   }
 
   @Fetch("usher.ttvnw.net/api/channel/hls/", "picture-by-picture")
+  @Fetch("usher.ttvnw.net/api/v2/channel/hls/", "picture-by-picture")
   async onChannel(url: string, options: any): Promise<Response> {
     const response: Response = await this.scope.request(url, options);
     if (!response.ok) {
@@ -29,17 +33,21 @@ export class AppController {
     }
 
     const text = await response.text();
-    const channelName = /hls\/(.*).m3u8/gm.exec(url) || [];
 
-    await this.appService.setChannel(channelName[1]);
+    await this.appService.setChannel(channelFromUsher(url));
     return new Response(text);
   }
 
   @Fetch("ttvnw.net/v1/playlist/")
   async onFetch(url: string, options: any): Promise<Response> {
     const body: string = await (await this.scope.request(url, options)).text();
-    const playlist = await this.appService.onFetch(body);
-    return new Response(playlist);
+    try {
+      return new Response(await this.appService.onFetch(body));
+    } catch (e) {
+      // a failure in the blocking logic must not stop the player: it gets Twitch's playlist
+      this.scope.logger(e);
+      return new Response(body);
+    }
   }
 
   @Fetch("picture-by-picture")

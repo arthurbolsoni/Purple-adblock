@@ -74,6 +74,8 @@ export class Player {
   }
 
   async onFetch(text: string): Promise<string> {
+    // no stream stored for the channel yet (media playlist before the usher)
+    if (!this.currentStream()) return text;
     if (this.isWhitelist()) return text;
     // is ads and is the principal stream
     if (!this.isAds(text, true)) {

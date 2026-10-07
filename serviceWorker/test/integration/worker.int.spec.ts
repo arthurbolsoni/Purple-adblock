@@ -40,7 +40,12 @@ const setup = () => {
 describe("worker pipeline", () => {
   test("bootstrapping registers the routes and asks the page for settings", () => {
     const worker = setup();
-    expect(worker.router.routes.map((r) => r.match)).toEqual(["usher.ttvnw.net/api/channel/hls/", "ttvnw.net/v1/playlist/", "picture-by-picture"]);
+    expect(worker.router.routes.map((r) => r.match)).toEqual([
+      "usher.ttvnw.net/api/v2/channel/hls/",
+      "usher.ttvnw.net/api/channel/hls/",
+      "ttvnw.net/v1/playlist/",
+      "picture-by-picture",
+    ]);
     expect(worker.posted).toEqual([{ type: "getSettings" }]);
   });
 
@@ -134,6 +139,52 @@ describe("worker pipeline", () => {
     const [server] = worker.player.currentStream().getStreamByStreamType(StreamType.PICTURE);
     expect(server.urlList[0].url).toBe(PICTURE);
     expect(worker.player.actualChannel).toBe("channel");
+  });
+
+  // T-103: the Twitch page requests usher v2 (docs/findings/2026-10-07-e2e-harness.md)
+  test.each([
+    ["v1", "https://usher.ttvnw.net/api/channel/hls/channel.m3u8?token=PAGE_TOKEN&sig=PAGE_SIG"],
+    ["v2", "https://usher.ttvnw.net/api/v2/channel/hls/channel.m3u8?token=PAGE_TOKEN&sig=PAGE_SIG"],
+  ])("usher %s: the master passes through and the channel is stored", async (_, usher) => {
+    const worker = setup();
+    expect(await worker.text(usher)).toBe(masterFor(""));
+    expect(worker.player.actualChannel).toBe("channel");
+    expect(worker.player.currentStream().channelName).toBe("channel");
+  });
+
+  test("the channel comes from the usher path, not from the query string", async () => {
+    const worker = setup();
+    worker.twitch.master("other_channel", masterFor(""));
+    await worker.text("https://usher.ttvnw.net/api/v2/channel/hls/other_channel.m3u8?token=PAGE_TOKEN&note=hls/x.m3u8");
+    expect(worker.player.actualChannel).toBe("other_channel");
+  });
+
+  test("an ad playlist before the usher comes back unchanged, with no token request", async () => {
+    const worker = setup();
+    const midroll = fixture("m3u8/media-ssai-midroll.m3u8");
+    worker.twitch.mediaPlaylist(MAIN, midroll);
+
+    const response = await worker.fetch(MAIN);
+
+    expect(response.status).toBe(200);
+    expect(await response.text()).toBe(midroll);
+    expect(worker.twitch.callsOf("gql")).toEqual([]);
+  });
+
+  // CLAUDE.md rule 5: a failure in the blocking logic returns Twitch's original playlist
+  test("a failure while handling a media playlist returns the original playlist", async () => {
+    const worker = setup();
+    const midroll = fixture("m3u8/media-ssai-midroll.m3u8");
+    worker.twitch.mediaPlaylist(MAIN, midroll);
+    await worker.text(USHER);
+    worker.player.onFetch = async () => {
+      throw new TypeError("boom");
+    };
+
+    const response = await worker.fetch(MAIN);
+
+    expect(response.status).toBe(200);
+    expect(await response.text()).toBe(midroll);
   });
 
   test("quality and integrity messages reach the player", () => {

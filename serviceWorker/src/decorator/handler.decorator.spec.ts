@@ -82,15 +82,17 @@ describe("@Fetch / createRouter", () => {
     expect(createRouter(new Sample()).resolve("no-slash-here")).toBeUndefined();
   });
 
-  test("AppController routes: usher, media playlist, picture-by-picture", () => {
+  test("AppController routes: usher v1 and v2, media playlist, picture-by-picture", () => {
     const controller = new AppController({} as any, { postMessage() {}, request: fetch, logger() {} });
     const router = createRouter(controller);
 
-    expect(router.routes.map((r) => r.propertyKey)).toEqual(["onChannel", "onFetch", "onChannelPicture"]);
+    expect(router.routes.map((r) => r.propertyKey)).toEqual(["onChannel", "onChannel", "onFetch", "onChannelPicture"]);
 
     const routeOf = (url: string) => router.routes.find((r) => url.includes(r.match) && !url.includes(r.ignore!))?.propertyKey;
     expect(routeOf("https://usher.ttvnw.net/api/channel/hls/somechannel.m3u8?token=x")).toBe("onChannel");
+    expect(routeOf("https://usher.ttvnw.net/api/v2/channel/hls/somechannel.m3u8?token=x")).toBe("onChannel");
     expect(routeOf("https://usher.ttvnw.net/api/channel/hls/somechannel.m3u8?player_type=picture-by-picture")).toBe("onChannelPicture");
+    expect(routeOf("https://usher.ttvnw.net/api/v2/channel/hls/somechannel.m3u8?player_type=picture-by-picture")).toBe("onChannelPicture");
     expect(routeOf("https://video-weaver.example.hls.ttvnw.net/v1/playlist/abc.m3u8")).toBe("onFetch");
     expect(routeOf("https://example.j.cloudfront.hls.ttvnw.net/segment.ts")).toBeUndefined();
   });

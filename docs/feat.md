@@ -25,7 +25,7 @@ Three groups: strategies that already exist (E-xx, none is removed), fixes to ex
 | --- | --- | --- |
 | C-01 | Playlist without ads passes through untouched; merge keeps non-ad tags | T-101 |
 | C-02 | Router: no `includes(null)`; accepts `Request` and `URL` | T-102 |
-| C-03 | Channel name from the usher URL (v1 and v2); a missing stream does not throw | T-103 |
+| C-03 | Channel name from the usher URL (v1 and v2); a missing stream does not throw; an error while handling a media playlist returns Twitch's playlist | T-103 |
 | C-04 | Master variants read with `m3u8-parser`; missing URL or network failure does not throw | T-104 |
 | C-05 | One in-flight token request per playerType; no duplicate servers | T-105 |
 | C-06 | Page hook limited to target URLs; 204/304 and binary responses untouched | T-106 |

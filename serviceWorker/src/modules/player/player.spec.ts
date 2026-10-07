@@ -212,6 +212,17 @@ describe("Player.onFetch", () => {
     expect(stream.getStreamByStreamType(StreamType.PICTURE)).toHaveLength(1);
   });
 
+  // T-103: the page requested usher v2, which 2.6.7 does not route, so no stream was stored
+  test.each([["live", LIVE], ["ads", ADS]])("before the usher (no stream stored), a %s playlist comes back unchanged", async (_, text) => {
+    jest.useFakeTimers();
+    const context = makeContext();
+    const player = new Player(context);
+
+    expect(await player.onFetch(text)).toBe(text);
+    expect(context.requests).toEqual([]);
+    expect(context.posted).toEqual([]);
+  });
+
   test("with ads and no backup yet, it requests backup tokens and keeps the ad playlist", async () => {
     jest.useFakeTimers();
     const player = new Player(makeContext());

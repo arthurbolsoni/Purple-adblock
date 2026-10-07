@@ -143,13 +143,14 @@ Runs in parallel with phases 1 to 7. Phase 1 to 6 tasks list L2/L3 scenarios tha
 - Tests: TS-102
 
 ### T-103 Channel from the usher; missing stream
-- [ ] Status · C-03 · E2, E3
+- [x] Status · C-03 · E2, E3 · done 2026-10-07: both usher paths routed; on twitch.tv the player no longer stops on ad playlists (L3-01 run D in the [finding](findings/2026-10-07-e2e-harness.md); the extension's direct load still fails the injection check, T-111)
 - Files: `serviceWorker/src/app.controller.ts`, `serviceWorker/src/modules/player/player.ts`
 - Context: the Twitch page requests usher v2. With Purple in the player worker, an ad playlist throws in `fetchm3u8ByStreamType` and the player stops with Error #2000 ([finding](findings/2026-10-07-e2e-harness.md)).
 - Done when:
   - the usher route matches `/api/channel/hls/` and `/api/v2/channel/hls/`;
   - the channel name comes from `new URL(url).pathname`, not from a regex over the full URL;
-  - a media playlist that arrives before the usher (no stream stored) returns the original text without throwing.
+  - a media playlist that arrives before the usher (no stream stored) returns the original text without throwing;
+  - an error while handling a media playlist returns Twitch's playlist (CLAUDE.md rule 5).
 - Tests: TS-103, L3-01
 
 ### T-104 Master variants through the parser
