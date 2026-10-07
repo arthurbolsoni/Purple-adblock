@@ -57,8 +57,8 @@ Phases run in order. Inside a phase, the "Depends on" column says what must come
 Runs in parallel with phases 1 to 7. Phase 1 to 6 tasks list L2/L3 scenarios that become required once these tasks are done.
 
 ### T-004 Browser harness (nodriver + Edge)
-- [ ] Status
-- Files: `e2e/` (new), `package.json` (`e2e` script calling `python e2e/run.py`)
+- [~] Status · 2026-10-07: harness in `e2e/` (hidden desktop, both modes, recorder with a worker log). L3-01 runs and fails on Purple bugs: the page requests usher v2, so Purple's worker throws on ad playlists and the player stops (T-103), and the extension's hook is sometimes late on a direct load (T-111) ([finding](findings/2026-10-07-e2e-harness.md))
+- Files: `e2e/` (new), `package.json` (`e2e` script calling `python e2e/run.py`, `e2e:build`), `platform/tampermonkey/build.js` (optional output path, so the e2e build goes to `dist/`)
 - Done when:
   - nodriver starts Edge with `user_data_dir=~/nodriver/profile-edge-purple`, a profile used only by these tests;
   - no other extension runs: every launch passes `--disable-component-extensions-with-background-pages`; extension mode adds `--load-extension=<build> --disable-extensions-except=<build>`; userscript mode adds `--disable-extensions` and injects the built userscript with `Page.addScriptToEvaluateOnNewDocument`;
@@ -145,11 +145,12 @@ Runs in parallel with phases 1 to 7. Phase 1 to 6 tasks list L2/L3 scenarios tha
 ### T-103 Channel from the usher; missing stream
 - [ ] Status · C-03 · E2, E3
 - Files: `serviceWorker/src/app.controller.ts`, `serviceWorker/src/modules/player/player.ts`
+- Context: the Twitch page requests usher v2. With Purple in the player worker, an ad playlist throws in `fetchm3u8ByStreamType` and the player stops with Error #2000 ([finding](findings/2026-10-07-e2e-harness.md)).
 - Done when:
   - the usher route matches `/api/channel/hls/` and `/api/v2/channel/hls/`;
   - the channel name comes from `new URL(url).pathname`, not from a regex over the full URL;
   - a media playlist that arrives before the usher (no stream stored) returns the original text without throwing.
-- Tests: TS-103
+- Tests: TS-103, L3-01
 
 ### T-104 Master variants through the parser
 - [ ] Status · C-04 · E3, E8

@@ -99,10 +99,11 @@ sim/                               # level 2 server (Rust)
   media/                           # generated with ffmpeg, gitignored
   page/                            # isolated player page (Purple bundle + IVS SDK)
 e2e/                               # levels 2 and 3 drivers (Python + nodriver + Edge)
-  run.py                           # entry: python e2e/run.py <scenario|all> [--mode extension|userscript]
-  lib.py                           # Edge launch, dedicated profile, extension/userscript modes, JSON reads
-  selectors.py
-  scenarios/
+  run.py                           # entry: python e2e/run.py <scenario|all> [--mode extension|userscript|record]
+  lib.py                           # Edge on a hidden desktop, dedicated profile, modes, JSON reads
+  recorder.js                      # page and worker state recorder (window.__e2e)
+  twitch_selectors.py              # not selectors.py: that name shadows the standard library module asyncio imports
+  scenarios/                       # one module per scenario (l3_01.py)
   requirements.txt
 ```
 
@@ -240,25 +241,37 @@ Both levels run in Python with nodriver driving Microsoft Edge.
 | Profile | `~/nodriver/profile-edge-purple`, used only by these tests; never the general `~/nodriver/profile-edge` |
 | Library | nodriver 0.50.3 on Python 3.14 (its `cdp/network.py` ships in cp1252 and must be re-saved as UTF-8 after install or upgrade) |
 | Code | `e2e/` (T-004) |
+| Desktop | on Windows, a separate hidden Win32 desktop (`CreateDesktopW`, not headless): no window on the user's screen, no physical input; pages get focus emulation. `--visible` runs on the user's desktop for debugging |
 
-No other extension runs under nodriver. Every launch passes `--disable-component-extensions-with-background-pages`, plus:
+No other extension runs under nodriver. Every launch passes `--disable-component-extensions-with-background-pages` and `--disable-sync` (the profile picked up the Microsoft account's extensions through sync, see [findings/2026-10-07-e2e-harness.md](findings/2026-10-07-e2e-harness.md)), plus:
 
 | Mode | Extra flags | Used by |
 | --- | --- | --- |
-| Extension | `--load-extension=<build> --disable-extensions-except=<build>` (`<build>` = `<repo>/dist/purple-adblock-purple-adblock-chromium` from `bun serviceWorker/build.ts && bun cli/build.ts dev`) | level 3 |
-| Userscript | `--disable-extensions`; the built userscript is injected with `Page.addScriptToEvaluateOnNewDocument` (main world, document start, like Tampermonkey with `@run-at document-start` and `@grant none`) | levels 2 and 3 |
+| Extension | `--load-extension=<build> --disable-extensions-except=<build>` (`<build>` = `<repo>/dist/purple-adblock-purple-adblock-chromium`) | level 3 |
+| Userscript | `--disable-extensions`; the built userscript (`<repo>/dist/purpleadblocker.user.js`) is injected with `Page.addScriptToEvaluateOnNewDocument` (main world, document start, like Tampermonkey with `@run-at document-start` and `@grant none`), only on URLs its `@match` covers | levels 2 and 3 |
 | Record | `--disable-extensions` (Purple off) | level 3 recorder |
 
 Edge facts these modes rely on are in [findings/2026-10-03-edge-nodriver.md](findings/2026-10-03-edge-nodriver.md): only Purple enabled in extension mode, warm-up launch for a fresh profile, stopping leftover `msedge.exe` processes on this profile (and only those), `RemoteObject` handling.
 
+### Running
+
+```bash
+bun run e2e:build                 # extension build, and the userscript in dist/ (the committed release userscript stays as is)
+python e2e/run.py L3-01           # every mode the scenario lists
+python e2e/run.py all --mode extension --repeat 3 --report report.json
+```
+
+Each run prints one line per check and exits with 0 when every check passed. `--report` writes every check with its details (worker log included) as JSON. In Git Bash, set `MSYS_NO_PATHCONV=1` before passing a `/directory/...` path to a probe: Git Bash rewrites it into a Windows path.
+
 ### Reading state
 
 - Page state is read as JSON through `tab.evaluate(..., return_by_value=True)` around `JSON.stringify(...)`.
-- `Worker.toString().includes("Purple")`: worker hook installed.
+- `Worker.toString().includes("[Purple]")`: page hook installed.
+- `window.__e2e` (`e2e/recorder.js`, added before any page script): per worker, creation time, whether it came through Purple's injector, whether its script holds Purple's code, the end of its script (a player worker imports `amazon-ivs-wasmworker`) and Purple's boot message; `workerLog`: from inside each worker, the fetches it made on the network, what the player got from Purple's hook, Purple's console lines, errors and rejections (URLs without the query string).
 - `document.querySelector("video")`: `readyState`, `currentTime` advancing between two reads, `paused`.
 - `window.__purple.events` (T-110): what the worker did.
 - Level 2: the `sim/` request log (`/_sim/log`) says exactly which URLs the player and Purple requested.
-- Level 3: Twitch's ad overlay and player error overlay, with selectors kept in `e2e/selectors.py`.
+- Level 3: Twitch's ad overlay, player error overlay and content classification gate, with selectors kept in `e2e/twitch_selectors.py`.
 - No screenshots unless the problem is visual.
 
 ## Level 2: player + server
@@ -304,7 +317,7 @@ Ads are not deterministic. Every scenario asserts what always holds (hook instal
 
 | ID | Scenario | Mode | Asserts | Covers |
 | --- | --- | --- | --- | --- |
-| L3-01 | Open a live channel picked from the directory, by direct load and by client-side navigation | extension, userscript | every player worker created through the injector and running Purple's code (boot message seen); video playing; no player error | E1, T-101, T-107, T-111 |
+| L3-01 | Open a live channel picked from the directory, by direct load and by client-side navigation; channels behind the content classification gate are skipped | extension, userscript | every player worker created through the injector and running Purple's code (boot message seen); video playing; no player error | E1, T-101, T-103, T-107, T-111 |
 | L3-02 | Preroll (technique TR-001) | extension | for each recorded break: no ad overlay, playback resumes, events show a backup, a merge or blank segments | F-02 to F-14 |
 | L3-03 | Soak: one channel for 20 minutes (TR-002) | extension | every recorded break ends with a backup, a merge or blank segments; no player error | midrolls, T-601 |
 | L3-04 | HEVC/AV1 channel (TR-006) | extension | master has an HEVC or AV1 variant; video playing; no player error | T-101, T-407 |

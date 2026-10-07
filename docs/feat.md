@@ -6,8 +6,8 @@ Three groups: strategies that already exist (E-xx, none is removed), fixes to ex
 
 | ID | Strategy | Where | State in 2.6.7 | Tasks |
 | --- | --- | --- | --- | --- |
-| E1 | Player worker injection (replaces `window.Worker`, prepends our code to the original script) | `index.ts`, `content-script.js` | on a direct channel load the hook arrives after the player created its workers, so Purple never runs in them (C-11); synchronous XHR; only the first worker gets messages | T-107, T-111 |
-| E2 | Worker `fetch` interception with `@Fetch` routes | `app.worker.ts`, `app.controller.ts` | `includes(null)`; usher `/api/channel/hls/` only | T-102, T-103 |
+| E1 | Player worker injection (replaces `window.Worker`, prepends our code to the original script) | `index.ts`, `content-script.js` | on a direct channel load the hook often arrives after the player created its workers, so Purple does not run in them (late in 5 of 6 measured loads, C-11); synchronous XHR; only the first worker gets messages | T-107, T-111 |
+| E2 | Worker `fetch` interception with `@Fetch` routes | `app.worker.ts`, `app.controller.ts` | `includes(null)`; usher `/api/channel/hls/` only, while the page requests `/api/v2/channel/hls/`: the channel is never stored and an ad playlist throws, which stops the player (Error #2000, [finding](findings/2026-10-07-e2e-harness.md)) | T-102, T-103 |
 | E3 | Backup stream by requesting `PlaybackAccessToken` with another playerType (`frontpage`, `picture-by-picture`) | `player.ts`, `stream.ts`, `twitch.service.ts` | fixed hash, no page headers, duplicate requests; the variant regex expects `https://video…` URLs, current masters may use `*.playlist.ttvnw.net` (Q-013) | T-104, T-105, T-401 to T-407 |
 | E4 | Replace the whole playlist with the first backup without ads | `player.ts` | kept | T-405 |
 | E5 | Replace ad segments with backup segments that have the same `PROGRAM-DATE-TIME` | `m3u8.ts` | drops tags; compares at whole-second precision | T-101, T-501 |

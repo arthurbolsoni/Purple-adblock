@@ -44,6 +44,8 @@ Page state (video `readyState`, `currentTime`, `paused`) read as JSON at 10, 20 
 
 `content-script.js` appends `<script src="app/bundle.js">` only inside the `chrome.storage.local.get` callback, and the script then loads asynchronously. Twitch's page scripts create the player workers before that.
 
+Note 2026-10-07: two more direct loads with the extension had the hook at 1426 ms (in time, Purple in both player workers) and at 3020 ms (late). The race varies from run to run; the cause of the `readyState 0` runs is in [e2e harness](2026-10-07-e2e-harness.md).
+
 ## Open
 
 - Q-014: why the player stays at `readyState 0` in some runs with Purple in the worker (needs the worker's console and the playlists it returned; recorder T-005 and debug events T-110).

@@ -67,7 +67,8 @@ bun serviceWorker/build.ts                  # builds serviceWorker/dist/bundle.j
 bun platform/tampermonkey/build.js          # userscript from serviceWorker/dist/bundle.js
 bun cli/build.ts dev                        # unpacked extensions in dist/ (used by levels 2 and 3)
 cargo test --manifest-path sim/Cargo.toml   # sim/ unit tests (after T-006)
-python e2e/run.py <L2-xx|L3-xx>             # levels 2 and 3 (after T-004)
+bun run e2e:build                           # extension build + dist/purpleadblocker.user.js for levels 2 and 3
+python e2e/run.py <L2-xx|L3-xx|all>         # levels 2 and 3; --mode extension|userscript, --repeat N, --report FILE
 ```
 
 The `dev` and `build` scripts in `package.json` still call `ts-node`; T-701 moves them to Bun. Until then, run the build commands above directly.
@@ -85,7 +86,7 @@ The `dev` and `build` scripts in `package.json` still call `ts-node`; T-701 move
 - `platform/src/`: content script and popup. Manifests in `platform/chromium` and `platform/firefox`.
 - `platform/tampermonkey/`: userscript build.
 - `sim/` (planned, T-006 to T-009): Rust server reproducing Twitch's server, scenarios, synthetic media, isolated player page.
-- `e2e/` (planned, T-004, T-005): nodriver drivers for levels 2 and 3, recorder.
+- `e2e/`: nodriver drivers for levels 2 and 3. `lib.py` starts Edge on a hidden desktop in extension, userscript or record mode; `recorder.js` records workers and a log from inside them (`window.__e2e`); `scenarios/` holds one module per scenario. The level 3 recorder is planned (T-005).
 
 ## Rules
 

@@ -1,0 +1,2 @@
+nodriver==0.50.3
+psutil>=7

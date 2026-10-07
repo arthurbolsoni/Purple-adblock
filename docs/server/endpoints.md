@@ -7,8 +7,8 @@ All video endpoints are requested from the player worker. In Edge they are visib
 | Item | Value | Evidence |
 | --- | --- | --- |
 | Host | `usher.ttvnw.net` | Observed |
-| Path | `/api/channel/hls/<channel>.m3u8` | Observed (B-001) |
-| Path, v2 | `/api/v2/channel/hls/<channel>.m3u8` | Reported (B-002) |
+| Path | `/api/channel/hls/<channel>.m3u8` | Purple code (backup requests); the 2026-10-03 session recorded the host only (B-001) |
+| Path, v2 | `/api/v2/channel/hls/<channel>.m3u8`, requested by the Twitch page | Observed (B-002) |
 | Query built by Purple 2.6.7 | `allow_source`, `fast_bread`, `p`, `player_backend=mediaplayer`, `playlist_include_framerate`, `reassignments_supported`, `sig`, `supported_codecs=avc1`, `token` | Purple code |
 | Query sent by the Twitch page | not recorded yet | Q-005 |
 | `parent_domains` | present when embedded; Brave's script removes it | Reported (B-013) |
@@ -18,7 +18,8 @@ All video endpoints are requested from the player worker. In Edge they are visib
 
 | Item | Value | Evidence |
 | --- | --- | --- |
-| Host | `<edge>.playlist.ttvnw.net` (seen: `sae13.playlist.ttvnw.net`) | Observed |
+| Host | `<edge>.playlist.ttvnw.net` (seen: `sae11` to `sae13`) | Observed |
+| Path | `/v1/playlist/<opaque>.m3u8` | Observed ([e2e harness](../findings/2026-10-07-e2e-harness.md)) |
 | Path matched by Purple 2.6.7 | `ttvnw.net/v1/playlist/` | Purple code |
 | Requests | 27 in a 30 s session, all variants together | Observed |
 | Poll interval per variant | not measured | Q-002 |
@@ -51,3 +52,4 @@ All video endpoints are requested from the player worker. In Edge they are visib
 | Item | Value | Evidence |
 | --- | --- | --- |
 | Player binary | `assets.twitch.tv/assets/amazon-ivs-wasmworker.min-<hash>.wasm` | Observed (B-016) |
+| Worker script | blob of 98 bytes: `importScripts('https://assets.twitch.tv/assets/amazon-ivs-wasmworker.min-<hash>.js')` | Observed (B-017) |

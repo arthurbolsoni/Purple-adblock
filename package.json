@@ -11,7 +11,9 @@
     "test": "bun test",
     "test:coverage": "bun test --coverage",
     "check": "bun test",
-    "hooks:install": "git config core.hooksPath .githooks"
+    "hooks:install": "git config core.hooksPath .githooks",
+    "e2e": "python e2e/run.py",
+    "e2e:build": "bun serviceWorker/build.ts && bun cli/build.ts dev && bun platform/tampermonkey/build.js dist/purpleadblocker.user.js"
   },
   "repository": "https://github.com/arthurbolsoni/Purple-adblock.git",
   "author": "kingarthur",

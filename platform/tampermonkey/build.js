@@ -1,4 +1,8 @@
 const fs = require("fs");
+const path = require("path");
+
+// optional output path: the e2e build writes to dist/ (docs/tests.md, "Browser setup")
+const out = process.argv[2] || "platform/tampermonkey/dist/purpleadblocker.user.js";
 
 console.log("building userScript version: " + process.env.npm_package_version);
 
@@ -19,6 +23,6 @@ const build = `// ==UserScript==
 
 ${raw}`;
 
-if (!fs.existsSync("platform/tampermonkey/dist")) fs.mkdirSync("platform/tampermonkey/dist");
+fs.mkdirSync(path.dirname(out), { recursive: true });
 
-fs.writeFileSync("platform/tampermonkey/dist/purpleadblocker.user.js", build);
+fs.writeFileSync(out, build);
