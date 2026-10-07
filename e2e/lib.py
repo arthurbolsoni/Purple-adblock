@@ -29,6 +29,7 @@ PROFILE = os.path.expanduser('~/nodriver/profile-edge-purple')
 EXTENSION_BUILD = os.path.join(REPO, 'dist', 'purple-adblock-purple-adblock-chromium')
 USERSCRIPT_BUILD = os.path.join(REPO, 'dist', 'purpleadblocker.user.js')
 MODES = ('extension', 'userscript', 'record')
+WARM_UP_MARKER = 'purple-e2e-warm-up'  # in the profile directory, written after the warm-up launch
 
 # `bun run e2e:build` runs the same commands
 BUILD_COMMANDS = [
@@ -222,12 +223,18 @@ async def launch(mode, profile=PROFILE, visible=False, warm_up=True):
     profile = os.path.abspath(profile)
     _check_build(mode)
     stop_leftovers(profile)
-    if warm_up and not os.path.exists(os.path.join(profile, 'Local State')):
-        # first launch of a fresh profile: the extension does not patch the Twitch worker yet
-        # (docs/findings/2026-10-03-edge-nodriver.md)
+    marker = os.path.join(profile, WARM_UP_MARKER)
+    if warm_up and not os.path.exists(marker):
+        # Edge keeps an unpacked extension from the command line enabled after the profile's first launch
+        # only in developer mode (docs/findings/2026-10-07-e2e-harness.md)
         warm = await launch(mode, profile, visible, warm_up=False)
-        await warm.tab.sleep(5)
+        await warm.navigate('edge://extensions')
+        await warm.tab.sleep(2)
+        await warm.tab.evaluate('new Promise(r => chrome.developerPrivate.updateProfileConfiguration({inDeveloperMode: true}, () => r(true)))',
+                                await_promise=True, return_by_value=True)
         await warm.close()
+        with open(marker, 'w', encoding='utf-8') as f:
+            f.write('developer mode on\n')
 
     config = uc.Config(user_data_dir=profile, browser_executable_path=EDGE, headless=False, browser_args=browser_args(mode))
     config.host, config.port = '127.0.0.1', _free_port()

@@ -76,7 +76,7 @@ async def player_checks(tab, way, channel):
     await tab.sleep(SAMPLE)
     state = await lib.page_state(tab)
     workers = [w for w in state['workers'] if PLAYER_WORKER in (w.get('tail') or '')]
-    summary = [{k: w[k] for k in ('at', 'viaInjector', 'purpleCode', 'purpleBoot', 'size', 'errors')} for w in workers]
+    summary = [{k: w.get(k) for k in ('at', 'viaInjector', 'purpleCode', 'purpleBoot', 'size', 'errors', 'messages')} for w in workers]
     video, before = state['video'] or {}, first['video'] or {}
     advanced = round((video.get('currentTime') or 0) - (before.get('currentTime') or 0), 1)
     log = worker_log_summary(state['workerLog'])

@@ -80,8 +80,20 @@
       }
       const worker = Reflect.construct(target, args, newTarget);
       state.workers.push(entry);
+      // Purple's messages: pause/play/settings requests from the worker, and what the page sends back
+      // (the player's own RPC also uses funcName, so pause and play may come from the player too)
+      entry.messages = [];
+      const log = (m) => entry.messages.length < 200 && entry.messages.push(Object.assign({ at: Math.round(performance.now()) }, m));
+      const nativePost = worker.postMessage;
+      worker.postMessage = function (message, ...rest) {
+        const name = message && message.funcName;
+        if (["pause", "play", "setSettings", "setQuality", "setIntegrity"].includes(name)) log({ to: "worker", funcName: name });
+        return nativePost.call(this, message, ...rest);
+      };
       worker.addEventListener("message", (e) => {
-        if (e.data && e.data.type === "getSettings") entry.purpleBoot = true;
+        const type = e.data && e.data.type;
+        if (type === "getSettings") entry.purpleBoot = true;
+        if (type === "getSettings" || type === "pause" || type === "play") log({ from: "worker", type });
       });
       worker.addEventListener("error", (e) => entry.errors.push(String(e.message || e.type).slice(0, 200)));
       return worker;
