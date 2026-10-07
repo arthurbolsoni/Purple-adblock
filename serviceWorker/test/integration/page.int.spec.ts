@@ -76,6 +76,91 @@ describe("messages", () => {
   });
 });
 
+// T-107: on a direct channel load the player creates two workers and Purple runs in both (T-111)
+// (docs/findings/2026-10-07-e2e-harness.md)
+describe("worker registry", () => {
+  const settings = { whitelist: ["other"], toggleProxy: false, proxyUrl: "" };
+  let second: FakeWorker;
+
+  beforeAll(() => {
+    second = new (window as any).Worker(WORKER_URL, { name: "second" });
+  });
+
+  test("worker options reach the native Worker", () => {
+    expect(second.options).toEqual({ name: "second" });
+  });
+
+  test("getSettings from any worker is forwarded to the window", async () => {
+    const message = nextWindowMessage("getSettings");
+    second.emit({ type: "getSettings" });
+    expect(await message).toEqual({ type: "getSettings", value: null });
+  });
+
+  test("setSettings reaches every worker", async () => {
+    window.postMessage({ type: "setSettings", value: settings }, "*");
+    await Bun.sleep(5);
+    expect(main.posted.at(-1)).toEqual({ funcName: "setSettings", value: settings });
+    expect(second.posted.at(-1)).toEqual({ funcName: "setSettings", value: settings });
+  });
+
+  test("pause and play are answered to the worker that asked", () => {
+    const before = main.posted.length;
+    second.emit({ type: "pause" });
+    second.emit({ type: "play" });
+    expect(second.posted.slice(-2)).toEqual([
+      { funcName: "pause", args: undefined, id: 1 },
+      { funcName: "play", args: undefined, id: 1 },
+    ]);
+    expect(main.posted).toHaveLength(before);
+  });
+
+  test("a player state change is answered to the worker that sent it", () => {
+    const before = main.posted.length;
+    second.emit({ type: "other", arg: { key: "state", value: "Playing" } });
+    expect(second.posted.at(-1)).toEqual({ funcName: "Playing" });
+    expect(main.posted).toHaveLength(before);
+  });
+
+  test("a quality change reaches every worker", () => {
+    second.emit({ type: "PlayerQualityChanged", arg: { name: "1080p60" } });
+    expect(main.posted.at(-1)).toEqual({ funcName: "setQuality", value: "1080p60" });
+    expect(second.posted.at(-1)).toEqual({ funcName: "setQuality", value: "1080p60" });
+  });
+
+  test("a worker created later gets the current settings, integrity and quality", async () => {
+    await fetch("https://gql.twitch.tv/integrity", { method: "POST" });
+    const later = new (window as any).Worker(WORKER_URL);
+    expect(later.posted).toEqual([
+      { funcName: "setSettings", value: settings },
+      { funcName: "setQuality", value: "1080p60" },
+      { funcName: "setIntegrity", value: INTEGRITY_BODY },
+    ]);
+  });
+
+  test("a terminated worker gets nothing more", async () => {
+    second.terminate();
+    expect(second.terminated).toBe(1);
+    const before = second.posted.length;
+    window.postMessage({ type: "setSettings", value: settings }, "*");
+    await Bun.sleep(5);
+    expect(second.posted).toHaveLength(before);
+    expect(main.posted.at(-1)).toEqual({ funcName: "setSettings", value: settings });
+  });
+
+  test.each([
+    ["answers 404", "https://assets.twitch.tv/missing.js", false],
+    ["throws", "https://cross-origin.example/worker.js", true],
+  ])("when the script download %s, the worker starts from the original URL and is not registered", async (_, url, throws) => {
+    if (throws) FakeXMLHttpRequest.throwing.add(url);
+    const worker = new (window as any).Worker(url);
+    expect(worker).toBeInstanceOf(FakeWorker);
+    expect(worker.url).toBe(url);
+    window.postMessage({ type: "setSettings", value: settings }, "*");
+    await Bun.sleep(5);
+    expect(worker.posted).toEqual([]);
+  });
+});
+
 describe("integrity capture", () => {
   test("the /integrity response is sent to the worker and still readable by the page", async () => {
     const response = await fetch("https://gql.twitch.tv/integrity", { method: "POST" });

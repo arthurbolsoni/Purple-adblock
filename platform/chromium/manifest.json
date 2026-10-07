@@ -29,15 +29,15 @@
             "js": [
                 "content-script.js"
             ]
-        }
-    ],
-    "web_accessible_resources": [
+        },
         {
-            "resources": [
-                "app/bundle.js"
-            ],
             "matches": [
-                "<all_urls>"
+                "https://*.twitch.tv/*"
+            ],
+            "run_at": "document_start",
+            "world": "MAIN",
+            "js": [
+                "app/bundle.js"
             ]
         }
     ]

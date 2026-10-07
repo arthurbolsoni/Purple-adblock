@@ -75,7 +75,8 @@ The `dev` and `build` scripts in `package.json` still call `ts-node`; T-701 move
 
 ## Code map
 
-- `serviceWorker/src/index.ts`: runs in the page (main world, `document_start`). Replaces `window.Worker`, injects the worker code, bridges messages and hooks the page `fetch`.
+- `serviceWorker/src/index.ts`: runs in the page (main world, `document_start`; a `MAIN` world content script on Chromium). Replaces `window.Worker`, injects the worker code, bridges messages and hooks the page `fetch`.
+- `serviceWorker/src/page/worker-registry.ts`: every injected worker; settings, integrity and quality go to all of them, pause/play back to the worker that asked.
 - `serviceWorker/src/app.worker.ts`: entry of the worker bundle, runs inside the Twitch player worker and calls `bootstrapWorker(self)`.
 - `serviceWorker/src/bootstrap.ts`: `bootstrapWorker(scope)` keeps the original `fetch` as `scope.request`, creates `AppController`, binds `@Message` handlers and hooks `fetch` with the `@Fetch` routes.
 - `serviceWorker/src/scope.ts`: `WorkerContext` (`request`, `postMessage`, `logger`), passed to the controller and modules.
@@ -83,7 +84,7 @@ The `dev` and `build` scripts in `package.json` still call `ts-node`; T-701 move
 - `serviceWorker/src/modules/player/`: ad decision, backup selection, playlist assembly (`m3u8.ts`).
 - `serviceWorker/src/modules/stream/`: backup streams per playerType.
 - `serviceWorker/src/modules/twitch/twitch.service.ts`: GQL `PlaybackAccessToken` and usher.
-- `platform/src/`: content script and popup. Manifests in `platform/chromium` and `platform/firefox`.
+- `platform/src/`: content script and popup. Manifests in `platform/chromium` and `platform/firefox`. The builders copy it without `*.spec.ts` (`cli/files.js`).
 - `platform/tampermonkey/`: userscript build.
 - `sim/` (planned, T-006 to T-009): Rust server reproducing Twitch's server, scenarios, synthetic media, isolated player page.
 - `e2e/`: nodriver drivers for levels 2 and 3. `lib.py` starts Edge on a hidden desktop in extension, userscript or record mode; `recorder.js` records workers and a log from inside them (`window.__e2e`); `scenarios/` holds one module per scenario. The level 3 recorder is planned (T-005).

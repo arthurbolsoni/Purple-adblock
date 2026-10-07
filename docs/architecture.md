@@ -4,8 +4,8 @@
 
 | Context | File | Runs in |
 | --- | --- | --- |
-| Content script | `platform/src/content-script.js` | extension isolated world; reads `storage` and injects `app/bundle.js` |
-| Page | `serviceWorker/src/index.ts` (built into `bundle.js`) | twitch.tv main world, `document_start` |
+| Content script | `platform/src/content-script.js` | extension isolated world; reads `storage` and answers `getSettings`; on Firefox (MV2) also adds `app/bundle.js` to the page |
+| Page | `serviceWorker/src/index.ts` (built into `bundle.js`) | twitch.tv main world, `document_start`: a `MAIN` world content script on Chromium, a `<script>` added by the content script on Firefox, `@run-at document-start` in the userscript |
 | Worker | `serviceWorker/src/app.worker.ts` → `bootstrap.ts` + modules (built into `app.worker.js`) | inside the Twitch player worker, ahead of the original script |
 | Popup | `platform/src/common/js/popup.js` | extension popup |
 
@@ -13,14 +13,15 @@ The userscript has no content script or popup: `bundle.js` is the whole script a
 
 ## Current flow
 
-1. The content script injects `app/bundle.js` into the page.
-2. `index.ts` replaces `window.Worker`. When a worker is created, it downloads the script with a synchronous XHR and builds a blob with `app.worker.js` followed by the original script.
-3. The first worker becomes `mainWorker`: it gets the message listeners and triggers the page `fetch` hook that captures `https://gql.twitch.tv/integrity`.
+1. `app/bundle.js` runs in the page before Twitch's scripts create the player workers (T-111). On Firefox the content script adds it as a `<script>` without waiting for `storage`.
+2. `index.ts` replaces `window.Worker`. When a worker is created, it downloads the script with a synchronous XHR and builds a blob with `app.worker.js` followed by the original script. If the download fails, the worker starts from the original URL.
+3. Every worker built this way is kept in a `WorkerRegistry` (`page/worker-registry.ts`) and removed on `terminate()` (T-107). On a direct channel load the player creates two workers. The first one installs the page `fetch` hook that captures `https://gql.twitch.tv/integrity`.
 4. In the worker, `app.worker.ts` calls `bootstrapWorker(self)`, which keeps the original `fetch` as `self.request`, creates `AppController` and replaces `fetch` with a dispatcher over the `@Fetch` routes (first match in declaration order):
-   - `usher.ttvnw.net/api/channel/hls/` (except `picture-by-picture`) → `onChannel` → `Player.setChannel`;
-   - `ttvnw.net/v1/playlist/` → `onFetch` → `Player.onFetch`;
+   - `usher.ttvnw.net/api/channel/hls/` and `usher.ttvnw.net/api/v2/channel/hls/` (except `picture-by-picture`) → `onChannel` → `Player.setChannel` with the channel from the URL path (T-103);
+   - `ttvnw.net/v1/playlist/` → `onFetch` → `Player.onFetch`; an exception returns Twitch's playlist;
    - `picture-by-picture` → `onChannelPicture` → stores the PbP stream and returns an empty response.
 5. `Player.onFetch`:
+   - no stream stored for the channel (playlist before the usher) → original text;
    - channel on the whitelist → original text (never reached in 2.6.7, C-10);
    - no ads → `mergeM3u8Contents([text])` (rewrites the playlist);
    - ads → tries a `frontpage` backup, then `picture-by-picture`; the first one without ads replaces the whole playlist;
@@ -31,11 +32,14 @@ The userscript has no content script or popup: `bundle.js` is the whole script a
 
 | From → to | Message | Effect |
 | --- | --- | --- |
-| worker → page | `{ type: "getSettings" }` | page forwards `window.postMessage({ type: "getSettings" })` |
-| content script → page | `{ type: "setSettings", value }` | page sends `{ funcName: "setSettings", value }` to `mainWorker` |
-| page → worker | `{ funcName: "setIntegrity", value }` | worker stores the integrity token |
-| worker → page | `{ type: "pause" }`, `{ type: "play" }` | page sends `{ funcName: "pause" \| "play", id: 1 }` to the worker (player's internal RPC) |
-| player worker → page | `PlayerQualityChanged`, `arg.key === "quality"` | page sends `{ funcName: "setQuality", value }` |
+| worker → page | `{ type: "getSettings" }` | page forwards `window.postMessage({ type: "getSettings" })`; the content script answers once `storage` has answered |
+| content script → page | `{ type: "setSettings", value }` | page sends `{ funcName: "setSettings", value }` to every registered worker |
+| page → worker | `{ funcName: "setIntegrity", value }` | sent to every registered worker; the worker stores the integrity token |
+| worker → page | `{ type: "pause" }`, `{ type: "play" }` | page sends `{ funcName: "pause" \| "play", id: 1 }` to the worker that asked (player's internal RPC) |
+| player worker → page | `PlayerQualityChanged`, `arg.key === "quality"` | page sends `{ funcName: "setQuality", value }` to every registered worker |
+| player worker → page | `arg.key === "state"` | page sends `{ funcName: <state> }` to the worker that sent it |
+
+The last `setSettings`, `setIntegrity` and `setQuality` are replayed to a worker created later.
 
 ## Target flow
 

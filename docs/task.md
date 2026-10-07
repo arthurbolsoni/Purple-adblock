@@ -57,7 +57,7 @@ Phases run in order. Inside a phase, the "Depends on" column says what must come
 Runs in parallel with phases 1 to 7. Phase 1 to 6 tasks list L2/L3 scenarios that become required once these tasks are done.
 
 ### T-004 Browser harness (nodriver + Edge)
-- [~] Status · 2026-10-07: harness in `e2e/` (hidden desktop, both modes, recorder with a worker log). L3-01 runs and fails on Purple bugs: the page requests usher v2, so Purple's worker throws on ad playlists and the player stops (T-103), and the extension's hook is sometimes late on a direct load (T-111) ([finding](findings/2026-10-07-e2e-harness.md))
+- [x] Status · done 2026-10-07: harness in `e2e/` (hidden desktop, both modes, recorder with a worker log, warm-up that turns on developer mode); L3-01 passed in both modes after T-103, T-107 and T-111, also on fresh profiles ([finding](findings/2026-10-07-e2e-harness.md))
 - Files: `e2e/` (new), `package.json` (`e2e` script calling `python e2e/run.py`, `e2e:build`), `platform/tampermonkey/build.js` (optional output path, so the e2e build goes to `dist/`)
 - Done when:
   - nodriver starts Edge with `user_data_dir=~/nodriver/profile-edge-purple`, a profile used only by these tests;
@@ -185,14 +185,14 @@ Runs in parallel with phases 1 to 7. Phase 1 to 6 tasks list L2/L3 scenarios tha
 - Tests: TS-106
 
 ### T-107 Worker registry
-- [ ] Status · C-07 · E1
+- [x] Status · C-07 · E1 · done 2026-10-07: on a direct load with a preroll, the second player worker's pause/play went unanswered and the player stalled at `readyState 0` once T-111 put Purple in both workers; fixed ([finding](findings/2026-10-07-e2e-harness.md))
 - Files: `serviceWorker/src/index.ts` (extract into `serviceWorker/src/page/worker-registry.ts`)
 - Done when:
   - every created worker is registered and removed on `terminate()`;
   - `setSettings`, headers, integrity and quality reach every live worker, including ones created later;
   - a message from a worker is answered to that worker, not to the first one;
   - if the XHR for the worker script fails, the worker is created with the original URL.
-- Tests: TS-107
+- Tests: TS-107, L3-01
 
 ### T-108 Segment title without a raw-URI regex
 - [ ] Status · C-08 · E5
@@ -218,7 +218,7 @@ Runs in parallel with phases 1 to 7. Phase 1 to 6 tasks list L2/L3 scenarios tha
 - Tests: TS-110
 
 ### T-111 Inject before the player creates its workers
-- [ ] Status · C-11 · E1
+- [~] Status · C-11 · E1 · 2026-10-07: Chromium and userscript done and checked (L3-01, 8 of 8 and 5 of 5 direct loads in time); on Firefox the content script adds the bundle without waiting for `storage`, live check open (the harness drives Edge only) ([finding](findings/2026-10-07-e2e-harness.md))
 - Files: `platform/chromium/manifest.json`, `platform/src/content-script.js`, `platform/firefox/manifest.json`, `platform/tampermonkey/build.js`, `cli/chrome_builder.js`
 - Context: on a direct channel load the player workers start at 0.45 to 0.8 s and Purple's hook at about 0.77 s, so Purple never runs in them ([finding](findings/2026-10-04-worker-injection-race.md)).
 - Done when:

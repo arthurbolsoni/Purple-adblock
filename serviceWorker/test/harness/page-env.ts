@@ -9,12 +9,14 @@ type Listener = (event: any) => void;
 export class FakeWorker {
   static instances: FakeWorker[] = [];
   url: string;
+  options: any;
   posted: any[] = [];
   terminated = 0;
   private listeners = new Map<string, Listener[]>();
 
-  constructor(url: string | URL) {
+  constructor(url: string | URL, options?: any) {
     this.url = String(url);
+    this.options = options;
     FakeWorker.instances.push(this);
   }
 
@@ -41,9 +43,11 @@ export class FakeWorker {
   }
 }
 
-// Synchronous XHR used by index.ts to download the original worker script.
+// Synchronous XHR used by index.ts to download the original worker script. URLs in `throwing` make send() throw,
+// like a blocked or cross-origin request.
 export class FakeXMLHttpRequest {
   static scripts = new Map<string, string>();
+  static throwing = new Set<string>();
   static requests: { method: string; url: string; async: boolean }[] = [];
   method = "";
   url = "";
@@ -59,6 +63,7 @@ export class FakeXMLHttpRequest {
   }
 
   send() {
+    if (FakeXMLHttpRequest.throwing.has(this.url)) throw new DOMException("Failed to execute 'send'", "NetworkError");
     const script = FakeXMLHttpRequest.scripts.get(this.url);
     this.status = script === undefined ? 404 : 200;
     this.responseText = script ?? "";
@@ -80,15 +85,18 @@ export function createPageFetch(routes: Record<string, () => Response> = {}) {
   return { fetch, calls };
 }
 
-// chrome.storage.local / onChanged / runtime.getURL
-export function createChrome(initial: Record<string, any> = {}) {
+// chrome.storage.local / onChanged / runtime.getURL / runtime.getManifest
+// `deferStorage`: storage.local.get callbacks wait for `flushStorage()`, like a slow storage backend at page start.
+export function createChrome(initial: Record<string, any> = {}, { manifest = {}, deferStorage = false }: { manifest?: any; deferStorage?: boolean } = {}) {
   const data: Record<string, any> = { ...initial };
   const changeListeners: ((changes: Record<string, { oldValue?: any; newValue?: any }>, area: string) => void)[] = [];
   const getCalls: any[] = [];
+  const pendingGets: (() => void)[] = [];
 
   return {
     data,
     getCalls,
+    flushStorage: () => pendingGets.splice(0).forEach((run) => run()),
     storage: {
       local: {
         get(keys: string[] | string | null, callback: (items: Record<string, any>) => void) {
@@ -96,7 +104,8 @@ export function createChrome(initial: Record<string, any> = {}) {
           const list = keys === null ? Object.keys(data) : Array.isArray(keys) ? keys : [keys];
           const items: Record<string, any> = {};
           for (const key of list) if (key in data) items[key] = data[key];
-          callback(items);
+          if (deferStorage) pendingGets.push(() => callback(items));
+          else callback(items);
         },
         set(items: Record<string, any>, callback?: () => void) {
           const changes: Record<string, { oldValue?: any; newValue?: any }> = {};
@@ -116,11 +125,19 @@ export function createChrome(initial: Record<string, any> = {}) {
     },
     runtime: {
       getURL: (path: string) => `chrome-extension://purple-test/${path}`,
+      getManifest: () => manifest,
     },
   };
 }
 
-type PageEnvOptions = { url?: string; chrome?: Record<string, any>; fetchRoutes?: Record<string, () => Response> };
+type PageEnvOptions = {
+  url?: string;
+  chrome?: Record<string, any>;
+  // extension manifest returned by chrome.runtime.getManifest()
+  manifest?: any;
+  deferStorage?: boolean;
+  fetchRoutes?: Record<string, () => Response>;
+};
 
 export type PageEnv = {
   pageFetch: ReturnType<typeof createPageFetch>;
@@ -145,10 +162,11 @@ export function usePageEnv(options: PageEnvOptions = {}): PageEnv {
 
     FakeWorker.instances = [];
     FakeXMLHttpRequest.scripts = new Map();
+    FakeXMLHttpRequest.throwing = new Set();
     FakeXMLHttpRequest.requests = [];
 
     env.pageFetch = createPageFetch(options.fetchRoutes);
-    env.chrome = createChrome(options.chrome);
+    env.chrome = createChrome(options.chrome, { manifest: options.manifest, deferStorage: options.deferStorage });
     env.blobs = new Map();
     env.blobText = (url: string) => env.blobs.get(url)!.text();
 
