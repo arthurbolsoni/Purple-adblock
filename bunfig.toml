@@ -1,2 +1,4 @@
 [test]
 preload = ["./serviceWorker/test/preload.ts"]
+# build output (dist/) holds copies of platform files
+pathIgnorePatterns = ["dist/**"]

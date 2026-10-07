@@ -1,6 +1,7 @@
 const fs = require("fs");
 var fs_Extra = require("fs-extra");
 const archiver = require("archiver");
+import { isPackaged } from "./files.js";
 
 export function buildFirefox(dev) {
   const platform = "firefox";
@@ -22,7 +23,7 @@ export function buildFirefox(dev) {
   //if production zip the content,
   if(dev){
     if (!fs.existsSync(dirname + "/" + name)) fs.mkdirSync(dirname + "/" + name);
-    fs_Extra.copySync("./platform/src/", dirname + "/" + name);
+    fs_Extra.copySync("./platform/src/", dirname + "/" + name, { filter: isPackaged });
     fs_Extra.copySync("./platform/" + platform, dirname + "/" + name);
     fs.copyFileSync("./serviceWorker/dist/bundle.js", dirname + "/" + name + "/app/bundle.js");
     fs.writeFileSync(dirname + "/" + name + "/" + "manifest.json", JSON.stringify(manifest));
@@ -31,7 +32,7 @@ export function buildFirefox(dev) {
   } else {
     const zipFile = archiver("zip", { zlib: { level: 9 } });
     zipFile.pipe(fs.createWriteStream(dirname + "/" + name + fileType));
-    zipFile.directory("./platform/src", false);
+    zipFile.directory("./platform/src", false, (entry) => (isPackaged(entry.name) ? entry : false));
     zipFile.file("./serviceWorker/dist/bundle.js", { name: "app/bundle.js" });
     zipFile.append(Buffer.from(JSON.stringify(manifest)), { name: "manifest.json" });
     zipFile.finalize();
