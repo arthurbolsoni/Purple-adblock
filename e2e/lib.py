@@ -27,6 +27,8 @@ REPO = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 EDGE = r'C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe'
 PROFILE = os.path.expanduser('~/nodriver/profile-edge-purple')
 EXTENSION_BUILD = os.path.join(REPO, 'dist', 'purple-adblock-chromium')
+# seconds for edge://extensions to list the unpacked build as enabled; a fresh profile took over 20 s twice in about 30 runs
+EXTENSION_WAIT = 45
 USERSCRIPT_BUILD = os.path.join(REPO, 'dist', 'purpleadblocker.user.js')
 MODES = ('extension', 'userscript', 'record')
 WARM_UP_MARKER = 'purple-e2e-warm-up'  # in the profile directory, written after the warm-up launch
@@ -292,7 +294,7 @@ EXTENSION_ID = """(() => {
 async def set_extension_settings(session, **settings):
     """chrome.storage.local.set on the unpacked build, from its popup page in a new tab."""
     await session.navigate('edge://extensions')
-    extension = await wait_for(session.tab, EXTENSION_ID, timeout=20)
+    extension = await wait_for(session.tab, EXTENSION_ID, timeout=EXTENSION_WAIT)
     if not extension:
         raise RuntimeError('the unpacked Purple build is not enabled')
     await _store(session, extension, settings)
@@ -304,7 +306,7 @@ async def set_storage(session, **settings):
     tabs of their own, so a channel playing in the session's tab keeps playing (L3-07)."""
     page = await session.browser.get('edge://extensions', new_tab=True)
     try:
-        extension = await wait_for(page, EXTENSION_ID, timeout=20)
+        extension = await wait_for(page, EXTENSION_ID, timeout=EXTENSION_WAIT)
     finally:
         await page.close()
     if not extension:
