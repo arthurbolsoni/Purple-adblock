@@ -61,6 +61,6 @@ Two more fresh-profile runs passed L3-01. In one of them both loads had ad marke
 
 ## Open
 
-- What the dedicated profile has that lets the player start on rewritten playlists (T-806).
+- What the dedicated profile has that lets the player start on rewritten playlists (T-806). 2026-10-08: the channel, not the profile: the regenerated playlists lack `EXT-X-MAP`, fatal on fMP4 channels only ([rewritten playlist stall](2026-10-08-rewritten-playlist-stall.md)).
 - How often a clean backup exists during a break, over more sessions and channels (L3-02, Q-004).
 - Whether a segment from a backup rendition can be spliced into the main playlist without `EXT-X-DISCONTINUITY` (T-501): the stall above happened with and without splicing.

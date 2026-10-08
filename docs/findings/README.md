@@ -35,4 +35,5 @@ New discoveries are added here as they happen. A later finding that contradicts 
 | [2026-10-08-backup-quality-at-break-start.md](2026-10-08-backup-quality-at-break-start.md) | The first backup's quality at a break's start: a pinned 360p `picture-by-picture` type carried into the next midroll (T-802), 160p right after the page opened (T-803) | closed |
 | [2026-10-08-backups-in-prerolls.md](2026-10-08-backups-in-prerolls.md) | Backup playlists with ad segments in prerolls and midrolls since T-401 (T-807, B-052) | open |
 | [2026-10-08-backup-behind.md](2026-10-08-backup-behind.md) | Backups behind the main playlist at level 2 (L2-09) and the longest still video inside each soak break (T-804) | open |
+| [2026-10-08-rewritten-playlist-stall.md](2026-10-08-rewritten-playlist-stall.md) | The 2026-10-07 stall on regenerated playlists: fMP4 channels lose `EXT-X-MAP`; fresh and dedicated profiles had opened different channels (T-806) | closed |
 | [../research.md](../research.md) | Brave's Twitch scriptlet | closed |

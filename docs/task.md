@@ -494,7 +494,7 @@ Odd behaviors seen in the runs. Each task ends with its cause in a finding (and 
 - Tests: probe over the recordings
 
 ### T-806 Player stall on rewritten playlists on fresh profiles only
-- [ ] Status · C-01
+- [x] Status · C-01 · done 2026-10-08: the channel, not the profile. The build before T-101 regenerated playlists without `EXT-X-MAP`; on the fMP4 channel the fresh profiles opened, 18 of 18 loads without ads stalled (plain, Strict, device config unreachable), and on the MPEG-TS channel the dedicated profile opened, 6 of 6 played. Since T-101 `EXT-X-MAP` stays ([finding](findings/2026-10-08-rewritten-playlist-stall.md))
 - Origin: on 2026-10-07, loads on fresh profiles stalled on rewritten playlists without ad markers, and the same loads played on the dedicated profile; the difference was not found ([backups and rewritten playlists](findings/2026-10-07-backups-and-rewritten-playlists.md#player-stall)). Since then, playlists without ads pass untouched (C-01), and the dedicated profile was found on Strict tracking prevention (Balanced since 2026-10-08).
 - Check: the 2026-10-07 case (rewritten playlists without ads) on a fresh profile and on the dedicated profile, at level 2 on `sim/`.
 - Done when: the difference is explained, or the stall does not reproduce.
