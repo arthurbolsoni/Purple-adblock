@@ -3,13 +3,16 @@ does during them (docs/server/) and what Purple delivers to the player.
 
     python e2e/soak.py <session> --mode extension|userscript|record [--debug] [--until HH:MM | --minutes N]
                        [--channel /name] [--avoid /a,/b] [--rotate MINUTES] [--out DIR] [--visible]
-                       [--setting KEY=JSON ...]
+                       [--setting KEY=JSON ...] [--stop-after-breaks N]
 
 One Edge on a fresh temporary profile (deleted at the end). Every DRAIN seconds the recorder's arrays in the page
 (window.__e2e, and window.__purple.events with --debug) are emptied into JSONL files under
 <out>/<session>/ (default ~/purple-recordings/<date>-soak/), never inside the repo. Breaks are logged as they
-happen. The channel changes when it goes offline, the player fails for good, or after --rotate minutes without a
-break. Several sessions run in parallel as separate processes; each avoids the channels the others are on.
+happen. The channel changes when it goes offline (also when the page plays a recorded video instead: no live media
+playlist for NO_LIVE_AFTER seconds; that channel is not reopened), the player fails for good, or after --rotate minutes
+without a break. With --stop-after-breaks N the session ends once N stitched breaks (ad segments or stitched-ad
+markers) have ended; --until or --minutes stays the limit. Several sessions run in parallel as separate processes;
+each avoids the channels the others are on.
 """
 import argparse
 import asyncio
@@ -30,6 +33,7 @@ from scenarios import common
 
 DRAIN = 30           # seconds between drains
 FAILED_AFTER = 180   # seconds of player error, no video or no progress before the channel is given up
+NO_LIVE_AFTER = 180  # seconds without a live media playlist poll (offline channel playing a recorded video) before leaving
 DIRECTORY_CARDS = 30
 RECORDINGS = os.path.expanduser('~/purple-recordings')
 # DATERANGE classes of playlists without ads (twitch-assignment: X-TV-TWITCH-CLUSTER, -NODE, -SERVING-ID)
@@ -177,6 +181,9 @@ class Watch:
         self.in_break = False
         self.failing_since = None
         self.last_time = None
+        self.last_live = time.time()  # last main media playlist poll seen
+        self.stitched_ended = 0  # stitched breaks that started and ended on this channel (--stop-after-breaks)
+        self.in_stitched = False
 
 
 async def drain(session, recorder, watch, mode, final=False):
@@ -200,13 +207,20 @@ async def drain(session, recorder, watch, mode, final=False):
         main = mode == 'record' or entry['url'] in watch.player_urls
         if marks:
             role = 'main' if main else 'backup'
+            if main:
+                watch.last_live = time.time()
             if main and not watch.in_break:
                 watch.in_break, watch.breaks = True, watch.breaks + 1
                 watch.stitched += marks['kind'] in ('SSAI', 'MARKED_LIVE')
+                watch.in_stitched = marks['kind'] in ('SSAI', 'MARKED_LIVE')
                 recorder.note('break start', channel=watch.channel, at=stamp(entry.get('wall')), **marks)
             recorder.write('marks', {**base, 'wall': stamp(entry.get('wall')), 'role': role, 'url': entry['url'], **marks})
-        elif main and watch.in_break and entry.get('playlist', {}).get('type') == 'media':
+        elif main and (entry.get('playlist') or {}).get('type') == 'media':
+            watch.last_live = time.time()
+        if not marks and main and watch.in_break and (entry.get('playlist') or {}).get('type') == 'media':
             watch.in_break = False
+            watch.stitched_ended += watch.in_stitched
+            watch.in_stitched = False
             recorder.note('break end', channel=watch.channel, at=stamp(entry.get('wall')))
     for entry in data['csai']:
         recorder.note('edge.ads request', path=entry.get('path'), bp=entry.get('bp'), status=entry.get('status'), at=stamp(entry.get('wall')))
@@ -260,18 +274,19 @@ async def soak(args, recorder, end):
     profile = tempfile.mkdtemp(prefix='purple-e2e-soak-')
     session = None
     tried, load, failures = set(args.avoid.split(',')) if args.avoid else set(), 0, 0
+    stitched_before, offline = 0, set()  # stitched breaks ended on earlier channels; channels left as offline
     try:
         session = await lib.launch(args.mode, profile=profile, visible=args.visible, debug=args.debug)
         settings = dict(args.setting or [])
         if settings:
             await lib.set_storage(session, **settings)
         recorder.note('launched', mode=args.mode, debug=args.debug, settings=settings, until=end.isoformat(timespec='minutes'))
-        watch = None
+        watch, ended = None, 'end of run'
         while datetime.datetime.now() < end:
             if watch is None:
                 load += 1
                 # --channel: the first load; with --rotate 0 every load (the channel is reopened after a failure)
-                fixed = args.channel if load == 1 or not args.rotate else None
+                fixed = args.channel if (load == 1 or not args.rotate) and args.channel not in offline else None
                 watch = await open_next(session, recorder, tried, args.slot, load, fixed)
                 if watch is None:
                     tried = set(args.avoid.split(',')) if args.avoid else set()
@@ -293,18 +308,27 @@ async def soak(args, recorder, end):
                 reason = f"page moved to {data['url']} (raid or redirect)"
             elif watch.failing_since and time.time() - watch.failing_since > FAILED_AFTER:
                 reason = 'player failed or channel offline'
+            elif not watch.failing_since and time.time() - watch.last_live > NO_LIVE_AFTER:
+                reason = f'no live media playlist for {NO_LIVE_AFTER} s (offline, or a recorded video)'
+                offline.add(watch.channel)
+                tried.add(watch.channel)
             elif args.rotate and minutes > args.rotate and not watch.stitched and not watch.in_break:
                 reason = f'{args.rotate} minutes without a stitched break'
+            if args.stop_after_breaks and stitched_before + watch.stitched_ended >= args.stop_after_breaks and not watch.in_break:
+                recorder.note('goal reached', stitched_breaks=stitched_before + watch.stitched_ended, minutes=round(minutes, 1))
+                ended = f'{args.stop_after_breaks} stitched breaks'
+                break
             if reason:
                 recorder.note('leaving channel', channel=watch.channel, reason=reason, minutes=round(minutes, 1), breaks=watch.breaks)
                 recorder.write('watches', {'channel': watch.channel, 'load': watch.load, 'start': stamp(watch.started * 1000),
                                            'end': stamp(), 'minutes': round(minutes, 1), 'breaks': watch.breaks, 'reason': reason})
+                stitched_before += watch.stitched_ended
                 watch = None
         if watch:
             await drain(session, recorder, watch, args.mode, final=True)
             minutes = (time.time() - watch.started) / 60
             recorder.write('watches', {'channel': watch.channel, 'load': watch.load, 'start': stamp(watch.started * 1000),
-                                       'end': stamp(), 'minutes': round(minutes, 1), 'breaks': watch.breaks, 'reason': 'end of run'})
+                                       'end': stamp(), 'minutes': round(minutes, 1), 'breaks': watch.breaks, 'reason': ended})
         recorder.note('done')
     finally:
         if session:
@@ -342,6 +366,8 @@ def main():
     ap.add_argument('--avoid', help='comma-separated channels (/name) not to open')
     ap.add_argument('--slot', type=int, default=0, help='0, 1 or 2: which directory cards this session tries first')
     ap.add_argument('--rotate', type=float, default=50, help='minutes on a channel without a stitched break before moving on (0: never)')
+    ap.add_argument('--stop-after-breaks', type=int, default=0, metavar='N',
+                    help='end the session once N stitched breaks have ended (the time limit still applies)')
     ap.add_argument('--out', default=os.path.join(RECORDINGS, f'{datetime.date.today().isoformat()}-soak'))
     ap.add_argument('--visible', action='store_true')
     ap.add_argument('--setting', action='append', type=setting, metavar='KEY=JSON',
