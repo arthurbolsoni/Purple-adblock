@@ -62,11 +62,11 @@ RECORDER = _read('recorder.js').replace('__WORKER_LOGGER__', json.dumps(_read('w
 def browser_args(mode, extension=EXTENSION_BUILD):
     """Edge flags per mode. Every mode: no component extensions with background pages, no sync (a
     fresh profile signs in to the Windows Microsoft account on its own and syncs the account's
-    extensions and history)."""
+    extensions and history), no sound out of the speakers (the page still sees an unmuted <video>)."""
     if mode not in MODES:
         raise ValueError(f'unknown mode {mode!r}; expected one of {MODES}')
     args = ['--lang=en-US', '--accept-lang=en-US', '--window-size=1400,950',
-            '--disable-component-extensions-with-background-pages', '--disable-sync']
+            '--disable-component-extensions-with-background-pages', '--disable-sync', '--mute-audio']
     if mode == 'extension':
         args += [f'--load-extension={extension}', f'--disable-extensions-except={extension}']
     else:
