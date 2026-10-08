@@ -11,7 +11,7 @@ Phases run in order. Inside a phase, the "Depends on" column says what must come
 | 0. Test base (level 1) | T-001 to T-003 | - |
 | 0b. Levels 2 and 3 | T-004 to T-009 | - (parallel with phases 1 to 7) |
 | 1. Fixes to existing code | T-101 to T-111 | Phase 0 |
-| 2. Detection | T-201 to T-203 | T-101 |
+| 2. Detection | T-201 to T-204 | T-101 |
 | 3. CSAI blocking | T-301, T-302 | T-106 |
 | 4. Backup streams | T-401 to T-408 | T-104, T-105, T-106, T-107 |
 | 5. Playlist assembly | T-501, T-502 | T-101, T-201 |
@@ -256,6 +256,14 @@ Runs in parallel with phases 1 to 7. Phase 1 to 6 tasks list L2/L3 scenarios tha
   - the merge takes the ad segments of the main playlist and of each backup from the detector;
   - a preroll titled `FT|…` and a midroll titled with a number go through the backup chain.
 - Tests: TS-203, L3-03 (soak)
+
+### T-204 Backups that announce their own break
+- [x] Status · F-03 · B-034, B-036 · done 2026-10-08: such a backup is skipped like one with ads; the choice and the reasons are in `docs/feat.md` (F-03) and the [finding](findings/2026-10-08-ad-segment-coverage.md#decisions); same live runs as T-203
+- Files: `serviceWorker/src/modules/player/ad-detector.ts`, `player.ts`
+- Done when:
+  - a backup with live segments under a stitched-ad marker is not delivered as clean: either the next type is tried, or the announcement is stripped and every other line kept (the choice is decided with a test and recorded in `docs/feat.md`);
+  - nothing from that announcement reaches the player through the merge.
+- Tests: TS-204, L3-03 (soak)
 
 ## Phase 3: CSAI blocking
 

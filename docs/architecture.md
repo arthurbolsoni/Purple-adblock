@@ -26,7 +26,7 @@ The userscript has no content script or popup: `bundle.js` is the whole script a
    - `MARKED_LIVE` (markers over live segments) → original text, no backup lookup, no pause/play (T-202);
    - channel on the whitelist → original text (never reached in 2.6.7, C-10);
    - no ads → original text (T-101);
-   - ads → walks `backupPlayerTypes` (F-09: `site`, `popout`, `frontpage`, `picture-by-picture`, `mobile_web`, `embed`, then `autoplay` as `android` with `lowQualityFallback`; T-405), variants read with `m3u8-parser` (T-104); the first backup that is not SSAI replaces the whole playlist; a type without one gets a new token;
+   - ads → walks `backupPlayerTypes` (F-09: `site`, `popout`, `frontpage`, `picture-by-picture`, `mobile_web`, `embed`, then `autoplay` as `android` with `lowQualityFallback`; T-405), variants read with `m3u8-parser` (T-104); the first clean backup replaces the whole playlist: no ad segment and no stitched-ad marker, so a backup announcing its own break is skipped (T-204); a type without one gets a new token;
    - none clean → `mergeM3u8Contents` edits the main playlist's lines: each ad segment with a live backup segment in the same second gets that segment's `#EXTINF` and URI lines; every other line stays (T-101); ad segments on both sides come from the detector (T-203).
 7. When the ad state changes → pause and play on the player.
 

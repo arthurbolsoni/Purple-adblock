@@ -1,6 +1,6 @@
 # Ad segments by title, `DATERANGE` range and stream source
 
-Date: 2026-10-08. Tasks: T-203. Behaviors: B-034, B-035, B-036, B-040.
+Date: 2026-10-08. Tasks: T-203, T-204. Behaviors: B-034, B-035, B-036, B-040.
 
 ## Question
 
@@ -38,6 +38,10 @@ No other combination occurred: no `live` segment inside a range or under another
 
 - T-203: in a playlist with a stitched-ad marker (`CLASS` starting `twitch-stitched` or `ID` starting `stitched-ad`), a segment is an ad when any of the three signals holds. A range covers a segment when more than half of the segment lies inside it. `twitch-maf-ad` is not a stitched-ad marker; its playlists stay `MARKED_LIVE`.
 - The hand-written `media-marked-live.m3u8` fixture had a `twitch-stitched-ad` range over live segments, a shape the recordings never showed. It now holds the observed `MARKED_LIVE` shape, a `twitch-maf-ad` slot over live segments (B-032). Under T-203, a range over live segments makes those segments ads.
+- T-204: a backup with a stitched-ad marker and no ad segment is not clean. It is dropped like a backup with ads: its server is removed and its type gets a new token. Its live segments still serve the merge, which copies only segment lines from a backup. The other choice was to strip the announcement and deliver the rest of the backup. It was not taken for three reasons:
+  - The announcement ends with prefetch lines that point at the backup's first ad segments, and those lines would have to be identified and dropped too.
+  - The same backup has ad segments two polls later (B-034).
+  - During a midroll another type is often clean: of 94 backup polls in one break, 52 had live segments only (B-036).
 
 ## Live runs on the T-203 + T-204 build
 

@@ -3,7 +3,7 @@ import { Setting } from "./setting.interface";
 import { StreamType } from "../stream/interface/stream.enum";
 import { Server } from "../stream/interface/stream.types";
 import { mergeWithBackups } from "./m3u8";
-import { AdClass, detectAds } from "./ad-detector";
+import { AdClass, detectAds, isCleanBackup } from "./ad-detector";
 import { parseVariants } from "../stream/master";
 import type { PurpleEvent, WorkerContext } from "../../scope";
 
@@ -160,8 +160,9 @@ export class Player {
         continue;
       }
       dump.push(text);
-      if (this.isAds(text)) {
-        this.scope.logger("Stream Type: " + accessType + " - Ads found");
+      // T-204: a backup announcing its own break is dropped like one with ads; its live segments still serve the merge
+      if (!isCleanBackup(text)) {
+        this.scope.logger("Stream Type: " + accessType + (this.isAds(text) ? " - Ads found" : " - Break announced"));
         this.currentStream().removeServer(server);
         continue;
       } else {

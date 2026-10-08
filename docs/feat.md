@@ -75,7 +75,13 @@ Three groups: strategies that already exist (E-xx, none is removed), fixes to ex
 | `MARKED_LIVE` | playlist marker, no ad segment | original text; the ad arrives through CSAI and is handled by F-04 |
 | `SSAI` | at least one ad segment | backup chain (E3, E4), merge (E5), blank segment (F-14) |
 
-A backup is usable when it is not `SSAI`: a `MARKED_LIVE` backup (markers over live segments, seen during a midroll, B-028) replaces the playlist like a clean one.
+A backup is usable when it has no ad segment and no stitched-ad marker (T-204). A backup with live segments under a stitched-ad marker announces its own break (B-034, B-036); it is skipped like one with ads (its server dropped, a new token for its type), and only its live segments serve the merge. Skipping was chosen over stripping the announcement:
+
+- the announcement ends with prefetch lines that point at the backup's first ad segments;
+- the same backup has ad segments two polls later;
+- another type is often clean at the same time.
+
+A backup with a `twitch-maf-ad` marker over live segments replaces the playlist like a clean one.
 
 ### F-09: default `backupPlayerTypes` order
 

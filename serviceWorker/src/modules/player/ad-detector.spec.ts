@@ -1,7 +1,7 @@
 // T-201: one detector for the F-02 markers; class NONE / MARKED_LIVE / SSAI and the indexes of the ad segments.
 import { describe, expect, test } from "bun:test";
 import { fixture } from "../../../test/harness/fixtures";
-import { AdClass, detectAds } from "./ad-detector";
+import { AdClass, detectAds, isCleanBackup } from "./ad-detector";
 
 const LIVE = fixture("m3u8/media-live-ts.m3u8");
 const withTag = (tag: string) => LIVE.replace("#EXT-X-PROGRAM-DATE-TIME", `${tag}\n#EXT-X-PROGRAM-DATE-TIME`);
@@ -112,5 +112,21 @@ describe("detectAds: stitched breaks without the title and URI markers (T-203)",
 
   test("backup-announced-break: MARKED_LIVE, the break starts after the last segment", () => {
     expect(detectAds(fixture("m3u8/backup-announced-break.m3u8"))).toEqual({ class: AdClass.MARKED_LIVE, adSegments: [] });
+  });
+});
+
+// T-204: a backup is clean with no ad segment and no stitched-ad marker; live segments under a stitched-ad marker
+// announce the backup's own break (B-034, B-036). A twitch-maf-ad marker over live segments leaves it clean.
+describe("isCleanBackup", () => {
+  test.each([
+    ["backup-clean.m3u8", true],
+    ["media-marked-live.m3u8", true],
+    ["media-live-ts.m3u8", true],
+    ["backup-announced-break.m3u8", false],
+    ["backup-ads.m3u8", false],
+    ["media-midroll-numeric.m3u8", false],
+    ["media-preroll-ft.m3u8", false],
+  ])("%s -> %p", (name, expected) => {
+    expect(isCleanBackup(fixture(`m3u8/${name}`))).toBe(expected);
   });
 });

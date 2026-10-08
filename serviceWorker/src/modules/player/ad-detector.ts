@@ -83,3 +83,10 @@ export function detectAds(text: string): { class: AdClass; adSegments: number[] 
   if (adSegments.length) return { class: AdClass.SSAI, adSegments };
   return { class: lines.some(isPlaylistMarker) ? AdClass.MARKED_LIVE : AdClass.NONE, adSegments };
 }
+
+// T-204: a backup is clean when it has no ad segment and no stitched-ad marker. Live segments under a stitched-ad
+// marker are a break announced ahead (B-034): each backup token gets its own pod (B-036), and a backup delivered in
+// that state hands the player its announcement and the prefetch lines of its first ad segments. A twitch-maf-ad
+// marker over live segments does not make a backup unclean.
+export const isCleanBackup = (text: string) =>
+  detectAds(text).class !== AdClass.SSAI && !text.split("\n").some((line) => isStitchedMarker(line.trim()));

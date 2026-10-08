@@ -121,6 +121,13 @@ describe("mergeM3u8Contents", () => {
     expect(mergeM3u8Contents([midroll, backup])).toBe(midroll);
   });
 
+  // T-204: only segment lines come from a backup; its announced break never reaches the merged text
+  test("a backup announcing its own break gives its live segments and none of its announcement", () => {
+    const merged = mergeM3u8Contents([fixture("m3u8/media-midroll-numeric.m3u8"), fixture("m3u8/backup-announced-break.m3u8")]);
+    expect(merged).toContain("/v1/segment/backup-3003.ts");
+    for (const line of ["stitched-ad-1791029418", "source-1791029418", "/ad-3009.ts", "/backup-3008.ts"]) expect(merged).not.toContain(line);
+  });
+
   test.each(["media-live-ts.m3u8", "media-live-fmp4.m3u8", "media-ll-hls.m3u8"])(
     "%s with one ad segment: only that segment's #EXTINF and URI lines change; MAP, PREFETCH, PART, PRELOAD-HINT stay",
     (name) => {

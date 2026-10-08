@@ -279,7 +279,7 @@ ${variant}
     expect(worker.posted.filter((m) => m.type === "pause" || m.type === "play")).toEqual([]);
   });
 
-  // T-201: a backup with a twitch-maf-ad marker over live segments is usable (B-032)
+  // T-201, T-204: a backup with a twitch-maf-ad marker over live segments is usable (B-032)
   test("ad break: a MARKED_LIVE backup replaces the playlist", async () => {
     const worker = setup();
     const midroll = fixture("m3u8/media-ssai-midroll.m3u8");
@@ -351,6 +351,33 @@ describe("backup player types", () => {
     await settle(() => worker.player.currentStream().serverList.length >= 2);
 
     expect(await worker.text(MAIN)).toBe(clean);
+  });
+
+  // T-204: a backup that announces its own break (B-034, B-036) is not clean: the next type is tried
+  test("popout announcing its own break and frontpage clean: the frontpage playlist replaces the main one", async () => {
+    const clean = fixture("m3u8/backup-clean.m3u8");
+    const worker = breakWith({ site: null, popout: fixture("m3u8/backup-announced-break.m3u8"), frontpage: clean });
+    await worker.text(USHER);
+    await worker.text(MAIN);
+    await settle(() => worker.player.currentStream().serverList.length >= 3);
+
+    expect(await worker.text(MAIN)).toBe(clean);
+    const media = worker.twitch.callsOf("media").map((c) => c.url.replace(HOST, ""));
+    expect(media.slice(2)).toEqual(["chunked.m3u8", "popout-chunked.m3u8", "frontpage-chunked.m3u8"]);
+  });
+
+  test("every backup announcing its own break: their live segments replace the ads, their announcement stays out", async () => {
+    const announced = fixture("m3u8/backup-announced-break.m3u8");
+    const main = fixture("m3u8/media-ssai-midroll.m3u8");
+    const worker = breakWith({ site: null, popout: announced, frontpage: announced });
+    await worker.text(USHER);
+    await worker.text(MAIN);
+    await settle(() => worker.player.currentStream().serverList.length >= 3);
+
+    const delivered = await worker.text(MAIN);
+    expect(uris(delivered)).toEqual(["live-2000.ts", "live-2001.ts", "live-2002.ts", "backup-3003.ts", "backup-3004.ts", "backup-3005.ts", "live-2006.ts", "live-2007.ts"]);
+    // the only lines not taken from the main playlist are the three backup URIs
+    expect(delivered.split("\n").filter((line) => !main.includes(line))).toEqual([3003, 3004, 3005].map((n) => `https://edge.j.cloudfront.hls.ttvnw.net/v1/segment/backup-${n}.ts`));
   });
 
   test("without lowQualityFallback, autoplay is not requested", async () => {
