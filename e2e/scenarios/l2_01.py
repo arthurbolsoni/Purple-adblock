@@ -10,7 +10,7 @@ from scenarios import level2
 ID = 'L2-01'
 TITLE = 'clean live stream on the isolated page'
 MODES = ('sim',)
-FRESH_PROFILE = True  # the dedicated profile kept requests to usher.ttvnw.net from the 127.0.0.1 page away from Fetch
+FRESH_PROFILE = True  # the dedicated profile's Strict tracking prevention blocks usher.ttvnw.net for the 127.0.0.1 page
 WATCH = 25
 
 
