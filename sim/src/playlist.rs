@@ -113,10 +113,20 @@ pub fn media(scenario: &Scenario, v: &Variant, t: &Timeline, counts: Counts, now
     let seg = segment_ms(scenario);
     let last = newest(scenario, t.epoch_ms, now_ms);
     let first = last - scenario.window as i64 + 1;
-    let kinds: Vec<(i64, Kind, Option<usize>)> = (first..=last).map(|g| {
-        let (k, maf) = classify(scenario, t, g);
-        (g, k, maf)
-    }).collect();
+    // B-034: once a break is over (the newest segment past it), the playlist is live again over its whole window,
+    // the positions the ads took included: the broadcast went on under the break
+    let over = |g: i64| {
+        scenario.breaks.iter().any(|b| {
+            let (start, end) = (t.first + b.at as i64, t.first + (b.at + b.segments) as i64);
+            g >= start && g < end && last >= end
+        })
+    };
+    let kinds: Vec<(i64, Kind, Option<usize>)> = (first..=last)
+        .map(|g| {
+            let (k, maf) = if over(g) { (Kind::Live, None) } else { classify(scenario, t, g) };
+            (g, k, maf)
+        })
+        .collect();
 
     let mut out = String::from("#EXTM3U\n");
     out += &format!("#EXT-X-VERSION:{}\n", if v.fmp4 { 6 } else { 3 });
@@ -347,6 +357,19 @@ mod tests {
         assert!(!text.contains("stitched"));
         assert!(listed.iter().all(|l| !l.ad));
         assert_eq!(text.matches("PREFETCH").count(), 2);
+    }
+
+    #[test]
+    fn once_the_break_is_over_the_whole_window_is_live() {
+        // B-034: when a break ends the live playlist comes back over its whole window, the ad positions live again
+        let s = scenario(vec![preroll()], false);
+        let (text, listed) = media(&s, &s.variants[0], &timeline(true), COUNTS, EPOCH + 105 * 2000); // break 100..103
+        assert!(text.contains("#EXT-X-MEDIA-SEQUENCE:1100\n"));
+        assert_eq!(text.matches("#EXTINF:2.000,live\n").count(), 6);
+        assert!(text.contains("/live/100.ts\n"));
+        assert!(listed.iter().all(|l| !l.ad));
+        assert!(!text.contains("stitched"));
+        assert!(!text.contains("DISCONTINUITY"));
     }
 
     #[test]

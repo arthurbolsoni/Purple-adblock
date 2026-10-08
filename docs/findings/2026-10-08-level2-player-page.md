@@ -27,6 +27,28 @@ In run 3, CDP `Fetch` on the page target paused, at the request stage, the reque
 - Besides usher, playlists and segments, the SDK fetches `prod.ivs-device-config.live-video.net/player-web-v1.json` (a 404 from `sim/` leaves it on its defaults), `/probe` on the segment host (a 404 made the player report "Segment download http error"; `sim/` answers 16 kB) and posts to `global.poe.live-video.net` (204).
 - L2-01 (`python e2e/run.py L2-01`): 2 of 2 runs passed, the page's token answered as `popout`, one usher session, media playlists and segments from `sim/`, the video playing after 25 s.
 
+## L2-01 to L2-08
+
+`python e2e/run.py L2-0x`, one run each on a fresh profile, Purple's bundle from the build with `pausePlayDelayMs` 0. Reports: `~/purple-recordings/2026-10-08-level2/` (outside the repo).
+
+| Scenario | Result | What sim/ and the page recorded |
+| --- | --- | --- |
+| L2-01 clean live | passed | one usher session, the page's token answered as `popout`, no ad handling |
+| L2-02 preroll | passed | tokens for every playerType asked at the first ad poll, by persisted hash; `frontpage` (live) used, blank segments for the first poll; no ad segment requested from `sim/` |
+| L2-03 midroll | passed | the `site` backup (a new token, still live) used; a worker `pause` at the start and at the end of the break; no ad segment requested |
+| L2-04 every type with ads | passed | blank segments, and `segmentsReplaced`: the backups' own prerolls start later, so their live segments covered some of the main playlist's ad positions and the merge by time (T-501) replaced them; no backup used, no ad segment requested |
+| L2-05 CSAI | passed | the page's `edge.ads.twitch.tv` request answered in the page (`csaiBlocked`), none reached `sim/`; no backup token, no ad handling |
+| L2-06 HEVC fMP4 | passed | `init.mp4` and `.m4s` segments played in Edge |
+| L2-07 GQL errors | passed | each backup token asked by hash got `PersistedQueryNotFound` and was asked again with the full query; `embed` got the error; `autoplay` used |
+| L2-08 control, no Purple | passed | 8 ad segments requested from `sim/` in L2-02, L2-03 and L2-04; the `edge.ads` request reached `sim/` in L2-05; the page's token stayed `site` |
+
+What the first runs showed about `sim/`, fixed before the set above:
+
+- After a break `sim/` kept listing the ad segments until they left the 14-segment window, so Purple never saw the end of a midroll within L2-03 and the player sat on blank segments in L2-04. It now lists the whole window as live once the newest segment is past the break (B-034: the broadcast goes on under the break).
+- With a 60 s live loop the player paused at `currentTime` 57.4, Purple on or off: the first segment after the wrap restarts its timestamps behind an `EXT-X-DISCONTINUITY`. The live renditions are now 6 minutes; `sim/`'s stream clock starts at each scenario load.
+
+At the L2-03 end edge the worker posted `pause` and `play` and the SDK's `<video>` fired no event; Purple's pause/play (E6) reaches the public SDK's worker, and its effect there is not shown. L2-03 asserts that both messages went out.
+
 ## For T-006 to T-009
 
 - Player: the SDK plays a local MPEG-TS stream on a page that never contacts twitch.tv, and Purple attaches to its worker when the page loads Purple's bundle first (T-008).

@@ -1,11 +1,12 @@
 {
   "id": "L2-07",
-  "description": "GQL errors (B-014, B-015): the persisted-query hash gets PersistedQueryNotFound and embed a server error; a preroll on site and popout, frontpage live",
+  "description": "GQL errors (B-014, B-015): the persisted-query hash gets PersistedQueryNotFound (Purple asks again with the full query, F-07) and embed a server error; every type up to embed has the preroll, so the chain reaches embed and then autoplay, the one clean type",
   "channel": "simchannel",
   "variants": [
-    { "name": "720p30", "resolution": "1280x720", "bandwidth": 3000000, "codecs": "avc1.4D401F,mp4a.40.2", "live": "live-720p", "ad": "ad-720p" }
+    { "name": "720p30", "resolution": "1280x720", "bandwidth": 3000000, "codecs": "avc1.4D401F,mp4a.40.2", "live": "live-720p", "ad": "ad-720p" },
+    { "name": "360p30", "resolution": "640x360", "bandwidth": 800000, "codecs": "avc1.4D401E,mp4a.40.2", "live": "live-360p", "ad": "ad-360p" }
   ],
-  "breaks": [{ "at": 0, "segments": 8, "roll": "PREROLL", "title": "Amazon|SIMPREROLL" }],
-  "playerTypes": { "default": { "breaks": false }, "site": { "breaks": true }, "popout": { "breaks": true } },
+  "breaks": [{ "at": 0, "segments": 10, "roll": "PREROLL", "title": "Amazon|SIMPREROLL" }],
+  "playerTypes": { "default": { "breaks": true }, "autoplay": { "breaks": false } },
   "gql": { "persistedQueryNotFound": true, "errors": { "embed": "service error" } }
 }

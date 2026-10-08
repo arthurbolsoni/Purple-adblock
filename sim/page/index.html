@@ -1,6 +1,7 @@
 <!doctype html>
 <!--
-  Isolated player page for level 2 (T-008). Served by sim/ at /page/index.html?channel=<name>[&purple=0][&debug=1].
+  Isolated player page for level 2 (T-008). Served by sim/ at
+  /page/index.html?channel=<name>[&purple=0][&debug=1][&src=<master URL instead of usher>][&csai=1].
   Like Twitch's page: Purple's bundle first (unless purple=0, the L2-08 control), then /integrity and a
   PlaybackAccessToken request as "site" on gql.twitch.tv, the v2 usher URL with that token, and the IVS player.
   Every Twitch hostname is answered by sim/ through the e2e Fetch bridge; nothing reaches Twitch.
@@ -52,6 +53,12 @@
           player.play();
           window.__player = player;
           l2.steps.push("load");
+          // csai=1: the client-side ad request Twitch's page sends during a twitch-maf-ad slot (B-033), 5 s after the load
+          if (params.get("csai") === "1") {
+            setTimeout(() => {
+              fetch("https://edge.ads.twitch.tv/ads?bp=midroll&sim=1").then((r) => (l2.csai = r.status), (e) => (l2.csai = String(e)));
+            }, 5000);
+          }
         } catch (error) {
           l2.errors.push(String((error && error.stack) || error).slice(0, 300));
         }

@@ -111,7 +111,7 @@ Runs in parallel with phases 1 to 7. Phase 1 to 6 tasks list L2/L3 scenarios tha
 - Tests: L2-01
 
 ### T-009 Level 2 routing to `sim/`
-- [ ] Status
+- [x] Status · done 2026-10-08: the CDP `Fetch` bridge (`e2e/sim.py`), not host mapping (no request reached a local server that way on 2026-10-03): every request to `*.twitch.tv`, `*.ttvnw.net` and `*.live-video.net` from the page and the SDK's worker, preflights included, is answered from `sim/`; the `sim` mode of `e2e/lib.py` leaves only `127.0.0.1` resolvable, and level 2 runs on fresh profiles. L2-01 to L2-08 passed (2026-10-08, one run each; L2-01 twice before), after two fixes to `sim/` they showed: a finished break leaves the whole window live, and the live loop is 6 minutes (the IVS player paused where the 60 s loop wrapped) ([finding](findings/2026-10-08-level2-player-page.md))
 - Depends on: T-006
 - Files: `e2e/lib.py`, `sim/src/`
 - Done when:

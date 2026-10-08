@@ -40,6 +40,10 @@ class Watch:
     def events(self, kind=None):
         return [e for e in self.state['events'] or [] if kind is None or e.get('type') == kind]
 
+    def worker_pauses(self):
+        """`pause` messages the workers posted (E6, the break edges)."""
+        return [m for w in self.state['workers'] or [] for m in w.get('messages') or [] if m.get('from') == 'worker' and m.get('type') == 'pause']
+
 
 async def watch(session, scenario, seconds, purple=True, extra=''):
     async with sim.running(scenario) as s:
