@@ -4,6 +4,7 @@ import txt from "../dist/app.worker.js?raw";
 import { createFetchHook } from "./page/fetch-hook";
 import { runGqlRequest } from "./page/gql-bridge";
 import { installXhrHook } from "./page/xhr-hook";
+import { reloadTwitchPlayer } from "./page/player-reload";
 import { WorkerRegistry } from "./page/worker-registry";
 
 declare global {
@@ -137,6 +138,11 @@ const csaiBlocked: Record<string, number> = {};
       }
       case "play": {
         worker.sendFromPurple({ funcName: "play", args: undefined, id: 1 });
+        break;
+      }
+      // T-601 (F-15): reload of the player at the end of a break; the worker pauses and plays if it was not done
+      case "reload": {
+        worker.sendFromPurple({ funcName: "reloadResult", value: { ok: reloadTwitchPlayer() } });
         break;
       }
     }

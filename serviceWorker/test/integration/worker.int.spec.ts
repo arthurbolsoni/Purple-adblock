@@ -410,6 +410,26 @@ ${variant}
     expect(worker.player.quality).toBe("720p60");
     expect(worker.player.integrityToken).toBe("INTEGRITY");
   });
+
+  // T-601 (F-15): the page answers a reload; when it found no player, the worker pauses and plays instead
+  test("reloadResult: a failed reload falls back to pause/play, a done one does not", () => {
+    const worker = setup();
+    worker.send("reloadResult", { ok: true });
+    expect(worker.posted.filter((m) => m.type === "pause")).toEqual([]);
+    worker.send("reloadResult", { ok: false });
+    expect(worker.posted.filter((m) => m.type === "pause")).toEqual([{ type: "pause" }]);
+  });
+
+  test("with reloadAfterAd, the end of an ad break asks the page for a reload", async () => {
+    const worker = setup();
+    worker.player.setSettings({ whitelist: [], toggleProxy: false, proxyUrl: "", reloadAfterAd: true, backupPlayerTypes: [], lowQualityFallback: false });
+    worker.twitch.mediaPlaylist(MAIN, fixture("m3u8/media-ssai-midroll.m3u8"));
+    await worker.text(USHER);
+    await worker.text(MAIN);
+    worker.twitch.mediaPlaylist(MAIN, fixture("m3u8/media-live-ts.m3u8"));
+    await worker.text(MAIN);
+    expect(worker.posted.filter((m) => m.type === "pause" || m.type === "reload")).toEqual([{ type: "pause" }, { type: "reload" }]);
+  });
 });
 
 // T-405: the backup chain walks the player types of F-09; autoplay (platform android) only with lowQualityFallback

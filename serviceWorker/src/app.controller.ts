@@ -119,6 +119,12 @@ export class AppController {
     this.appService.setSettings(data?.value ?? {});
   }
 
+  // T-601 (F-15): the page's answer to a reload request
+  @Message("reloadResult")
+  async reloadResult(data: any) {
+    this.appService.onReloadResult(data?.value?.ok === true);
+  }
+
   @Message("setQuality")
   async setQuality(data: any) {
     this.appService.quality = data.value;

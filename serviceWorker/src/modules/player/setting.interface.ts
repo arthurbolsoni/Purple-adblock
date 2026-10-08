@@ -10,4 +10,5 @@ export type Setting = {
   pinBackupPlayerType?: boolean;
   stripFallback?: boolean;
   forcePopoutToken?: boolean;
+  reloadAfterAd?: boolean;
 };

@@ -375,13 +375,13 @@ Runs in parallel with phases 1 to 7. Phase 1 to 6 tasks list L2/L3 scenarios tha
 ## Phase 6: player control and settings
 
 ### T-601 Ad break state machine
-- [ ] Status · F-15 · E6
-- Files: `serviceWorker/src/modules/player/ad-break.ts` (new), `player.ts`, `index.ts`
+- [x] Status · F-15 · E6 · done 2026-10-08: `ad-break.ts` holds the state (`idle`, `ad`, `recovering`, 10 s of clean polls back to `idle`) and gives the same pause/play as before; with `reloadAfterAd` (default off) the end of a break posts `reload`, once per break and at most once every 30 s. The page runs a soft `setSrc` on Twitch's player state, found in the React tree as Brave's script does (`page/player-reload.ts`), and answers `reloadResult`; without a player state the worker pauses and plays. L3-11 (new, `reloadAfterAd` on): 6 of 6 passed, 2 prerolls ended with a reload the page did, one of which brought a new preroll (B-045, [finding](findings/2026-10-08-ad-break-reload.md)). With the defaults: L3-01 (both modes), L3-02 (3 runs; 2 joined a running midroll, handled with backups, no ad overlay, no backup poll with ad segments; a first attempt stopped at launch when the fresh profile had not enabled the unpacked build within 20 s), L3-07 and L3-08 (both modes) passed
+- Files: `serviceWorker/src/modules/player/ad-break.ts` (new), `player.ts`, `index.ts`, `page/player-reload.ts` (new), `app.controller.ts`, `platform/src/content-script.js`, `e2e/scenarios/l3_11.py` (new)
 - Done when:
   - states `idle` → `ad` → `recovering` → `idle`, with pause/play (E6) on transitions as today;
   - with `reloadAfterAd`, one reload at the end of the break, at most one every 30 s;
   - the reload mechanism is chosen in this task and written down in `docs/architecture.md`.
-- Tests: TS-601
+- Tests: TS-601, L3-11
 
 ### T-602 Settings without reload
 - [x] Status · F-16 · E7 · C-10 · done 2026-10-08: the controller passes `value` to the player; the content script listens to `storage.onChanged` and also sends `backupPlayerTypes` and `lowQualityFallback`; L3-07 passed on the T-602 build and failed on the build before it (the control); L3-01, L3-02 (3 runs) and L3-08 passed ([finding](findings/2026-10-08-settings-without-reload.md))

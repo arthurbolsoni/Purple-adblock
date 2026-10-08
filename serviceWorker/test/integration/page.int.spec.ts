@@ -122,6 +122,28 @@ describe("messages", () => {
     expect(main.posted).toContainEqual({ funcName: "pause", args: undefined, id: 1 });
     expect(main.posted).toContainEqual({ funcName: "play", args: undefined, id: 1 });
   });
+
+  // T-601 (F-15): the page reloads the player through Twitch's React player state and answers the worker
+  test("a reload request with no Twitch player in the page is answered not done", () => {
+    main.emit({ type: "reload" });
+    expect(main.posted.at(-1)).toEqual({ funcName: "reloadResult", value: { ok: false } });
+  });
+
+  test("a reload request runs a soft setSrc on the player state under #root and is answered done", () => {
+    const setSrc: any[] = [];
+    const playerState = { setSrc: (options: any) => setSrc.push(options), setInitialPlaybackSettings() {} };
+    const root: any = document.createElement("div");
+    root.id = "root";
+    root["__reactContainer$test"] = { stateNode: null, child: { stateNode: playerState } };
+    document.body.appendChild(root);
+    try {
+      main.emit({ type: "reload" });
+      expect(setSrc).toEqual([{ isNewMediaPlayerInstance: false, refreshAccessToken: false }]);
+      expect(main.posted.at(-1)).toEqual({ funcName: "reloadResult", value: { ok: true } });
+    } finally {
+      root.remove();
+    }
+  });
 });
 
 // T-107: on a direct channel load the player creates two workers and Purple runs in both (T-111)

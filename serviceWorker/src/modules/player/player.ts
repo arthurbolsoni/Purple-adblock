@@ -4,6 +4,7 @@ import { StreamType } from "../stream/interface/stream.enum";
 import { Server, StreamUrl, type VariantTarget } from "../stream/interface/stream.types";
 import { blankAds, mergeWithBackups } from "./m3u8";
 import { AdClass, detectAds, isCleanBackup } from "./ad-detector";
+import { AdBreak } from "./ad-break";
 import { parseVariants } from "../stream/master";
 import type { PurpleEvent, WorkerContext } from "../../scope";
 
@@ -35,6 +36,12 @@ export class Player {
   private pinnedType: string | null = null; // F-10: type of the last clean backup delivered
   private contaminatedUntil = new Map<string, number>(); // F-10: type -> time (ms) until which it is skipped
   private blankUris = new Map<string, number>(); // F-14: ad URI -> time (ms) of the last poll that listed it
+  // F-15 (T-601): pause/play at the edges of a break (E6); with reloadAfterAd, a reload at its end
+  private adBreak = new AdBreak({
+    pauseAndPlay: () => this.pauseAndPlay(),
+    reload: () => this.reload(),
+    reloadAfterAd: () => this.setting?.reloadAfterAd === true,
+  });
 
   constructor(private readonly scope: WorkerContext) {}
 
@@ -42,6 +49,17 @@ export class Player {
   getSettings = () => this.scope.postMessage({ type: "getSettings" });
   pause = () => this.scope.postMessage({ type: "pause" });
   play = () => this.scope.postMessage({ type: "play" });
+  // F-15: the page reloads the player and answers with reloadResult
+  reload = () => {
+    this.emit({ type: "reloadRequested" });
+    this.scope.postMessage({ type: "reload" });
+  };
+
+  // F-15: a reload the page could not do (no player found) falls back to pause/play (E6)
+  onReloadResult = (ok: boolean) => {
+    this.emit({ type: "playerReloaded", ok });
+    if (!ok) this.pauseAndPlay();
+  };
 
   setSettings = (setting: Setting) => {
     this.setting = setting;
@@ -70,7 +88,7 @@ export class Player {
     const ads = this.hasAds(x);
     // const ads: boolean = Math.random() < 0;
     if (!allowChange) return ads;
-    if (this.playingAds != ads) this.pauseAndPlay();
+    this.adBreak.poll(ads);
     this.playingAds = ads;
 
     return this.playingAds;

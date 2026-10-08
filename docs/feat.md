@@ -122,6 +122,12 @@ Each ad segment the backups did not replace whole (E4) gets the nearest live seg
 
 As in Brave's script: the ad segments the merge left keep their lines in the playlist, and the worker answers their URIs with `BLANK_MP4`, an fMP4 init segment without samples (1137 bytes, copied with its source and notices in `blank-segment.ts`). Their requests never reach Twitch. The `EXT-X-MAP` only ad segments use is answered the same way. `EXT-X-PART` lines of an ad segment, and `EXT-X-PART`, `EXT-X-PRELOAD-HINT` and `EXT-X-TWITCH-PREFETCH` lines after an ad tail or a break announced after the last segment, are removed, and their URIs answered blank. A break announced past the last segment of a `MARKED_LIVE` playlist (B-034) gets the same treatment for the prefetch, preload and part lines after the announcement, the rest of the playlist untouched. A URI stays answered blank for 120 s after the last poll that listed it. `blankInserted` counts the segments blanked for the first time. With `stripFallback` off, the merged playlist goes to the player as it is.
 
+### F-15: ad break state machine
+
+`ad-break.ts` follows the main media playlist poll by poll: `idle` → `ad` on the first poll with ad segments, `ad` → `recovering` on the first poll without, `recovering` → `idle` after 10 s of polls without ad segments, `recovering` → `ad` when they come back first. The player gets pause/play (E6) on each change to `ad` and at the end of the break, as before: the worker posts `pause`, then `play` twice 1.5 s later. `MARKED_LIVE` polls are not part of it (T-202).
+
+With `reloadAfterAd`, the end of the break asks the page to reload the player instead of pause/play, once per break and at most once every 30 s; a later end in the same break, or one inside the 30 s, gets pause/play. The page looks for Twitch's player state in the React tree under `#root` (the lookup copied from Brave's script, with its notices, in `page/player-reload.ts`), keeps the current quality in `video-quality` and runs a soft `setSrc` (same player instance, same access token), then `play`. When it finds no player state it answers so, and the worker pauses and plays instead. Brave's script also does a hard reload with a new token after breaks it blanked, and skips the reload when the player is healthy; Purple does neither.
+
 ### F-10: pinned and contaminated types
 
 - With `pinBackupPlayerType`, the type of the last clean backup delivered moves to the front of the list; `autoplay` is never pinned and stays last.
@@ -143,7 +149,7 @@ As in Brave's script: the ad segments the merge left keep their lines in the pla
 | `stripFallback` | `boolean` | `true` | F-14 |
 | `reloadAfterAd` | `boolean` | `false` | F-15 |
 
-The content script sends the stored `whitelist`, `toggleProxy`, `proxyUrl`, `debug`, `blockCsai`, `backupPlayerTypes`, `lowQualityFallback`, `pinBackupPlayerType`, `stripFallback` and `forcePopoutToken` when storage first answers, when a worker asks, and whenever one of them changes (T-602). The worker replaces its settings with each message it gets. The userscript uses the defaults.
+The content script sends the stored `whitelist`, `toggleProxy`, `proxyUrl`, `debug`, `blockCsai`, `backupPlayerTypes`, `lowQualityFallback`, `pinBackupPlayerType`, `stripFallback`, `forcePopoutToken` and `reloadAfterAd` when storage first answers, when a worker asks, and whenever one of them changes (T-602). The worker replaces its settings with each message it gets. The userscript uses the defaults.
 
 ## Out of scope
 

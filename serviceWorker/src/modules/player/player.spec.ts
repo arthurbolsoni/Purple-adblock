@@ -158,6 +158,50 @@ describe("Player.isAds", () => {
     player.isAds(ADS, true);
     expect(context.posted).toHaveLength(3);
   });
+
+  // T-601 (F-15)
+  test("with reloadAfterAd, the end of a break posts reload instead of pause/play", async () => {
+    jest.useFakeTimers();
+    const context = makeContext();
+    const events: any[] = [];
+    const player = new Player({ ...context, emit: (event: any) => events.push(event) });
+    player.setSettings({ whitelist: [], toggleProxy: false, proxyUrl: "", reloadAfterAd: true });
+
+    player.isAds(ADS, true);
+    jest.advanceTimersByTime(1500);
+    for (let i = 0; i < 10; i++) await Promise.resolve();
+    player.isAds(LIVE, true);
+
+    expect(context.posted).toEqual([{ type: "pause" }, { type: "play" }, { type: "play" }, { type: "reload" }]);
+    expect(events).toContainEqual({ type: "reloadRequested", channel: "" });
+    expect(player.playingAds).toBe(false);
+  });
+
+  test("without reloadAfterAd, the end of a break pauses and plays as before", async () => {
+    jest.useFakeTimers();
+    const context = makeContext();
+    const player = new Player(context);
+    player.isAds(ADS, true);
+    player.isAds(LIVE, true);
+    expect(context.posted).toEqual([{ type: "pause" }, { type: "pause" }]);
+  });
+
+  test("a reload the page could not do falls back to pause/play", async () => {
+    jest.useFakeTimers();
+    const context = makeContext();
+    const events: any[] = [];
+    const player = new Player({ ...context, emit: (event: any) => events.push(event) });
+
+    player.onReloadResult(true);
+    expect(context.posted).toEqual([]);
+
+    player.onReloadResult(false);
+    expect(context.posted).toEqual([{ type: "pause" }]);
+    expect(events).toEqual([
+      { type: "playerReloaded", ok: true, channel: "" },
+      { type: "playerReloaded", ok: false, channel: "" },
+    ]);
+  });
 });
 
 describe("Player.onFetch", () => {

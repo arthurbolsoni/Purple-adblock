@@ -14,11 +14,12 @@ export interface WorkerContext {
 
 // F-17. csaiBlocked (T-301) is recorded by the page, the others come from the worker.
 export type PurpleEvent = {
-  type: "adDetected" | "backupUsed" | "segmentsReplaced" | "blankInserted" | "csaiBlocked" | "whitelisted";
+  type: "adDetected" | "backupUsed" | "segmentsReplaced" | "blankInserted" | "csaiBlocked" | "whitelisted" | "reloadRequested" | "playerReloaded";
   channel: string;
   playerType?: string;
   count?: number;
   quality?: string; // backupUsed: quality of the backup variant (T-407)
+  ok?: boolean; // playerReloaded: the page found the player and reloaded it (T-601)
 };
 
 export interface WorkerScope extends Partial<WorkerContext> {
