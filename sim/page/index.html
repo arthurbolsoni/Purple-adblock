@@ -1,0 +1,61 @@
+<!doctype html>
+<!--
+  Isolated player page for level 2 (T-008). Served by sim/ at /page/index.html?channel=<name>[&purple=0][&debug=1].
+  Like Twitch's page: Purple's bundle first (unless purple=0, the L2-08 control), then /integrity and a
+  PlaybackAccessToken request as "site" on gql.twitch.tv, the v2 usher URL with that token, and the IVS player.
+  Every Twitch hostname is answered by sim/ through the e2e Fetch bridge; nothing reaches Twitch.
+  State for the tests: window.__l2 (steps, token player_type, player state changes and errors).
+-->
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>purple level 2</title>
+    <script>
+      window.__l2 = { steps: [], states: [], errors: [], tokenPlayerType: null };
+      const params = new URLSearchParams(location.search);
+      if (params.get("purple") !== "0") document.write('<script src="/page/purple.js"><\/script>');
+    </script>
+  </head>
+  <body>
+    <video id="video" playsinline muted style="width: 640px"></video>
+    <script src="/page/ivs.js"></script>
+    <script>
+      (async () => {
+        const l2 = window.__l2;
+        const channel = params.get("channel") || "simchannel";
+        try {
+          // Purple's settings, as the content script would send them (the userscript runs with the defaults)
+          if (params.get("debug") === "1") window.postMessage({ type: "setSettings", value: { whitelist: [], toggleProxy: false, proxyUrl: "", debug: true } }, "*");
+          await fetch("https://gql.twitch.tv/integrity", { method: "POST", headers: { "Client-Id": "simclient" } });
+          l2.steps.push("integrity");
+          const body = JSON.stringify({
+            operationName: "PlaybackAccessToken_Template",
+            query: "query PlaybackAccessToken_Template($login: String!, $isLive: Boolean!, $vodID: ID!, $isVod: Boolean!, $playerType: String!, $platform: String!) { streamPlaybackAccessToken(channelName: $login, params: {platform: $platform, playerBackend: \"mediaplayer\", playerType: $playerType}) @include(if: $isLive) { value signature __typename } }",
+            variables: { isLive: true, login: channel, isVod: false, vodID: "", playerType: "site", platform: "web" },
+          });
+          const answer = await (await fetch("https://gql.twitch.tv/gql", { method: "POST", headers: { "Client-Id": "simclient", "Content-Type": "text/plain;charset=UTF-8" }, body })).json();
+          const token = answer.data.streamPlaybackAccessToken;
+          l2.tokenPlayerType = JSON.parse(token.value).player_type;
+          l2.steps.push("token");
+          const usher = params.get("src") ||
+            `https://usher.ttvnw.net/api/v2/channel/hls/${channel}.m3u8?` +
+            new URLSearchParams({ token: token.value, sig: token.signature, allow_source: "true", fast_bread: "true", player_backend: "mediaplayer", playlist_include_framerate: "true", reassignments_supported: "true", supported_codecs: "av1,h265,h264", p: String(Math.floor(Math.random() * 1e7)) });
+          const assets = "/page/node_modules/amazon-ivs-player/dist/assets/";
+          const player = IVSPlayer.create({ wasmWorker: location.origin + assets + "amazon-ivs-wasmworker.min.js", wasmBinary: location.origin + assets + "amazon-ivs-wasmworker.min.wasm" });
+          player.attachHTMLVideoElement(document.getElementById("video"));
+          player.setMuted(true);
+          player.setAutoplay(true);
+          player.addEventListener(IVSPlayer.PlayerState.PLAYING, () => l2.states.push({ at: Date.now(), state: "PLAYING" }));
+          player.addEventListener(IVSPlayer.PlayerState.BUFFERING, () => l2.states.push({ at: Date.now(), state: "BUFFERING" }));
+          player.addEventListener(IVSPlayer.PlayerEventType.ERROR, (e) => l2.errors.push(JSON.stringify(e).slice(0, 300)));
+          player.load(usher);
+          player.play();
+          window.__player = player;
+          l2.steps.push("load");
+        } catch (error) {
+          l2.errors.push(String((error && error.stack) || error).slice(0, 300));
+        }
+      })();
+    </script>
+  </body>
+</html>

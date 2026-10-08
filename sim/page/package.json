@@ -1,0 +1,7 @@
+{
+  "name": "sim-page",
+  "private": true,
+  "description": "Isolated player page for level 2 (T-008): the public Amazon IVS player SDK, installed with bun, never committed",
+  "scripts": { "build": "bun build.ts" },
+  "dependencies": { "amazon-ivs-player": "1.57.0" }
+}

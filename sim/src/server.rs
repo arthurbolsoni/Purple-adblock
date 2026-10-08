@@ -39,6 +39,9 @@ pub struct LogEntry {
     pub session: Option<u64>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub player_type: Option<String>,
+    /// gql.twitch.tv/gql: the request body (one operation or a batch)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub body: Option<serde_json::Value>,
     pub headers: BTreeMap<String, String>,
 }
 
@@ -65,6 +68,8 @@ pub struct Dirs {
     pub scenarios: PathBuf,
     pub media: PathBuf,
     pub page: PathBuf,
+    /// Purple's page bundle, served as /page/purple.js (serviceWorker/dist/bundle.js)
+    pub purple: PathBuf,
 }
 
 #[derive(Clone)]
@@ -165,8 +170,14 @@ async fn handle(State(app): State<App>, request: Request) -> Response {
         return control(&app, &parts.method, &t, &body);
     }
     if t.path.starts_with("/page/") && !t.host.ends_with("twitch.tv") && !t.host.ends_with("ttvnw.net") {
-        let dir = app.sim.lock().unwrap().dirs.page.clone();
-        return file(&dir, t.path.trim_start_matches("/page/"));
+        let dirs = app.sim.lock().unwrap().dirs.clone();
+        if t.path == "/page/purple.js" {
+            let (dir, name) = (dirs.purple.parent().unwrap_or(Path::new(".")), dirs.purple.file_name().and_then(|n| n.to_str()).unwrap_or(""));
+            let mut response = file(dir, name);
+            response.headers_mut().insert("content-type", HeaderValue::from_static("text/javascript"));
+            return response;
+        }
+        return file(&dirs.page, t.path.trim_start_matches("/page/"));
     }
 
     let mut entry = LogEntry {
@@ -179,6 +190,7 @@ async fn handle(State(app): State<App>, request: Request) -> Response {
         ad: None,
         session: None,
         player_type: None,
+        body: if t.host == "gql.twitch.tv" && t.path == "/gql" { serde_json::from_slice(&body).ok() } else { None },
         headers,
     };
     let response = twitch(&app, &parts.method, &t, &body, now, &mut entry);
@@ -235,6 +247,11 @@ fn twitch(app: &App, method: &Method, t: &Target, body: &Bytes, now: i64, entry:
         return respond(StatusCode::OK, M3U8, text);
     }
 
+    // the player's bandwidth probe next to the segments (Twitch answers it 200)
+    if host.ends_with(".ttvnw.net") && t.path == "/probe" {
+        return respond(StatusCode::OK, "application/octet-stream", vec![0u8; 16 * 1024]);
+    }
+
     // segments on *.ttvnw.net; the player's POSTs to <id>.rufio.hls.live-video.net/v1/segment/ (B-047)
     if (host.ends_with(".ttvnw.net") || host.ends_with(".live-video.net")) && t.path.starts_with("/v1/segment/") {
         if method == Method::POST {
@@ -273,6 +290,15 @@ fn twitch(app: &App, method: &Method, t: &Target, body: &Bytes, now: i64, entry:
             let text = String::from_utf8_lossy(body);
             return respond(StatusCode::OK, "application/json", gql::answer(&scenario, &text).to_string());
         }
+    }
+
+    // the SDK's device config: 404, as in the run where the player played with its defaults
+    if host == "prod.ivs-device-config.live-video.net" {
+        return respond(StatusCode::NOT_FOUND, "text/plain", "not simulated");
+    }
+    // the player's reports (global.poe.live-video.net) and anything else it sends to *.live-video.net
+    if host.ends_with(".live-video.net") {
+        return respond(StatusCode::NO_CONTENT, "text/plain", Body::empty());
     }
 
     if host == "edge.ads.twitch.tv" {

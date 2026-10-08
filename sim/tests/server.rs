@@ -48,7 +48,8 @@ fn fixture(scenario: &str) -> Fixture {
         let now = now.clone();
         Arc::new(move || now.load(Ordering::SeqCst))
     };
-    let dirs = Dirs { scenarios: PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("scenarios"), media: dir.join("media"), page: dir.join("page") };
+    std::fs::write(dir.join("bundle.js"), "/* purple */").unwrap();
+    let dirs = Dirs { scenarios: PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("scenarios"), media: dir.join("media"), page: dir.join("page"), purple: dir.join("bundle.js") };
     let app = App::new(dirs, clock);
     app.load(Scenario::from_json(scenario).unwrap());
     Fixture { app, now, _dir: TempDir(dir) }
@@ -168,6 +169,13 @@ async fn gql_integrity_edge_ads_and_segment_posts() {
     assert_eq!(f.twitch("POST", "https://x.rufio.hls.live-video.net/v1/segment/abc", "").await.0, StatusCode::NO_CONTENT);
     let log = f.log().await;
     let hosts: Vec<&str> = log["log"].as_array().unwrap().iter().map(|e| e["host"].as_str().unwrap()).collect();
+    // the player's bandwidth probe on the segment host, and its reports to *.live-video.net
+    let (status, probe) = f.twitch("GET", "https://sim.j.cloudfront.hls.ttvnw.net/probe", "").await;
+    assert_eq!((status, probe.len()), (StatusCode::OK, 16 * 1024));
+    assert_eq!(f.twitch("POST", "https://global.poe.live-video.net/", "{}").await.0, StatusCode::NO_CONTENT);
+    // GQL bodies are in the log, to tell which playerType was asked and how (persisted hash or full query)
+    assert_eq!(log["log"][0]["body"]["variables"]["playerType"], "popout");
+    assert!(log["log"][2].get("body").is_none());
     assert_eq!(hosts, vec!["gql.twitch.tv", "gql.twitch.tv", "edge.ads.twitch.tv", "x.rufio.hls.live-video.net"]);
 }
 
@@ -190,6 +198,7 @@ async fn control_api_loads_scenarios_by_name_and_clears_the_log() {
 async fn the_page_folder_is_served_and_control_paths_are_not_logged() {
     let f = fixture(PREROLL);
     assert_eq!(f.local("GET", "/page/index.html", "").await.1, "<html>page</html>");
+    assert_eq!(f.local("GET", "/page/purple.js", "").await.1, "/* purple */");
     assert_eq!(f.local("GET", "/page/../Cargo.toml", "").await.0, StatusCode::NOT_FOUND);
     assert_eq!(f.local("GET", "/_sim/health", "").await.1, "ok");
     assert_eq!(f.log().await["log"].as_array().unwrap().len(), 0);

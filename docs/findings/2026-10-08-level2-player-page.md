@@ -20,6 +20,13 @@ In run 3, CDP `Fetch` on the page target paused, at the request stage, the reque
 
 `Fetch` URL patterns match the whole URL: the page URL, whose query held the usher URL, matched `*usher.ttvnw.net*` and was answered 404 until the bridge passed requests to other hosts on with `Fetch.continueRequest`.
 
+## With `sim/` and the page (T-006 to T-009)
+
+- CORS preflights (`OPTIONS`) of the page's GQL calls are paused by `Fetch` and answered from `sim/` like the requests.
+- On the dedicated level 3 profile, the SDK worker's request to `usher.ttvnw.net` from the `127.0.0.1` page never reached `Fetch` and failed ("Failed to fetch"), with Purple on or off and with or without `--host-resolver-rules`; a master on `https://master.sim.invalid/` was paused. On a fresh profile the same page got usher, playlists and segments through the bridge and played. Why the profile stops that request is not known. Level 2 runs on fresh profiles.
+- Besides usher, playlists and segments, the SDK fetches `prod.ivs-device-config.live-video.net/player-web-v1.json` (a 404 from `sim/` leaves it on its defaults), `/probe` on the segment host (a 404 made the player report "Segment download http error"; `sim/` answers 16 kB) and posts to `global.poe.live-video.net` (204).
+- L2-01 (`python e2e/run.py L2-01`): 2 of 2 runs passed, the page's token answered as `popout`, one usher session, media playlists and segments from `sim/`, the video playing after 25 s.
+
 ## For T-006 to T-009
 
 - Player: the SDK plays a local MPEG-TS stream on a page that never contacts twitch.tv, and Purple attaches to its worker when the page loads Purple's bundle first (T-008).

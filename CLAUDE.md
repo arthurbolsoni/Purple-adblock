@@ -87,7 +87,7 @@ python e2e/run.py <L2-xx|L3-xx|all>         # levels 2 and 3; --mode extension|u
 - `serviceWorker/src/modules/twitch/twitch.service.ts`: GQL `PlaybackAccessToken` and usher.
 - `platform/src/`: content script and popup. Manifests in `platform/chromium` and `platform/firefox`. The builders copy it without `*.spec.ts` (`cli/files.js`).
 - `platform/tampermonkey/`: userscript build.
-- `sim/` (planned, T-006 to T-009): Rust server reproducing Twitch's server, scenarios, synthetic media, isolated player page.
+- `sim/`: Rust server reproducing Twitch's server (`src/`), scenarios (`scenarios/*.json`), synthetic media (`cargo run --bin media`, into the gitignored `media/`), the isolated player page (`page/`, `bun install && bun run build` there for the IVS SDK). `e2e/sim.py` starts it and runs the CDP `Fetch` bridge; level 2 scenarios are `e2e/scenarios/l2_*.py`.
 - `e2e/`: nodriver drivers for levels 2 and 3. `lib.py` starts Edge on a hidden desktop in extension, userscript or record mode; `recorder.js` records workers and a log from inside them (`window.__e2e`); `scenarios/` holds one module per scenario; `record.py` is the level 3 recorder (CDP `Fetch`, T-005) and `soak.py` the long runs.
 
 ## Rules

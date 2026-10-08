@@ -30,7 +30,10 @@ EXTENSION_BUILD = os.path.join(REPO, 'dist', 'purple-adblock-chromium')
 # seconds for edge://extensions to list the unpacked build as enabled; a fresh profile took over 20 s twice in about 30 runs
 EXTENSION_WAIT = 45
 USERSCRIPT_BUILD = os.path.join(REPO, 'dist', 'purpleadblocker.user.js')
-MODES = ('extension', 'userscript', 'record')
+MODES = ('extension', 'userscript', 'record', 'sim')
+# level 2 (mode "sim"): every host but 127.0.0.1 fails to resolve, so a request the Fetch bridge does not answer from
+# sim/ fails instead of reaching Twitch (docs/tests.md, "Level 2"; T-009)
+SIM_HOST_RULES = '--host-resolver-rules=MAP * ~NOTFOUND, EXCLUDE 127.0.0.1'
 WARM_UP_MARKER = 'purple-e2e-warm-up'  # in the profile directory, written after the warm-up launch
 
 # on edge://extensions: turns developer mode on and reads it back; null until the page's API is there
@@ -73,6 +76,8 @@ def browser_args(mode, extension=EXTENSION_BUILD):
         args += [f'--load-extension={extension}', f'--disable-extensions-except={extension}']
     else:
         args.append('--disable-extensions')
+    if mode == 'sim':
+        args.append(SIM_HOST_RULES)
     return args
 
 

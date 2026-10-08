@@ -81,7 +81,7 @@ Runs in parallel with phases 1 to 7. Phase 1 to 6 tasks list L2/L3 scenarios tha
 - Tests: L3-10
 
 ### T-006 `sim/` server (Rust)
-- [ ] Status
+- [x] Status · done 2026-10-08: axum server (`sim/src/server.rs`) for usher v1 and v2 (a session per token, with its playerType), media playlists on one stream clock with breaks on each token's timeline (SSAI with the stitched-ad and stream-source markers, or a `twitch-maf-ad` slot), segments from `sim/media/`, GQL `PlaybackAccessToken` (batches, `PersistedQueryNotFound`, per-playerType errors), `/integrity`, `edge.ads`, the player's `/probe` and `*.live-video.net` reports; `/_sim/scenario`, `/_sim/log` (each request with its URL, headers, time, ad flag, session, GQL body). Scenarios `sim/scenarios/l2-01` to `l2-07`. `cargo test`: 18 unit and 6 server tests, in `bun run check`. L2-01 passed twice
 - Files: `sim/` (new Cargo project)
 - Done when:
   - a scenario file (`sim/scenarios/*.json`) describes the stream timeline (live and ad periods, SSAI or CSAI), the variants and codecs, the response per `playerType`, and GQL errors;
@@ -101,7 +101,7 @@ Runs in parallel with phases 1 to 7. Phase 1 to 6 tasks list L2/L3 scenarios tha
 - Tests: `cargo test`
 
 ### T-008 Isolated player page
-- [ ] Status
+- [x] Status · done 2026-10-08: `sim/page/index.html`, served by `sim/` at `/page/`: Purple's bundle (`/page/purple.js`, from `serviceWorker/dist/bundle.js`) unless `purple=0`, then `/integrity`, a `PlaybackAccessToken` request as `site` (Purple's page hook sends it as `popout`, T-408), the v2 usher URL with that token, and the IVS player SDK (`amazon-ivs-player` 1.57.0 installed with bun in `sim/page`, bundled into `ivs.js`, both gitignored). L2-01: the SDK's worker created through Purple's injector with Purple booted, the video playing, no request to Twitch
 - Depends on: T-006, T-007
 - Files: `sim/page/` (new)
 - Done when:
