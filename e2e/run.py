@@ -8,23 +8,27 @@ import argparse
 import asyncio
 import json
 import os
+import shutil
 import sys
+import tempfile
 import time
 import traceback
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import lib
+import server
 from scenarios import Check, registry
 
 
-async def run_one(scenario, mode, args):
-    session = await lib.launch(mode, profile=args.profile, visible=args.visible)
+async def run_one(scenario, mode, profile, args):
+    session = await lib.launch(mode, profile=profile, visible=args.visible)
     try:
-        return await scenario.run(session)
+        checks = await scenario.run(session)
     except Exception:
-        return [Check('scenario ran to the end', False, traceback.format_exc())]
+        checks = [Check('scenario ran to the end', False, traceback.format_exc())]
     finally:
         await session.close()
+    return checks, session.observations
 
 
 def main():
@@ -35,7 +39,7 @@ def main():
     ap.add_argument('--repeat', type=int, default=1)
     ap.add_argument('--build', action='store_true', help='build the extension and the userscript first')
     ap.add_argument('--visible', action='store_true', help="show Edge on the user's desktop (debugging)")
-    ap.add_argument('--profile', default=lib.PROFILE)
+    ap.add_argument('--profile', help=f"default: {lib.PROFILE}, or a new profile per run for scenarios with FRESH_PROFILE")
     ap.add_argument('--report', help='write every check with its details as JSON')
     args = ap.parse_args()
     sys.stdout.reconfigure(encoding='utf-8')
@@ -48,15 +52,24 @@ def main():
         for mode in [args.mode] if args.mode else scenario.MODES:
             for attempt in range(1, args.repeat + 1):
                 started = time.time()
-                checks = asyncio.run(run_one(scenario, mode, args))
+                fresh = getattr(scenario, 'FRESH_PROFILE', False) and not args.profile
+                profile = tempfile.mkdtemp(prefix='purple-e2e-fresh-') if fresh else (args.profile or lib.PROFILE)
+                try:
+                    checks, observations = asyncio.run(run_one(scenario, mode, profile, args))
+                finally:
+                    if fresh:
+                        shutil.rmtree(profile, ignore_errors=True)
                 run = {'scenario': scenario.ID, 'mode': mode, 'attempt': attempt, 'seconds': round(time.time() - started),
-                       'ok': all(c.ok for c in checks), 'checks': [vars(c) for c in checks]}
+                       'freshProfile': fresh, 'ok': all(c.ok for c in checks), 'checks': [vars(c) for c in checks],
+                       'server': observations}
                 results.append(run)
                 print(f"{'PASS' if run['ok'] else 'FAIL'} {scenario.ID} [{mode}] #{attempt} ({run['seconds']} s) {scenario.TITLE}")
                 for c in checks:
-                    print(f"  {'ok  ' if c.ok else 'FAIL'} {c.name}")
+                    print(f"  {'skip' if c.skipped else 'ok  ' if c.ok else 'FAIL'} {c.name}")
                     if not c.ok:
                         print('       ' + json.dumps(c.detail, default=str)[:2000])
+                for o in observations:
+                    print(f"  server ({o['load']}): {server.one_line(o['server'])}")
 
     if args.report:
         with open(args.report, 'w', encoding='utf-8') as f:

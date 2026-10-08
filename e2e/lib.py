@@ -31,6 +31,15 @@ USERSCRIPT_BUILD = os.path.join(REPO, 'dist', 'purpleadblocker.user.js')
 MODES = ('extension', 'userscript', 'record')
 WARM_UP_MARKER = 'purple-e2e-warm-up'  # in the profile directory, written after the warm-up launch
 
+# on edge://extensions: turns developer mode on and reads it back; null until the page's API is there
+DEVELOPER_MODE = """(() => {
+  const api = window.chrome && chrome.developerPrivate;
+  if (!api) return null;
+  return new Promise((resolve) =>
+    api.updateProfileConfiguration({ inDeveloperMode: true }, () =>
+      api.getProfileConfiguration((config) => resolve(config.inDeveloperMode === true || null))));
+})()"""
+
 # `bun run e2e:build` runs the same commands
 BUILD_COMMANDS = [
     ['bun', 'serviceWorker/build.ts'],
@@ -41,8 +50,13 @@ BUILD_COMMANDS = [
 # Userscript header: @match *://*.twitch.tv/*
 USERSCRIPT_MATCH = r'^https?:\/\/([^/]+\.)?twitch\.tv\/'
 
-with open(os.path.join(os.path.dirname(__file__), 'recorder.js'), encoding='utf-8') as f:
-    RECORDER = f.read()
+def _read(name):
+    with open(os.path.join(os.path.dirname(__file__), name), encoding='utf-8') as f:
+        return f.read()
+
+
+# recorder.js with e2e/worker-logger.js inserted as a string (prepended to every worker script)
+RECORDER = _read('recorder.js').replace('__WORKER_LOGGER__', json.dumps(_read('worker-logger.js')))
 
 
 def browser_args(mode, extension=EXTENSION_BUILD):
@@ -176,6 +190,7 @@ class Session:
     def __init__(self, browser, mode, profile, pid, desktop):
         self.browser, self.mode, self.profile, self.pid, self.desktop = browser, mode, profile, pid, desktop
         self.tab = browser.main_tab
+        self.observations = []  # what Twitch's server did, per page load (scenarios.common.observe_server)
         self._closed = False
         atexit.register(self._kill)
 
@@ -228,11 +243,13 @@ async def launch(mode, profile=PROFILE, visible=False, warm_up=True):
         # Edge keeps an unpacked extension from the command line enabled after the profile's first launch
         # only in developer mode (docs/findings/2026-10-07-e2e-harness.md)
         warm = await launch(mode, profile, visible, warm_up=False)
-        await warm.navigate('edge://extensions')
-        await warm.tab.sleep(2)
-        await warm.tab.evaluate('new Promise(r => chrome.developerPrivate.updateProfileConfiguration({inDeveloperMode: true}, () => r(true)))',
-                                await_promise=True, return_by_value=True)
-        await warm.close()
+        try:
+            await warm.navigate('edge://extensions')
+            on = await wait_for(warm.tab, DEVELOPER_MODE, timeout=20)
+        finally:
+            await warm.close()
+        if not on:
+            raise RuntimeError(f'warm-up: developer mode did not turn on in {profile}')
         with open(marker, 'w', encoding='utf-8') as f:
             f.write('developer mode on\n')
 
@@ -272,8 +289,8 @@ def build():
 # --- page state ---------------------------------------------------------------------------
 
 async def read(tab, expression):
-    """Evaluates `expression` in the page and returns its value through JSON.stringify."""
-    result = await tab.evaluate(f'JSON.stringify((() => {{ return ({expression}); }})() ?? null)',
+    """Evaluates `expression` in the page (a Promise is awaited) and returns its value through JSON.stringify."""
+    result = await tab.evaluate(f'(async () => JSON.stringify((await (async () => {{ return ({expression}); }})()) ?? null))()',
                                 await_promise=True, return_by_value=True)
     if not isinstance(result, str):
         raise RuntimeError(f'evaluate failed: {result}')
@@ -294,6 +311,9 @@ STATE = """(() => {
     workerLog: e2e.workerLog || [],
     media: e2e.media || [],
     playlists: e2e.playlists || [],
+    server: e2e.server || [],
+    delivered: e2e.delivered || [],
+    csai: e2e.csai || [],
     video: v ? { readyState: v.readyState, currentTime: Math.round(v.currentTime * 10) / 10, paused: v.paused, error: v.error && v.error.code } : null,
     adOverlay: !!document.querySelector(S.AD_OVERLAY),
     playerError: text(S.PLAYER_ERROR),

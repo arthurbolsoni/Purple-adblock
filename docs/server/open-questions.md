@@ -4,14 +4,14 @@ Each question names the level 3 session or probe that answers it. Answers go to 
 
 | ID | Question | How to find out |
 | --- | --- | --- |
-| Q-001 | How often does a logged-out or logged-in viewer get a preroll when opening a channel? | Recorder over N channel opens per profile state; count breaks |
+| Q-001 | How often does a logged-out or logged-in viewer get a preroll when opening a channel? | Recorder over N channel opens per profile state; count breaks · 2026-10-07: logged out, fresh profiles, one channel: 13 of 14, then 2 of 15 half an hour later; 0 of 4 on 3 channels (B-024, [finding](../findings/2026-10-07-l3-server-observations.md)) |
 | Q-002 | Poll interval per variant and segment duration | Recorder with timestamps per media playlist request; `EXTINF` durations |
-| Q-003 | When does `EXT-X-TWITCH-PREFETCH` (or `EXT-X-PART`) appear: logged in, low-latency setting, channel type? | Sessions varying login and the player's low-latency option |
+| Q-003 | When does `EXT-X-TWITCH-PREFETCH` (or `EXT-X-PART`) appear: logged in, low-latency setting, channel type? | Sessions varying login and the player's low-latency option · 2026-10-07: `EXT-X-TWITCH-PREFETCH` in every logged-out load (7, 3 channels), 2 per poll; no `EXT-X-PART` (B-022) |
 | Q-004 | During a break, which backup `playerType`s return ads, and how soon after the main stream? | With Purple on, record every backup token and playlist; mark ad/live per poll |
 | Q-005 | Exact usher query sent by the Twitch page, and v1 or v2 path | Log the full usher URL (sanitized) in the recorder · 2026-10-07: the path is v2 ([finding](../findings/2026-10-07-e2e-harness.md)); the 22 query keys are recorded ([finding](../findings/2026-10-07-backups-and-rewritten-playlists.md)); their values are not |
 | Q-006 | What changes in the usher response with and without `parent_domains`? | Two usher requests with the same token, with and without the parameter |
-| Q-007 | Do HEVC/AV1 channels use fMP4 with `EXT-X-MAP`, and how are codecs listed in the master? | Session on a channel with enhanced broadcasting |
-| Q-008 | CSAI: when does `edge.ads.twitch.tv` get called, with which parameters, and what does the playlist look like at that moment? | Recorder with `edge.ads.twitch.tv` in the patterns during long sessions |
+| Q-007 | Do HEVC/AV1 channels use fMP4 with `EXT-X-MAP`, and how are codecs listed in the master? | Session on a channel with enhanced broadcasting · 2026-10-07: an enhanced-broadcast channel served AVC in fMP4 with `EXT-X-MAP` to a logged-out viewer; its 1440p60 HEVC variant was left out (`AUTHZ_NOT_LOGGED_IN` in `com.amazon.ivs.unavailable-media`) (B-023) |
+| Q-008 | CSAI: when does `edge.ads.twitch.tv` get called, with which parameters, and what does the playlist look like at that moment? | Recorder with `edge.ads.twitch.tv` in the patterns during long sessions · the L3 recorder logs the page's requests there (`window.__e2e.csai`); none in 7 loads on 2026-10-07 |
 | Q-009 | Headers each `playerType` needs for `PlaybackAccessToken`, and the errors without them | Token requests from the recorder with header subsets |
 | Q-010 | Does the server change behavior by region or IP? | Out of reach from one machine; note anything that hints at it |
 | Q-011 | Keys of the 23 `EXT-X-SESSION-DATA` lines | Save the sanitized master in the recorder · 2026-10-07: 24 keys listed in the [finding](../findings/2026-10-07-backups-and-rewritten-playlists.md); fixture `master-site-v2.m3u8` |

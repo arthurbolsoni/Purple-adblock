@@ -33,3 +33,14 @@ Which headers each `playerType` requires, and the error returned without them: u
 | `PersistedQueryNotFound` | hash unknown to the server | expected GQL behavior, not observed |
 
 `value` is a JSON string. Purple 2.6.7 logs whether it contains `"hide_ads":true`.
+
+### Token flags
+
+Read from the `token` parameter of the page's usher request (2026-10-07, logged out, 7 loads on 3 channels, no preroll in them; B-020, [finding](../findings/2026-10-07-l3-server-observations.md)). The recorder keeps the boolean flags and `player_type`, `platform`, `version`; ids, ip and channel are not recorded.
+
+| Flag | Value |
+| --- | --- |
+| `player_type`, `platform`, `version` | `site`, `web`, `3` |
+| `server_ads`, `show_ads` | `true` |
+| `hide_ads`, `adblock`, `turbo`, `subscriber`, `partner`, `privileged`, `mature`, `blackout_enabled`, `ci_gb`, `extended_history_allowed` | `false` |
+| `https_required` | `true` |

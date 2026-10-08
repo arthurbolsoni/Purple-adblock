@@ -103,8 +103,10 @@ e2e/                               # levels 2 and 3 drivers (Python + nodriver +
   run.py                           # entry: python e2e/run.py <scenario|all> [--mode extension|userscript|record]
   lib.py                           # Edge on a hidden desktop, dedicated profile, modes, JSON reads
   recorder.js                      # page and worker state recorder (window.__e2e)
+  worker-logger.js                 # runs first in every worker: fetches, what Twitch answered, what the player got
+  server.py                        # summary of what Twitch's server did during a load (run report, docs/server/)
   twitch_selectors.py              # not selectors.py: that name shadows the standard library module asyncio imports
-  scenarios/                       # one module per scenario (l3_01.py)
+  scenarios/                       # one module per scenario (l3_01.py, l3_02.py) and common.py
   requirements.txt
 ```
 
@@ -265,7 +267,7 @@ python e2e/run.py L3-01           # every mode the scenario lists
 python e2e/run.py all --mode extension --repeat 3 --report report.json
 ```
 
-Each run prints one line per check and exits with 0 when every check passed. `--report` writes every check with its details (worker log included) as JSON. In Git Bash, set `MSYS_NO_PATHCONV=1` before passing a `/directory/...` path to a probe: Git Bash rewrites it into a Windows path.
+Each run prints one line per check (`skip` for an ad check on a load without a break) and one `server` line per load, and exits with 0 when every check passed. A scenario with `FRESH_PROFILE` (L3-02) gets a new profile under `%TEMP%` for every run, unless `--profile` is given. Every level 3 run also records what Twitch's server did: the report's `server` field (masters, media playlists of the main stream and of the backups, what reached the player, token answers and flags, requests to `edge.ads.twitch.tv`); new or confirmed behaviors go to `docs/server/`. `--report` writes every check with its details (worker log included) as JSON. In Git Bash, set `MSYS_NO_PATHCONV=1` before passing a `/directory/...` path to a probe: Git Bash rewrites it into a Windows path.
 
 ### Reading state
 
@@ -323,7 +325,7 @@ Ads are not deterministic. Every scenario asserts what always holds (hook instal
 | ID | Scenario | Mode | Asserts | Covers |
 | --- | --- | --- | --- | --- |
 | L3-01 | Open a live channel picked from the directory, by direct load and by client-side navigation; channels behind the content classification gate are skipped | extension, userscript | every player worker created through the injector and running Purple's code (boot message seen); video playing; no player error | E1, T-101, T-103, T-107, T-111 |
-| L3-02 | Preroll (technique TR-001) | extension | for each recorded break: no ad overlay, playback resumes, events show a backup, a merge or blank segments | F-02 to F-14 |
+| L3-02 | Preroll (TR-001, TR-005: fresh profile per run, a random channel among the first directory cards, 40 s watched) | extension | every player worker runs Purple; no player error; video playing at the end; for a break recorded in the main stream: no ad overlay in any second and no ad segment in the playlists the player got | F-02 to F-14 |
 | L3-03 | Soak: one channel for 20 minutes (TR-002) | extension | every recorded break ends with a backup, a merge or blank segments; no player error | midrolls, T-601 |
 | L3-04 | HEVC/AV1 channel (TR-006) | extension | master has an HEVC or AV1 variant; video playing; no player error | T-101, T-407 |
 | L3-05 | Popout player (TR-003) | extension | L3-01 checks on the popout URL | F-12 |
