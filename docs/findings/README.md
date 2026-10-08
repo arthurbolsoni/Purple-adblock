@@ -25,4 +25,5 @@ New discoveries are added here as they happen. A later finding that contradicts 
 | [2026-10-08-blank-segments.md](2026-10-08-blank-segments.md) | Brave's `BLANK_MP4` (an init segment without samples) and how Purple answers the ad segments no backup replaced (T-502); a preroll handled on the build | open |
 | [2026-10-08-page-gql-headers.md](2026-10-08-page-gql-headers.md) | Page GQL headers on Purple's token requests (T-401); a midroll whose announced prefetch reached the network | open |
 | [2026-10-08-l3-server-observations.md](2026-10-08-l3-server-observations.md) | Prerolls and midrolls in the level 3 runs of 2026-10-08, by profile | open |
+| [2026-10-08-midroll-soak.md](2026-10-08-midroll-soak.md) | Soaks on the 2026-10-08 builds: stitched midrolls with Purple on and off, ad overlay and backups per break | open |
 | [../research.md](../research.md) | Brave's Twitch scriptlet | closed |
