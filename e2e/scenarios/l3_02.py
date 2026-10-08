@@ -55,6 +55,11 @@ async def run(session):
                   summary['delivered']['pollsWithAds'] == 0 or summary['adMedia']['fromNetwork'] == 0,
                   {'main': summary['main'], 'delivered': summary['delivered'], 'adMedia': summary['adMedia'], 'backups': summary['backups'], 'purple': purple}),
         ]
+        # T-401 (F-05): the page's GQL headers on Purple's token requests (names only)
+        if summary['tokenRequests']:
+            checks.append(Check('break: backup token requests carry the page GQL headers (x-device-id, client-version)',
+                                {'x-device-id', 'client-version'} <= set(summary['tokenHeaders']),
+                                {'tokenHeaders': summary['tokenHeaders'], 'tokenRequests': summary['tokenRequests']}))
     else:
         checks.append(Check('break recorded in the main stream', True, {'main': summary['main'], 'secondsWithOverlay': overlay_seconds}, skipped=True))
     return checks

@@ -68,6 +68,13 @@ describe("messages", () => {
     expect(main.posted).toContainEqual({ funcName: "setSettings", value: settings });
   });
 
+  // T-401 (F-05): the headers of the page's GQL requests reach the workers
+  test("page GQL request headers reach the worker", async () => {
+    await fetch("https://gql.twitch.tv/gql", { method: "POST", headers: { "X-Device-Id": "DEVICE_ID", "Client-Version": "CLIENT_VERSION" }, body: "{}" });
+    await Bun.sleep(5);
+    expect(main.posted).toContainEqual({ funcName: "setGqlHeaders", value: { "X-Device-Id": "DEVICE_ID", "Client-Version": "CLIENT_VERSION" } });
+  });
+
   test("quality changes reach the worker", () => {
     main.emit({ type: "PlayerQualityChanged", arg: { name: "720p60" } });
     main.emit({ type: "other", arg: { key: "quality", value: { name: "480p" } } });
@@ -135,7 +142,7 @@ describe("worker registry", () => {
     expect(second.posted.at(-1)).toEqual({ funcName: "setQuality", value: "1080p60" });
   });
 
-  test("a worker created later gets the current settings, integrity and quality", async () => {
+  test("a worker created later gets the current settings, integrity, GQL headers and quality", async () => {
     await fetch("https://gql.twitch.tv/integrity", { method: "POST" });
     await Bun.sleep(5);
     const later = new (window as any).Worker(WORKER_URL);
@@ -146,6 +153,8 @@ describe("worker registry", () => {
       PLAYER_INIT,
       { funcName: "setIntegrity", value: INTEGRITY_BODY },
       { funcName: "setSettings", value: settings },
+      // T-401: sent by the "page GQL request headers reach the worker" test above
+      { funcName: "setGqlHeaders", value: { "X-Device-Id": "DEVICE_ID", "Client-Version": "CLIENT_VERSION" } },
       { funcName: "setQuality", value: "1080p60" },
     ]);
   });

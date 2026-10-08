@@ -25,6 +25,14 @@ export class AppController {
     this.appService.setIntegrityToken(JSON.parse(data.value).token);
   }
 
+  // T-401 (F-05): headers of the page's GQL requests; a Client-Integrity among them is the newest integrity token
+  @Message("setGqlHeaders")
+  async setGqlHeaders(data: any) {
+    const headers: Record<string, string> = data?.value ?? {};
+    this.scope.gqlHeaders = headers;
+    if (headers["Client-Integrity"]) this.appService.setIntegrityToken(headers["Client-Integrity"]);
+  }
+
   // F-14 (T-502): an ad segment the player was left with gets the blank segment; the request never reaches Twitch
   @Fetch(function (this: AppController, url: string) {
     return this.appService.isBlankSegment(url);

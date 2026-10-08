@@ -87,6 +87,10 @@ A backup with a `twitch-maf-ad` marker over live segments replaces the playlist 
 
 `site`, `popout`, `frontpage`, `picture-by-picture`, `mobile_web`, `embed`. With `lowQualityFallback`, `autoplay` (requested with `platform: "android"`) is appended.
 
+### F-05: page GQL headers
+
+The page `fetch` hook reads the request headers of the page's `gql.twitch.tv/gql` calls: `Client-Integrity`, `X-Device-Id` (or `Device-ID`), `Authorization`, `Client-Version`, `Client-Session-Id`. It never reads their responses. When one of them changes, the page sends the known set to every worker (`setGqlHeaders`, replayed to workers created later). The worker's `PlaybackAccessToken` requests send them with `Client-ID`. A `Client-Integrity` from them and the `/integrity` answer (E9) both set the worker's integrity token; the newest wins.
+
 ### F-14: blank segment
 
 As in Brave's script: the ad segments the merge left keep their lines in the playlist, and the worker answers their URIs with `BLANK_MP4`, an fMP4 init segment without samples (1137 bytes, copied with its source and notices in `blank-segment.ts`). Their requests never reach Twitch. The `EXT-X-MAP` only ad segments use is answered the same way. `EXT-X-PART` lines of an ad segment, and `EXT-X-PART`, `EXT-X-PRELOAD-HINT` and `EXT-X-TWITCH-PREFETCH` lines after an ad tail or a break announced after the last segment, are removed, and their URIs answered blank. A URI stays answered blank for 120 s after the last poll that listed it. `blankInserted` counts the segments blanked for the first time. With `stripFallback` off, the merged playlist goes to the player as it is.

@@ -23,4 +23,5 @@ New discoveries are added here as they happen. A later finding that contradicts 
 | [2026-10-08-settings-without-reload.md](2026-10-08-settings-without-reload.md) | Whitelist changed in storage while a channel plays (L3-07, T-602); prerolls on fresh profiles that night | closed |
 | [2026-10-08-backup-type-pinning.md](2026-10-08-backup-type-pinning.md) | Pinned and contaminated backup types (T-406): tests and live runs, no break in them | open |
 | [2026-10-08-blank-segments.md](2026-10-08-blank-segments.md) | Brave's `BLANK_MP4` (an init segment without samples) and how Purple answers the ad segments no backup replaced (T-502); a preroll handled on the build | open |
+| [2026-10-08-page-gql-headers.md](2026-10-08-page-gql-headers.md) | Page GQL headers on Purple's token requests (T-401); a midroll whose announced prefetch reached the network | open |
 | [../research.md](../research.md) | Brave's Twitch scriptlet | closed |

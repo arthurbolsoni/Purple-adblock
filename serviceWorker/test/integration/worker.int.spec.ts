@@ -320,6 +320,35 @@ ${variant}
     expect(await worker.text(MAIN)).toBe(markedBackup);
   });
 
+  // T-401 (F-05): backup token requests carry the headers of the page's GQL requests; the newest integrity token wins
+  test("backup token requests carry the page's GQL headers", async () => {
+    const worker = setup();
+    twoTypes(worker);
+    worker.twitch.master("channel", masterFor("frontpage-"), StreamType.FRONTPAGE);
+    worker.twitch.master("channel", masterFor("picture-"), StreamType.PICTURE);
+    worker.twitch.mediaPlaylist(MAIN, fixture("m3u8/media-ssai-midroll.m3u8"));
+    worker.send("setIntegrity", JSON.stringify({ token: "INTEGRITY" }));
+    const page = { "Client-Integrity": "PAGE_INTEGRITY", "X-Device-Id": "DEVICE_ID", Authorization: "OAuth OAUTH", "Client-Version": "CLIENT_VERSION", "Client-Session-Id": "SESSION_ID" };
+    worker.send("setGqlHeaders", page);
+    await worker.text(USHER);
+    await worker.text(MAIN);
+    await settle(() => worker.twitch.callsOf("gql").length === 2);
+
+    const gql = worker.twitch.callsOf("gql");
+    expect(gql).toHaveLength(2);
+    for (const call of gql) {
+      expect(call.headers).toMatchObject({
+        "client-id": "kimne78kx3ncx6brgo4mv6wki5h1ko",
+        "client-integrity": "PAGE_INTEGRITY",
+        "x-device-id": "DEVICE_ID",
+        authorization: "OAuth OAUTH",
+        "client-version": "CLIENT_VERSION",
+        "client-session-id": "SESSION_ID",
+      });
+    }
+    expect(worker.player.integrityToken).toBe("PAGE_INTEGRITY");
+  });
+
   test("quality and integrity messages reach the player", () => {
     const worker = setup();
     worker.send("setQuality", "720p60");

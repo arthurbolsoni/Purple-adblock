@@ -1,6 +1,7 @@
 // T-106: the page fetch hook only looks at target URLs; every other response reaches the page as is, unread.
 import { describe, expect, mock, test } from "bun:test";
 import { createFetchHook, urlOf } from "./fetch-hook";
+import { fixtureJson } from "../../test/harness/fixtures";
 
 const INTEGRITY = "https://gql.twitch.tv/integrity";
 const tick = () => Bun.sleep(5);
@@ -120,5 +121,54 @@ describe("page fetch hook, client-side ads", () => {
     const { original, hooked } = csai(true);
     await hooked("https://ads.example/edge.ads.twitch.tv/x");
     expect(original).toHaveBeenCalledTimes(1);
+  });
+});
+
+// T-401 (F-05): the headers of the page's GQL requests go to the worker, for its backup token requests
+describe("page GQL headers", () => {
+  const GQL = "https://gql.twitch.tv/gql";
+  const init = fixtureJson<{ method: string; headers: Record<string, string>; body: string }>("gql/page-gql-init.json");
+  const CAPTURED = { "Client-Integrity": "INTEGRITY", "X-Device-Id": "DEVICE_ID", Authorization: "OAuth OAUTH", "Client-Version": "CLIENT_VERSION", "Client-Session-Id": "SESSION_ID" };
+
+  const gql = () => {
+    const response = new Response("{}");
+    const original = mock(async () => response);
+    const sent: Record<string, string>[] = [];
+    const hooked = createFetchHook(original as any, { onIntegrity() {}, onGqlHeaders: (headers) => sent.push(headers) });
+    return { response, original, sent, hooked };
+  };
+
+  test("a page GQL request sends its headers once; the page gets the original response, unread", async () => {
+    const { response, sent, hooked } = gql();
+    const out = await hooked(GQL, init);
+    await hooked(GQL, init);
+    expect(out).toBe(response);
+    expect(out.bodyUsed).toBe(false);
+    expect(sent).toEqual([CAPTURED]);
+  });
+
+  test("a changed header is sent again, merged with the ones already known", async () => {
+    const { sent, hooked } = gql();
+    await hooked(GQL, init);
+    await hooked(GQL, { method: "POST", headers: { "Client-Integrity": "NEW_INTEGRITY", "Content-Type": "text/plain" } });
+    expect(sent).toEqual([CAPTURED, { ...CAPTURED, "Client-Integrity": "NEW_INTEGRITY" }]);
+  });
+
+  test.each([
+    ["a Headers object", () => [GQL, { method: "POST", headers: new Headers({ "Device-ID": "DEVICE_ID", "Client-Version": "V" }) }]],
+    ["header pairs", () => [GQL, { method: "POST", headers: [["device-id", "DEVICE_ID"], ["client-version", "V"]] }]],
+    ["a Request", () => [new Request(GQL, { method: "POST", headers: { "Device-ID": "DEVICE_ID", "Client-Version": "V" } })]],
+  ])("%s, with Device-ID as the device id's other name", async (_, args) => {
+    const { sent, hooked } = gql();
+    await (hooked as any)(...args());
+    expect(sent).toEqual([{ "X-Device-Id": "DEVICE_ID", "Client-Version": "V" }]);
+  });
+
+  test("other URLs and GQL requests without these headers send nothing", async () => {
+    const { sent, hooked } = gql();
+    await hooked("https://gql.twitch.tv/integrity", init);
+    await hooked("https://gql.example/gql", init);
+    await hooked(GQL, { method: "POST", headers: { "Content-Type": "text/plain" } });
+    expect(sent).toEqual([]);
   });
 });

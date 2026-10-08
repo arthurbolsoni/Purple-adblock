@@ -25,11 +25,13 @@ export class TwitchService {
         throw new Error(`PlaybackAccessToken: no token for ${playerType}`);
     }
 
-    // the token from either answer shape: { data: { streamPlaybackAccessToken } } or { streamPlaybackAccessToken } (embed)
+    // the token from either answer shape: { data: { streamPlaybackAccessToken } } or { streamPlaybackAccessToken } (embed).
+    // T-401 (F-05): with the headers of the page's GQL requests (device id, Authorization, client version and session)
     private async gql(body: object, integrityToken: string): Promise<{ token: string; signature: string } | null> {
+        const page = this.scope.gqlHeaders ?? {};
         const response = await this.scope.request("https://gql.twitch.tv/gql#origin=twilight", {
             method: "POST",
-            headers: { "Host": "gql.twitch.tv", "Client-ID": "kimne78kx3ncx6brgo4mv6wki5h1ko", "Client-Integrity": integrityToken },
+            headers: { ...page, "Host": "gql.twitch.tv", "Client-ID": "kimne78kx3ncx6brgo4mv6wki5h1ko", "Client-Integrity": integrityToken || page["Client-Integrity"] || "" },
             body: JSON.stringify(body),
         });
         const answer = await response.json();

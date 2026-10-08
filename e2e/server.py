@@ -92,6 +92,8 @@ def summarize(state):
             json.dumps({'playerType': a.get('playerType'), 'errors': a['errors'], 'tokenFlags': a.get('tokenFlags')}, sort_keys=True) for a in gql
         ).items()],
         'tokenRequests': dict(Counter(a.get('playerType') or a.get('operation') or '?' for a in gql)),
+        # names of the headers on those requests (T-401), never their values
+        'tokenHeaders': sorted({name for s in server if s.get('gql') for name in s.get('headerNames') or []}),
         'csai': state.get('csai') or [],
     }
 

@@ -285,13 +285,13 @@ Runs in parallel with phases 1 to 7. Phase 1 to 6 tasks list L2/L3 scenarios tha
 ## Phase 4: backup streams
 
 ### T-401 Page GQL headers
-- [ ] Status · F-05 · E9
+- [x] Status · F-05 · E9 · done 2026-10-08: the page hook reads the request headers of `gql.twitch.tv/gql` calls (never their responses) and sends the known set to every worker when one changes; a `Client-Integrity` among them becomes the worker's integrity token, as does the `/integrity` answer, the newest winning. In a midroll on L3-02, Purple's 15 token requests carried `authorization`, `client-integrity`, `client-session-id`, `client-version` and `x-device-id` (names recorded, not values); L3-01 (5 runs), L3-07 and L3-08 passed. The same L3-02 run failed the T-502 check: the break's announcement passed untouched (T-202), and the player fetched the 2 ad segments its prefetch lines pointed at ([finding](findings/2026-10-08-page-gql-headers.md))
 - Files: `serviceWorker/src/page/fetch-hook.ts`, `serviceWorker/src/app.controller.ts`
 - Done when:
   - `X-Device-Id` (or `Device-ID`), `Client-Integrity`, `Authorization`, `Client-Version` and `Client-Session-Id` from page GQL requests reach the worker whenever they change;
   - capture through `/integrity` (E9) keeps working;
   - backup token requests send these headers.
-- Tests: TS-401
+- Tests: TS-401, L3-02 (header names on the token requests of a break)
 
 ### T-402 GQL executed in the page
 - [ ] Status · F-06

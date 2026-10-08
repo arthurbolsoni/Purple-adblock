@@ -147,6 +147,11 @@
         const body = JSON.parse((init && init.body) || "null");
         request = (Array.isArray(body) ? body : [body]).filter(Boolean);
       } catch (e) {}
+      // names of the request headers, never their values (T-401: the page's GQL headers on Purple's token requests)
+      let headerNames = [];
+      try {
+        headerNames = [...new Headers((init && init.headers) || undefined).keys()].sort();
+      } catch (e) {}
       response
         .clone()
         .json()
@@ -157,6 +162,7 @@
               kind: "server",
               url,
               status: response.status,
+              headerNames,
               gql: answers.map((answer, i) => ({
                 operation: (request[i] && request[i].operationName) || null,
                 playerType: (request[i] && request[i].variables && request[i].variables.playerType) || null,

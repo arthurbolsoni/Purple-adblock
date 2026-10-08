@@ -6,9 +6,10 @@ export interface WorkerContext {
   logger: (...args: any[]) => void; // prints only with `debug` on (C-09)
   debug?: boolean; // the `debug` setting
   emit?: (event: PurpleEvent) => void; // debug event for window.__purple.events, posted only with `debug` on (F-17)
+  gqlHeaders?: Record<string, string>; // headers of the page's GQL requests, for backup token requests (F-05, T-401)
 }
 
-// F-17. blankInserted (T-502) and csaiBlocked (T-301) have no emitter yet.
+// F-17. csaiBlocked (T-301) is recorded by the page, the others come from the worker.
 export type PurpleEvent = {
   type: "adDetected" | "backupUsed" | "segmentsReplaced" | "blankInserted" | "csaiBlocked" | "whitelisted";
   channel: string;

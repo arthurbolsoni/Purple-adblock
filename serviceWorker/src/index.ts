@@ -87,6 +87,7 @@ const csaiBlocked: Record<string, number> = {};
     global.request = fetch;
     global.fetch = createFetchHook(global.request, {
       onIntegrity: (body) => registry.broadcast({ funcName: "setIntegrity", value: body }),
+      onGqlHeaders: (headers) => registry.broadcast({ funcName: "setGqlHeaders", value: headers }),
       blockCsai: () => blockCsai,
       onCsaiBlocked,
     });
