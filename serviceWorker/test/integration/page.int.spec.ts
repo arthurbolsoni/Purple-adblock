@@ -134,6 +134,29 @@ describe("messages", () => {
       { funcName: "pause", args: undefined, id: 0 },
       { funcName: "play", args: undefined, id: 0 },
     ]);
+  });
+
+  // C-13: on twitch.tv the page creates the picture-by-picture player in the main player's worker (id 2, 3, ...)
+  // at each picture-by-picture request (docs/findings/2026-10-08-pbyp-player-pause.md)
+  test("a player created later in the same worker (picture-by-picture) does not take pause and play", () => {
+    const worker = new (window as any).Worker(WORKER_URL, { name: "main" });
+    worker.postMessage({ id: 1, funcName: "create", args: [{}, {}] });
+    worker.postMessage({ id: 2, funcName: "create", args: [{}, {}] });
+    worker.emit({ type: "pause" });
+    worker.emit({ type: "play" });
+    expect(worker.posted.slice(-2)).toEqual([
+      { funcName: "pause", args: undefined, id: 1 },
+      { funcName: "play", args: undefined, id: 1 },
+    ]);
+    worker.postMessage({ id: 2, funcName: "delete", args: [] });
+    worker.emit({ type: "pause" });
+    expect(worker.posted.at(-1)).toEqual({ funcName: "pause", args: undefined, id: 1 });
+  });
+
+  test("once the page deletes that player, the next one it creates takes pause and play", () => {
+    const worker = new (window as any).Worker(WORKER_URL, { name: "sdk" });
+    worker.postMessage({ id: 0, funcName: "create", args: [{}, {}] });
+    worker.postMessage({ id: 0, funcName: "delete", args: [] });
     worker.postMessage({ id: 3, funcName: "create", args: [{}, {}] });
     worker.emit({ type: "pause" });
     expect(worker.posted.at(-1)).toEqual({ funcName: "pause", args: undefined, id: 3 });

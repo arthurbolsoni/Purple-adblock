@@ -31,4 +31,5 @@ New discoveries are added here as they happen. A later finding that contradicts 
 | [2026-10-08-ad-break-reload.md](2026-10-08-ad-break-reload.md) | Player reload at the end of a break (`reloadAfterAd`, T-601): `setSrc` found on twitch.tv, the video back in 1 to 3 s, one reload of two brought a new preroll | open |
 | [2026-10-08-midroll-soak.md](2026-10-08-midroll-soak.md) | Soaks a, b and c on the 2026-10-08 builds: stitched midrolls with Purple on and off, ad overlay and backups per break, pause/play at the break edges, the page's picture-by-picture request before each midroll | open |
 | [2026-10-08-prewarm-backups.md](2026-10-08-prewarm-backups.md) | Backup tokens at the page's picture-by-picture request (`prewarmBackups`, T-409, T-410): midroll starts with and without it, a channel's first midroll (soak f), picture-by-picture requests per channel, an offline channel's recorded video | open |
+| [2026-10-08-pbyp-player-pause.md](2026-10-08-pbyp-player-pause.md) | Pause and play sent to the picture-by-picture player the page creates in the main player's worker (C-13, T-801) | open |
 | [../research.md](../research.md) | Brave's Twitch scriptlet | closed |

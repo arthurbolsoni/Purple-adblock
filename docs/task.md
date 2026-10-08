@@ -17,6 +17,7 @@ Phases run in order. Inside a phase, the "Depends on" column says what must come
 | 5. Playlist assembly | T-501, T-502 | T-101, T-201 |
 | 6. Player control and settings | T-601 to T-604 | T-107, T-201 |
 | 7. Build and release | T-701, T-702 | Phase 0 |
+| 8. Investigations | T-801 to T-808 | - |
 
 ## Phase 0: test base
 
@@ -450,6 +451,68 @@ Runs in parallel with phases 1 to 7. Phase 1 to 6 tasks list L2/L3 scenarios tha
   - releases only on push to `main` or on a tag;
   - `actions/checkout` v4; `marvinpinto/action-automatic-releases` (archived) is replaced by a maintained action.
 - Tests: TS-702
+
+## Phase 8: investigations
+
+Odd behaviors seen in the runs. Each task ends with its cause in a finding (and in `docs/server/` when it is the server's), and a fix task when Purple causes it.
+
+### T-801 Second picture-by-picture request at each midroll
+- [~] Status · C-13 · 2026-10-08: cause found and fixed in code. Since C-12, E6 pause/play went to the picture-by-picture player the page creates in the main player's worker (B-051); that player asked for a new master 0.2 to 0.4 s later (13 of 13 in soaks e and f). Now the first player the page creates in a worker keeps pause/play until the page deletes it. The live check is open ([finding](findings/2026-10-08-pbyp-player-pause.md))
+- Origin: in soaks e and f a second picture-by-picture request came 8 to 11 s after each request a midroll followed; soak d had none ([prewarm backups](findings/2026-10-08-prewarm-backups.md#picture-by-picture-requests)).
+- Files: `serviceWorker/src/index.ts`, `e2e/recorder.js`
+- Done when:
+  - a player created later in the same worker does not take pause/play; after the first player's `delete`, the next one created does;
+  - a soak with midrolls shows pause/play to player 1 at the edges and no picture-by-picture request right after them.
+- Tests: TS-801, soak
+
+### T-802 A midroll starts on the 360p picture-by-picture master
+- [ ] Status · F-10
+- Origin: the 17:27 break on `/channel-d` ended on `picture-by-picture`, pinned (F-10), and the 17:37:52 midroll started on its 360p master, then moved to `site` 720p60 after 5 s; soak d's 10:49:00 break also started on it ([prewarm backups](findings/2026-10-08-prewarm-backups.md#first-backup)).
+- Check: how often a break ends pinned to `picture-by-picture` in soaks d to f, and whether the 720p types were clean again when the next break started.
+- Done when: the count and a decision are in a finding; a fix task (for example, not pinning `picture-by-picture` while another type gave a clean backup in the same break) if the behavior changes.
+- Tests: probe over the soak recordings; TS for any change
+
+### T-803 First backup at 160p in a break running at the channel load
+- [ ] Status · F-11
+- Origin: soak e 15:15:45 on `/channel-a` (`site` 160p30, 6 blank segments) and soak f 18:30:38 on `/channel-k` (`site` 160p, 6 blank segments); the other breaks at a load started on 720p ([prewarm backups](findings/2026-10-08-prewarm-backups.md#soak-f)).
+- Check: the variant target (T-407) before the player reports a quality, the `setQuality` messages at the load, and the main variant then.
+- Done when: the cause is in a finding; a fix task if Purple picks the lowest variant without a reason.
+- Tests: probe over the soak recordings; TS for any change
+
+### T-804 The video waits 8 s inside a break after a backup behind the main playlist
+- [ ] Status · B-048
+- Origin: soak d 09:44:54, 9 s into the break the `<video>` waited 8.1 s; just before, the first backup playlist had a `MEDIA-SEQUENCE` one below the main playlist's last poll ([pause length](findings/2026-10-08-pause-length.md#soak-d)).
+- Check: a level 2 scenario on `sim/` with a backup 1 to 5 segments behind at the break start.
+- Done when: reproduced or ruled out at level 2, with the cause in a finding; a fix task if Purple causes it.
+- Tests: L2 scenario
+
+### T-805 Player at readyState 0 with Purple in the worker
+- [ ] Status · Q-014
+- Origin: 1 of 3 loads on 2.6.7 and on the T-001 build stayed at `readyState` 0 ([worker injection race](findings/2026-10-04-worker-injection-race.md)).
+- Check: the level 3 and soak runs since 2026-10-07 for a load whose `<video>` never left `readyState` 0, with the worker console and the playlists of such a run.
+- Done when: seen again with a cause, or not seen in the runs since and Q-014 closed as not reproduced.
+- Tests: probe over the recordings
+
+### T-806 Player stall on rewritten playlists on fresh profiles only
+- [ ] Status · C-01
+- Origin: on 2026-10-07, loads on fresh profiles stalled on rewritten playlists without ad markers, and the same loads played on the dedicated profile; the difference was not found ([backups and rewritten playlists](findings/2026-10-07-backups-and-rewritten-playlists.md#player-stall)). Since then, playlists without ads pass untouched (C-01), and the dedicated profile was found on Strict tracking prevention (Balanced since 2026-10-08).
+- Check: the 2026-10-07 case (rewritten playlists without ads) on a fresh profile and on the dedicated profile, at level 2 on `sim/`.
+- Done when: the difference is explained, or the stall does not reproduce.
+- Tests: L2 scenario
+
+### T-807 Backups with ad segments in a break running at the channel load
+- [ ] Status · B-036
+- Origin: soak f 17:47:52 on `/channel-f`: the 5 backup playlists with a break had ad segments, while in midrolls no backup playlist had any since T-401 (B-036) ([prewarm backups](findings/2026-10-08-prewarm-backups.md#soak-f)).
+- Check: backup playlists with ad segments in every break at a load across the soaks, by backup type and token age.
+- Done when: the rule is in `docs/server/`; a fix task if a backup type or a token timing avoids it.
+- Tests: probe over the soak recordings
+
+### T-808 New preroll after a player reload
+- [ ] Status · B-045 · Q-018
+- Origin: a soft reload with the same token at the first live poll after a preroll brought a new preroll in 1 of 2 reloads ([player reload](findings/2026-10-08-ad-break-reload.md)); `reloadAfterAd` stays off.
+- Check: L3-11 with the reload delayed, with a new token, and after midrolls.
+- Done when: the condition is in `docs/server/` (B-045, Q-018), and `reloadAfterAd`'s default is decided on it.
+- Tests: L3-11
 
 ## Open decisions
 

@@ -43,5 +43,5 @@ In the 09:44:54 break, 9 s after the start edge the `<video>` waited at `current
 
 ## Open
 
-- The 8 s wait inside the 09:44:54 break: whether the backup's lower `MEDIA-SEQUENCE` causes it.
+- The 8 s wait inside the 09:44:54 break: whether the backup's lower `MEDIA-SEQUENCE` causes it (T-804).
 - Edges on other channels and logged in, at 0 ms.

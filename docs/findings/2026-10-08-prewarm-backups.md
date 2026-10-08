@@ -17,7 +17,7 @@ Soak f (T-410) is [below](#soak-f). Baseline without F-19: soak d of the same da
 | `ext-c` | `/channel-a` | 9, each 1 to 2 s before `ext-a`'s | the same | 15:29:29, 8.1 s after the first |
 | `ext-b2` | `/channel-d` | 9, from 16:47:43 to 17:37:54 | 10 min | 17:17:48, 17:27:48 and 17:37:52, 5.2, 5.6 and 8.5 s after a request |
 
-A second request came 8 to 11 s after each of the 5 requests a midroll followed, and after none of the others. In soak d no request had a second one.
+A second request came 8 to 11 s after each of the 5 requests a midroll followed, and after none of the others. In soak d no request had a second one. It came 0.2 to 0.4 s after Purple's pause/play reached the picture-by-picture player ([C-13](2026-10-08-pbyp-player-pause.md)).
 
 F-19 ran at most once a minute: 8 times in `ext-a` and 6 in `ext-b2`, 7 token requests each (`site`, `popout`, `frontpage`, `picture-by-picture`, `mobile_web`, `embed`, `autoplay`). 4 of those 14 prewarms had a midroll after them.
 
@@ -122,5 +122,5 @@ The worker made no media playlist request after 15:16:19, so the soak saw no bre
 
 ## Open
 
-- The pinned type at a break's end can be the 360p `picture-by-picture` master, and the next midroll starts on it.
+- The pinned type at a break's end can be the 360p `picture-by-picture` master, and the next midroll starts on it (T-802).
 - Logged in, and on channels outside the Brazilian directory.

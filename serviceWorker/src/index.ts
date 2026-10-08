@@ -42,9 +42,12 @@ const csaiBlocked: Record<string, number> = {};
   class WorkerInjector extends Worker {
     private injected = false;
     private started = false;
-    // E6: the id of the last player the page created in this worker (its "create" message); the worker dispatches
-    // pause and play by it. 1 until a create is seen, as before (the main player's id on twitch.tv)
+    // E6: the id of the first player the page created in this worker (its "create" message); the worker dispatches
+    // pause and play by it. 1 until a create is seen, as before (the main player's id on twitch.tv).
+    // C-13: a player created later in the same worker (the picture-by-picture one) does not take it; once the page
+    // deletes that player, the next one it creates does
     playerId = 1;
+    private playerCreated = false;
     // what the registry sends to: Purple's messages to its code in this worker
     readonly purple = { postMessage: (message: any) => this.sendFromPurple(message) };
 
@@ -71,7 +74,11 @@ const csaiBlocked: Record<string, number> = {};
     // the worker before it (a setIntegrity sent first killed the player worker on twitch.tv), so the worker joins
     // the registry, and gets the current settings, integrity and quality, only then.
     postMessage(message: any, ...rest: any[]) {
-      if (message?.funcName === "create" && message.id != null) this.playerId = message.id;
+      if (message?.funcName === "create" && message.id != null && !this.playerCreated) {
+        this.playerId = message.id;
+        this.playerCreated = true;
+      }
+      if (message?.funcName === "delete" && message.id === this.playerId) this.playerCreated = false;
       super.postMessage(message, ...(rest as [any]));
       if (this.injected && !this.started) {
         this.started = true;
