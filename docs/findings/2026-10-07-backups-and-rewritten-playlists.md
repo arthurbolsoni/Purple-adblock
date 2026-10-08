@@ -44,6 +44,17 @@ L3-01 on fresh profiles. "Rewritten" is the output of `generateM3u8`: `#EXTM3U`,
 - On the dedicated profile, loads without ad markers played on rewritten playlists (runs E, F, H and I in [e2e harness](2026-10-07-e2e-harness.md)). The difference with fresh profiles was not found.
 - Inferred: the player often does not start on playlists rewritten by `generateM3u8` (C-01). T-104 made it show on ad playlists, because before T-104 the exception returned Twitch's text.
 
+### After T-101
+
+T-101 returns a playlist without ads as received and edits only the `#EXTINF` and URI lines of replaced ad segments. L3-01 after the change:
+
+| Profile | Runs | Loads | Loads with ad markers | Loads that played |
+| --- | --- | --- | --- | --- |
+| fresh | 6 | 12 | 2 (run 2: `picture-by-picture` clean on 9 polls, its playlist replaced the main one) | 12 |
+| dedicated, extension and userscript | 2 | 4 | 0 | 4 |
+
+Whether run 2 showed the ad overlay was not recorded (the overlay joined the L3-01 details from run 4 on). Fresh profiles had ad markers in 15 of 16 loads earlier in the evening and in 2 of these 12, so the ad path after T-101 has 2 loads.
+
 ## Open
 
 - What the dedicated profile has that lets the player start on rewritten playlists.

@@ -78,6 +78,16 @@ describe("worker pipeline", () => {
     expect(worker.posted).toEqual([{ type: "getSettings" }]);
   });
 
+  // T-101
+  test.each(["media-live-ts.m3u8", "media-live-fmp4.m3u8", "media-ll-hls.m3u8"])("%s without ads comes out byte-identical", async (name) => {
+    const worker = setup();
+    const live = fixture(`m3u8/${name}`);
+    worker.twitch.mediaPlaylist(MAIN, live);
+    await worker.text(USHER);
+
+    expect(await worker.text(MAIN)).toBe(live);
+  });
+
   test("ad break: backup tokens are requested, then the clean frontpage backup replaces the playlist", async () => {
     const worker = setup();
     const midroll = fixture("m3u8/media-ssai-midroll.m3u8");
@@ -89,9 +99,9 @@ describe("worker pipeline", () => {
     worker.send("setIntegrity", JSON.stringify({ token: "INTEGRITY" }));
     await worker.text(USHER);
 
-    // first poll: no backup yet, the ad playlist goes out and the tokens are requested
+    // first poll: no backup yet, the ad playlist goes out unchanged and the tokens are requested
     const first = await worker.text(MAIN);
-    expect(uris(first)).toEqual(uris(midroll));
+    expect(first).toBe(midroll);
     expect(worker.posted).toContainEqual({ type: "pause" });
 
     await settle(() => worker.player.currentStream().serverList.length === 2);

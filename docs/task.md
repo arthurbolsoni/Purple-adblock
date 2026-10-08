@@ -124,7 +124,7 @@ Runs in parallel with phases 1 to 7. Phase 1 to 6 tasks list L2/L3 scenarios tha
 ## Phase 1: fixes to existing code
 
 ### T-101 Untouched playlist without ads; merge keeps tags
-- [ ] Status · C-01, F-01 · E5
+- [x] Status · C-01, F-01 · E5 · done 2026-10-07: L3-01 passed in 8 of 8 runs (16 loads, 2 of them with ad markers) after the change, against 1 of 8 loads with ads before ([finding](findings/2026-10-07-backups-and-rewritten-playlists.md)); `generateM3u8` and `printViewAds` removed
 - Context: on fresh profiles the player often does not start on playlists rewritten by `generateM3u8`, with or without ads ([finding](findings/2026-10-07-backups-and-rewritten-playlists.md)).
 - Files: `serviceWorker/src/modules/player/m3u8.ts`, `serviceWorker/src/modules/player/player.ts`
 - Done when:
@@ -132,7 +132,7 @@ Runs in parallel with phases 1 to 7. Phase 1 to 6 tasks list L2/L3 scenarios tha
   - with ads, the output keeps `EXT-X-VERSION`, `EXT-X-MAP`, `EXT-X-PROGRAM-DATE-TIME`, `EXT-X-TWITCH-PREFETCH`, `EXT-X-PRELOAD-HINT`, `EXT-X-PART`, `EXT-X-DATERANGE`, `EXT-X-DISCONTINUITY` and unknown tags;
   - output is produced by editing the lines of the original text, not by `generateM3u8`;
   - `#EXTINF` is written as `#EXTINF:<duration>,<title>`.
-- Tests: TS-101
+- Tests: TS-101, L3-01
 
 ### T-102 Worker router
 - [ ] Status · C-02 · E2
@@ -155,7 +155,7 @@ Runs in parallel with phases 1 to 7. Phase 1 to 6 tasks list L2/L3 scenarios tha
 - Tests: TS-103, L3-01
 
 ### T-104 Master variants through the parser
-- [~] Status · C-04 · E3, E8 · 2026-10-07: implemented and covered by TS-104; on twitch.tv the backups now load, and the rewritten ad playlists they lead to stop the player from starting on fresh profiles, so it waits for T-101 before L3-01 ([finding](findings/2026-10-07-backups-and-rewritten-playlists.md))
+- [x] Status · C-04 · E3, E8 · done 2026-10-07: the backups load on twitch.tv (they mostly carry ads, B-012); L3-01 passes together with T-101, which fixed the stall the backups exposed ([finding](findings/2026-10-07-backups-and-rewritten-playlists.md))
 - Files: `serviceWorker/src/modules/stream/stream.ts`, `serviceWorker/src/modules/stream/master.ts` (new), `serviceWorker/src/modules/stream/interface/stream.types.ts`, `serviceWorker/src/modules/player/player.ts`, `serviceWorker/src/app.controller.ts`, `serviceWorker/src/decorator/handler.decorator.ts`
 - Done when:
   - `setStreamAccess` reads `EXT-X-STREAM-INF` and `EXT-X-MEDIA` with `m3u8-parser` and stores quality (`NAME`/`VIDEO`), resolution, codecs and URL;

@@ -1,126 +1,72 @@
-import { Parser } from "m3u8-parser";
-
-type Segment = { uri: string; duration: number; title: string; dateTimeString: string };
-type Manifest = { targetDuration?: number; mediaSequence?: number; segments?: Segment[] };
+// Playlist edits work on the lines of the original text: a replaced segment changes its #EXTINF and URI lines, and
+// every other line (MAP, PROGRAM-DATE-TIME, DATERANGE, DISCONTINUITY, PART, PRELOAD-HINT, Twitch and unknown tags)
+// stays as it was (T-101). The player often does not start on regenerated playlists
+// (docs/findings/2026-10-07-backups-and-rewritten-playlists.md).
 
 const hasAds = (x: string) => x?.toString().includes("stitched") || x?.toString().includes("Amazon") || x?.toString().includes("DCM,");
 
-export function printViewAds(conteudosM3u8: string[]) {
-  const manifestos = conteudosM3u8.map((conteudo) => {
-    const analisador = new Parser();
-    analisador.push(conteudo);
-    analisador.end();
+export type SegmentLines = {
+  extinf: number; // index of the segment's #EXTINF line, -1 without one
+  uri: number; // index of the URI line
+  duration: number;
+  durationText: string;
+  title: string;
+  time: number | null; // PROGRAM-DATE-TIME in ms: the segment's own tag, or the previous segment's time plus its duration
+};
 
-    const manifest = analisador.manifest as { targetDuration?: number; mediaSequence?: number; segments?: { uri: string; duration: number; title: string; dateTimeString: string }[] };
-    if (manifest.segments) {
-      manifest.segments.forEach((segment) => {
-        const extinfTagRegex = new RegExp(`#EXTINF:([0-9.]*)?,?(.*)(?:\n|\r\n)${segment.uri}`);
-        const match = conteudo.match(extinfTagRegex);
-        if (match) {
-          segment.title = match[2] ? match[2].trim() : "";
-        }
-      });
+const EXTINF = /^#EXTINF:([^,]*),?(.*)$/;
+
+// Segments of a media playlist. The tags between two URI lines belong to the segment of the second one, in any order;
+// tags after the last URI (PART, PRELOAD-HINT, TWITCH-PREFETCH) belong to no segment.
+export function readSegments(lines: string[]): SegmentLines[] {
+  const segments: SegmentLines[] = [];
+  let extinf = -1;
+  let ownTime: number | null = null;
+
+  lines.forEach((raw, index) => {
+    const line = raw.trim();
+    if (line.startsWith("#EXT-X-PROGRAM-DATE-TIME:")) {
+      const time = Date.parse(line.slice("#EXT-X-PROGRAM-DATE-TIME:".length));
+      ownTime = Number.isNaN(time) ? null : time;
+    } else if (line.startsWith("#EXTINF:")) {
+      extinf = index;
+    } else if (line && !line.startsWith("#")) {
+      const [, durationText = "", title = ""] = extinf >= 0 ? EXTINF.exec(lines[extinf].trim()) ?? [] : [];
+      const previous = segments[segments.length - 1];
+      const time = ownTime ?? (previous?.time != null ? previous.time + previous.duration * 1000 : null);
+      segments.push({ extinf, uri: index, duration: parseFloat(durationText) || 0, durationText, title: title.trim(), time });
+      extinf = -1;
+      ownTime = null;
     }
-    return manifest;
   });
-
-  let log: string[] = [];
-  for (const manifesto of manifestos) {
-    if (manifesto.segments) {
-      manifesto.segments.forEach((segment) => {
-        log.push(`${hasAds(segment.title) ? "X" : "V"}`);
-      });
-    }
-  }
-  console.log(log.join("-"));
+  return segments;
 }
 
-export function generateM3u8(manifest: Manifest): string {
-  let m3u8Content = `#EXTM3U\n`;
+const sameSecond = (a: number | null, b: number | null) => a != null && b != null && Math.floor(a / 1000) === Math.floor(b / 1000);
 
-  m3u8Content += `#EXT-X-TARGETDURATION:${manifest.targetDuration ?? 5}\n`;
+// Replaces each ad segment of the main playlist (first text) with the first live segment of a backup that starts in
+// the same second. Without a replacement the main text comes back unchanged.
+export function mergeM3u8Contents(contents: string[]): string {
+  if (!contents.length) return "";
+  const [main, ...backups] = contents;
 
-  m3u8Content += `#EXT-X-MEDIA-SEQUENCE:${manifest.mediaSequence ?? 0}\n`;
-
-  if (manifest.segments) {
-    manifest.segments.forEach((segment) => {
-      if (segment.duration) {
-        m3u8Content += `#EXTINF:${segment.duration}\n`;
-      }
-      m3u8Content += `${segment.uri}\n`;
-    });
-  }
-
-  return m3u8Content;
-}
-
-export function mergeM3u8Contents(conteudosM3u8: string[]): string {
-  if (!conteudosM3u8.length) return "";
-  // printViewAds(conteudosM3u8);
-
-  const manifestos: Manifest[] = conteudosM3u8.map((conteudo) => {
-    const analisador = new Parser();
-    analisador.push(conteudo);
-    analisador.end();
-
-    const manifest = analisador.manifest as { targetDuration?: number; mediaSequence?: number; segments?: { uri: string; duration: number; title: string; dateTimeString: string }[] };
-    if (manifest.segments) {
-      manifest.segments.forEach((segment) => {
-        const extinfTagRegex = new RegExp(`#EXTINF:([0-9.]*)?,?(.*)(?:\n|\r\n)${segment.uri}`);
-        const match = conteudo.match(extinfTagRegex);
-        if (match) {
-          segment.title = match[2] ? match[2].trim() : "";
-        }
-      });
-    }
-    return manifest;
+  const lines = main.split("\n");
+  const backupSegments = backups.map((text) => {
+    const backupLines = text.split("\n");
+    return readSegments(backupLines).map((segment) => ({ ...segment, uriLine: backupLines[segment.uri].trim() }));
   });
 
-  const manifestoPrincipal = manifestos[0];
-  const manifestosSuporte = manifestos.slice(1);
+  for (const segment of readSegments(lines)) {
+    if (!hasAds(segment.title)) continue;
+    for (const candidates of backupSegments) {
+      const replacement = candidates.find((candidate) => !hasAds(candidate.title) && sameSecond(candidate.time, segment.time));
+      if (!replacement) continue;
 
-  console.log("Segmentos encontrados no manifesto principal:", manifestoPrincipal?.segments?.length);
-  console.log("Manifestos de suporte encontrados:", manifestosSuporte.length);
-
-  let segmentRemoved = 0;
-  let segmentReplaced = 0;
-
-  if (!manifestoPrincipal.segments?.length) return generateM3u8(manifestoPrincipal);
-
-  for (let i = 0; i < manifestoPrincipal.segments.length; i++) {
-    const segmentoPrincipal = manifestoPrincipal.segments[i];
-    let isChanged = false;
-
-    console.log(segmentoPrincipal.title);
-
-    if (hasAds(segmentoPrincipal.title)) {
-      for (const manifestoSuporte of manifestosSuporte) {
-        const segmentoSuporte = manifestoSuporte?.segments?.find((seg) => {
-          if (hasAds(seg.title)) return false;
-
-          const dataPrincipal = new Date(segmentoPrincipal.dateTimeString);
-          const dataSuporte = new Date(seg.dateTimeString);
-          dataPrincipal.setMilliseconds(0);
-          dataSuporte.setMilliseconds(0);
-
-          return dataPrincipal.getTime() === dataSuporte.getTime();
-        });
-
-        if (segmentoSuporte) {
-          manifestoPrincipal.segments[i] = segmentoSuporte;
-          isChanged = true;
-          break;
-        }
-      }
-
-      if (isChanged) {
-        segmentReplaced++;
-      }
+      const extinf = `#EXTINF:${replacement.durationText},${replacement.title}`;
+      if (segment.extinf >= 0) lines[segment.extinf] = extinf;
+      lines[segment.uri] = replacement.uriLine;
+      break;
     }
   }
-
-  console.log("Segmento com ads removidos:", segmentRemoved);
-  console.log("Segmento com ads substituídos:", segmentReplaced);
-
-  return generateM3u8(manifestoPrincipal);
+  return lines.join("\n");
 }

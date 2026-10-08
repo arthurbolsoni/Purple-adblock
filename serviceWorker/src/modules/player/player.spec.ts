@@ -158,15 +158,27 @@ describe("Player.onFetch", () => {
     expect(context.requests).toEqual([]);
   });
 
-  test("without ads the playlist is regenerated with the same segments", async () => {
+  // T-101: the player often does not start on regenerated playlists (docs/findings/2026-10-07-backups-and-rewritten-playlists.md)
+  test("without ads the playlist comes back unchanged", async () => {
     const player = new Player(makeContext());
     player.setChannel("channel");
 
-    const out = await player.onFetch(LIVE);
-    expect(out).toBe(
-      "#EXTM3U\n#EXT-X-TARGETDURATION:6\n#EXT-X-MEDIA-SEQUENCE:100\n#EXTINF:2\nhttps://seg.example/live-100.ts\n#EXTINF:2\nhttps://seg.example/live-101.ts\n",
-    );
+    expect(await player.onFetch(LIVE)).toBe(LIVE);
     expect(player.freeStream).toBe(false);
+  });
+
+  test("with ads and backups that have ads too, the playlist comes back unchanged", async () => {
+    jest.useFakeTimers();
+    const frontpageUrl = "https://video-weaver.example.hls.ttvnw.net/v1/playlist/frontpage-chunked.m3u8";
+    const pictureUrl = "https://video-weaver.example.hls.ttvnw.net/v1/playlist/picture-chunked.m3u8";
+    const player = new Player(makeContext({ [frontpageUrl]: ADS, [pictureUrl]: ADS }));
+    player.setChannel("channel");
+    const stream = player.currentStream();
+    stream.setStreamAccess(master("frontpage"), StreamType.FRONTPAGE);
+    stream.setStreamAccess(master("picture"), StreamType.PICTURE);
+    stream.createStreamAccess = async () => {};
+
+    expect(await player.onFetch(ADS)).toBe(ADS);
   });
 
   test("with ads, a clean frontpage backup is returned as is", async () => {

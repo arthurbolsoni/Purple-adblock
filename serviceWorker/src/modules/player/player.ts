@@ -83,7 +83,7 @@ export class Player {
     if (!this.isAds(text, true)) {
       console.log("Stream is free");
       this.freeStream = false;
-      return mergeM3u8Contents([text]);
+      return text;
     }
 
     const dump: string[] = [];

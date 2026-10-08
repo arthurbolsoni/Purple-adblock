@@ -23,9 +23,9 @@ The userscript has no content script or popup: `bundle.js` is the whole script a
 5. `Player.onFetch`:
    - no stream stored for the channel (playlist before the usher) → original text;
    - channel on the whitelist → original text (never reached in 2.6.7, C-10);
-   - no ads → `mergeM3u8Contents([text])` (rewrites the playlist);
-   - ads → tries a `frontpage` backup, then `picture-by-picture`; the first one without ads replaces the whole playlist;
-   - none clean → merges the main playlist with the backups by `PROGRAM-DATE-TIME`.
+   - no ads → original text (T-101);
+   - ads → tries the `frontpage` backups, then `picture-by-picture` (variants read with `m3u8-parser`, T-104); the first one without ads replaces the whole playlist;
+   - none clean → `mergeM3u8Contents` edits the main playlist's lines: each ad segment with a live backup segment in the same second gets that segment's `#EXTINF` and URI lines; every other line stays (T-101).
 6. When the ad state changes → pause and play on the player.
 
 ## Current messages
