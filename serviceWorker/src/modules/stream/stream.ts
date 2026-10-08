@@ -8,6 +8,7 @@ export class Stream {
   serverList: Server[] = []; //the list of servers links m3u8
   channelName: string; //the channel name
   twitchService: TwitchService;
+  private pendingAccess = new Map<string, Promise<void>>(); //token requests in flight, by playerType
 
   constructor(
     channelName: string,
@@ -31,13 +32,26 @@ export class Stream {
     this.serverList.push(new Server({ type: type, urlList: urlList, sig: sig }));
   }
 
-  //create a new stream access
-  async createStreamAccess(playerType: StreamType, integrityToken: string): Promise<void> {
+  //create a new stream access; a call while one is in flight for the same playerType waits for it (T-105)
+  createStreamAccess(playerType: StreamType, integrityToken: string): Promise<void> {
+    const inFlight = this.pendingAccess.get(playerType);
+    if (inFlight) return inFlight;
+
+    const request = this.requestStreamAccess(playerType, integrityToken).finally(() => this.pendingAccess.delete(playerType));
+    this.pendingAccess.set(playerType, request);
+    return request;
+  }
+
+  private async requestStreamAccess(playerType: StreamType, integrityToken: string): Promise<void> {
     try {
       const streamDataAccess = await this.twitchService.playbackAccessToken(this.channelName, playerType, integrityToken);
       console.log("New Connection: ", playerType, streamDataAccess.token.includes('"hide_ads":true'));
       const m3u8Text = await this.twitchService.getM3U8(this.channelName, streamDataAccess);
+      // the new master replaces the playerType's previous server
+      const previous = this.getStreamByStreamType(playerType);
+      const before = this.serverList.length;
       this.setStreamAccess(m3u8Text, playerType);
+      if (this.serverList.length > before) previous.forEach((server) => this.removeServer(server));
     } catch (e) {
       this.scope.logger(e);
     }

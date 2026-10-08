@@ -241,6 +241,22 @@ ${variant}
     expect(worker.twitch.callsOf("gql").map((c) => c.playerType)).toEqual([StreamType.FRONTPAGE, StreamType.PICTURE]);
   });
 
+  // T-105
+  test("two concurrent ad polls make one token request per playerType and store one server each", async () => {
+    const worker = setup();
+    worker.twitch.master("channel", masterFor("frontpage-"), StreamType.FRONTPAGE);
+    worker.twitch.master("channel", masterFor("picture-"), StreamType.PICTURE);
+    worker.twitch.mediaPlaylist(MAIN, fixture("m3u8/media-ssai-midroll.m3u8"));
+    await worker.text(USHER);
+
+    await Promise.all([worker.text(MAIN), worker.text(MAIN)]);
+    await settle(() => worker.player.currentStream().serverList.length === 2);
+    await Bun.sleep(5);
+
+    expect(worker.twitch.callsOf("gql").map((c) => c.playerType)).toEqual([StreamType.FRONTPAGE, StreamType.PICTURE]);
+    expect(worker.player.currentStream().serverList.map((s) => s.type)).toEqual([StreamType.FRONTPAGE, StreamType.PICTURE]);
+  });
+
   test("quality and integrity messages reach the player", () => {
     const worker = setup();
     worker.send("setQuality", "720p60");

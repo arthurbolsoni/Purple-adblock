@@ -168,13 +168,13 @@ Runs in parallel with phases 1 to 7. Phase 1 to 6 tasks list L2/L3 scenarios tha
 - Tests: TS-104, L3-01
 
 ### T-105 Token requests without duplicates
-- [ ] Status · C-05 · E3
+- [x] Status · C-05 · E3 · done 2026-10-07: a token request in flight for a playerType is shared; a new token replaces the playerType's server; L3-01 passed on 2 fresh profiles ([finding](findings/2026-10-07-backups-and-rewritten-playlists.md))
 - Files: `serviceWorker/src/modules/stream/stream.ts`, `serviceWorker/src/modules/player/player.ts`
 - Done when:
   - at most one `createStreamAccess` is in flight per channel and playerType;
   - a playerType does not pile up duplicate `Server` entries;
   - a GQL failure is logged and does not throw.
-- Tests: TS-105
+- Tests: TS-105, L3-01
 
 ### T-106 Page fetch hook limited to target URLs
 - [ ] Status · C-06 · E9

@@ -143,6 +143,49 @@ describe("Stream.createStreamAccess", () => {
     expect(stream.serverList[0].urlList).toHaveLength(3);
   });
 
+  // T-105
+  test("two concurrent calls for one playerType make one token and one usher request, and store one server", async () => {
+    const context = makeContext((url) =>
+      url.startsWith("https://gql.twitch.tv/gql") ? Response.json({ data: { streamPlaybackAccessToken: { value: "{}", signature: "SIG" } } }) : new Response(MASTER),
+    );
+    const stream = new Stream("channel", context);
+
+    await Promise.all([stream.createStreamAccess(StreamType.FRONTPAGE, ""), stream.createStreamAccess(StreamType.FRONTPAGE, "")]);
+
+    expect(context.requests).toHaveLength(2);
+    expect(stream.getStreamByStreamType(StreamType.FRONTPAGE)).toHaveLength(1);
+  });
+
+  test("a new token for a playerType replaces its server instead of adding one", async () => {
+    const context = makeContext((url) =>
+      url.startsWith("https://gql.twitch.tv/gql") ? Response.json({ data: { streamPlaybackAccessToken: { value: "{}", signature: "SIG" } } }) : new Response(MASTER),
+    );
+    const stream = new Stream("channel", context);
+    stream.setStreamAccess(MASTER, StreamType.PICTURE);
+
+    await stream.createStreamAccess(StreamType.FRONTPAGE, "");
+    const [first] = stream.getStreamByStreamType(StreamType.FRONTPAGE);
+    await stream.createStreamAccess(StreamType.FRONTPAGE, "");
+
+    expect(stream.getStreamByStreamType(StreamType.FRONTPAGE)).toHaveLength(1);
+    expect(stream.getStreamByStreamType(StreamType.FRONTPAGE)[0]).not.toBe(first);
+    expect(stream.getStreamByStreamType(StreamType.PICTURE)).toHaveLength(1);
+    expect(context.requests).toHaveLength(4);
+  });
+
+  test("a rejected token request does not throw and reaches the logger", async () => {
+    const context = makeContext(() => {
+      throw new TypeError("Failed to fetch");
+    });
+    const stream = new Stream("channel", context);
+
+    await stream.createStreamAccess(StreamType.FRONTPAGE, "");
+
+    expect(stream.serverList).toEqual([]);
+    expect(context.logs).toHaveLength(1);
+    expect(String(context.logs[0][0])).toContain("Failed to fetch");
+  });
+
   test("a failed token request is logged and does not throw", async () => {
     const context = makeContext(() => Response.json({ errors: [{ message: "PersistedQueryNotFound" }] }));
     const stream = new Stream("channel", context);

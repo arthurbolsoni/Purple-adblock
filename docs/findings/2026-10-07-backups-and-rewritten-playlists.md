@@ -55,7 +55,12 @@ T-101 returns a playlist without ads as received and edits only the `#EXTINF` an
 
 Whether run 2 showed the ad overlay was not recorded (the overlay joined the L3-01 details from run 4 on). Fresh profiles had ad markers in 15 of 16 loads earlier in the evening and in 2 of these 12, so the ad path after T-101 has 2 loads.
 
+### After T-105
+
+Two more fresh-profile runs passed L3-01. In one of them both loads had ad markers: `frontpage` had ads on 6 polls, `picture-by-picture` was clean on 8 polls and its playlist replaced the main one (E4). In both loads the video played and the ad overlay was not showing at the check (25 s plus 3 s after navigation). Inferred: the replacement played at 360p30, the best variant of the `picture-by-picture` master (B-019). Token requests per load with ad markers: 5 GQL and 4 to 5 backup usher requests over 6 to 8 backup polls.
+
 ## Open
 
 - What the dedicated profile has that lets the player start on rewritten playlists.
+- How often a clean backup exists during a break, over more sessions and channels (L3-02, Q-004).
 - Whether a segment from a backup rendition can be spliced into the main playlist without `EXT-X-DISCONTINUITY` (T-501): the stall above happened with and without splicing.
