@@ -354,7 +354,7 @@ Runs in parallel with phases 1 to 7. Phase 1 to 6 tasks list L2/L3 scenarios tha
 ## Phase 5: playlist assembly
 
 ### T-501 Merge with time tolerance
-- [ ] Status · F-13 · E5
+- [x] Status · F-13 · E5 · done 2026-10-08: the nearest backup segment within half the ad segment's duration (2 s when the duration is unknown), backups tried in order; the backup's `EXT-X-MAP` line goes before the segment's `#EXTINF` and the main one comes back before the next main segment or the prefetch lines after the last one; a backup with `EXT-X-MAP` is not used in a playlist without one, nor the other way round. L3-01 (5 runs), L3-02 (4 runs), L3-07 and L3-08 passed; a preroll in L3-02 was handled with backups (`autoplay` on 21 polls, `site` on 7) and blank segments, with no merge, so the tolerance and the `EXT-X-MAP` switch are not seen live yet ([server observations](findings/2026-10-08-l3-server-observations.md#a-preroll-on-the-t-501-build))
 - Files: `serviceWorker/src/modules/player/m3u8.ts`
 - Done when:
   - a backup segment matches an ad segment when their `PROGRAM-DATE-TIME` differ by less than half the segment duration;

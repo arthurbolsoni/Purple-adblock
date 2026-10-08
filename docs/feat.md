@@ -114,6 +114,10 @@ With a quality name only, the variant with that name comes first, then `bestQual
 
 With `forcePopoutToken`, the page `fetch` hook rewrites the `playerType` of the `PlaybackAccessToken` operations in the page's GQL bodies (single or batched) to `popout`; `picture-by-picture` operations stay (E10), and so does every other operation. In the worker, `parent_domains` leaves the page's usher request before it is sent, and so the backups' usher requests (F-08). Before the settings arrive, the page and the worker use the default (on).
 
+### F-13: merge by time
+
+Each ad segment the backups did not replace whole (E4) gets the nearest live segment of a backup whose `PROGRAM-DATE-TIME` is less than half the ad segment's duration away; backups are tried in order. Only the `#EXTINF` and URI lines change. A backup segment with another `EXT-X-MAP` brings that `EXT-X-MAP` line before its `#EXTINF`, and the main one comes back before the next main segment or the prefetch lines after the last one; a backup that uses `EXT-X-MAP` is not used in a playlist without one, nor the other way round. `MEDIA-SEQUENCE` and the segment count do not change.
+
 ### F-14: blank segment
 
 As in Brave's script: the ad segments the merge left keep their lines in the playlist, and the worker answers their URIs with `BLANK_MP4`, an fMP4 init segment without samples (1137 bytes, copied with its source and notices in `blank-segment.ts`). Their requests never reach Twitch. The `EXT-X-MAP` only ad segments use is answered the same way. `EXT-X-PART` lines of an ad segment, and `EXT-X-PART`, `EXT-X-PRELOAD-HINT` and `EXT-X-TWITCH-PREFETCH` lines after an ad tail or a break announced after the last segment, are removed, and their URIs answered blank. A break announced past the last segment of a `MARKED_LIVE` playlist (B-034) gets the same treatment for the prefetch, preload and part lines after the announcement, the rest of the playlist untouched. A URI stays answered blank for 120 s after the last poll that listed it. `blankInserted` counts the segments blanked for the first time. With `stripFallback` off, the merged playlist goes to the player as it is.

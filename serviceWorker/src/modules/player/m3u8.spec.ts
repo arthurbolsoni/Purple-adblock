@@ -135,7 +135,8 @@ describe("mergeM3u8Contents", () => {
       const live = fixture(`m3u8/${name}`);
       const second = readSegments(live.split("\n"))[1];
       const main = asAd(live, live.split("\n")[second.uri].split("/").pop()!);
-      const backup = live.replaceAll("/v1/segment/", "/v1/segment/backup-");
+      // the backup uses the same EXT-X-MAP as the main playlist (another one: T-501 below)
+      const backup = live.replace(/\/v1\/segment\/(?!init)/g, "/v1/segment/backup-");
 
       const merged = mergeM3u8Contents([main, backup]);
 
@@ -253,5 +254,85 @@ describe("blankAds", () => {
     const midroll = fixture("m3u8/media-ssai-midroll.m3u8");
     expect(mergeWithBackups([midroll, fixture("m3u8/backup-clean.m3u8")]).remaining).toEqual([]);
     expect(mergeWithBackups([midroll]).remaining).toEqual([3, 4, 5]);
+  });
+});
+
+// T-501 (F-13): a backup segment matches an ad segment when their PROGRAM-DATE-TIME differ by less than half the
+// segment's duration (the nearest one); a segment from another fMP4 source brings its EXT-X-MAP, and the main one
+// comes back after it. MEDIA-SEQUENCE and the segment count do not change.
+describe("merge with time tolerance and EXT-X-MAP (T-501)", () => {
+  const midroll = fixture("m3u8/media-ssai-midroll.m3u8");
+  const clean = fixture("m3u8/backup-clean.m3u8");
+  // backup-clean with every PROGRAM-DATE-TIME moved by `ms`
+  const shifted = (ms: number) =>
+    clean.replace(/#EXT-X-PROGRAM-DATE-TIME:(\S+)/g, (_, time) => `#EXT-X-PROGRAM-DATE-TIME:${new Date(Date.parse(time) + ms).toISOString()}`);
+  const uris = (text: string) => readSegments(text.split("\n")).map((s) => text.split("\n")[s.uri].split("/").pop());
+
+  test.each([400, -400, 900, -900])("a backup %p ms off replaces the ad segments with the nearest live ones", (ms) => {
+    const merged = mergeWithBackups([midroll, shifted(ms)]);
+    expect(merged.replaced).toBe(3);
+    expect(uris(merged.text).slice(3, 6)).toEqual(["backup-3003.ts", "backup-3004.ts", "backup-3005.ts"]);
+  });
+
+  test("1 s off on a 2 s segment does not match", () => {
+    expect(mergeWithBackups([midroll, shifted(1000)])).toMatchObject({ replaced: 0, remaining: [3, 4, 5] });
+  });
+
+  test("a single backup segment 1.5 s after the last ad segment matches none", () => {
+    const one = "#EXTM3U\n#EXT-X-PROGRAM-DATE-TIME:2026-10-03T12:10:11.500Z\n#EXTINF:2.000,live\nhttps://edge.j.cloudfront.hls.ttvnw.net/v1/segment/backup-one.ts";
+    const merged = mergeWithBackups([midroll, one]);
+    expect(merged.replaced).toBe(0);
+  });
+
+  test("a segment from another fMP4 source brings its EXT-X-MAP; the main one comes back before the next main segment", () => {
+    const live = fixture("m3u8/media-live-fmp4.m3u8");
+    const main = asAd(asAd(live, "main-1002.mp4"), "main-1003.mp4");
+    const backup = fixture("m3u8/backup-fmp4-other-map.m3u8");
+    const MAIN_MAP = '#EXT-X-MAP:URI="https://edge.j.cloudfront.hls.ttvnw.net/v1/segment/init-main.mp4"';
+    const BACKUP_MAP = '#EXT-X-MAP:URI="https://edge.j.cloudfront.hls.ttvnw.net/v1/segment/init-backup.mp4"';
+
+    const merged = mergeWithBackups([main, backup]);
+    const lines = merged.text.split("\n");
+    const at = (file: string) => lines.findIndex((l) => l.endsWith(file));
+
+    expect(merged.replaced).toBe(2);
+    expect(lines.slice(at("main-1001.mp4") + 1, at("main-1004.mp4") + 1)).toEqual([
+      "#EXT-X-PROGRAM-DATE-TIME:2026-10-03T12:00:04.000Z",
+      BACKUP_MAP,
+      "#EXTINF:2.000,live",
+      "https://edge.j.cloudfront.hls.ttvnw.net/v1/segment/backup-4002.mp4",
+      "#EXT-X-PROGRAM-DATE-TIME:2026-10-03T12:00:06.000Z",
+      "#EXTINF:2.000,live",
+      "https://edge.j.cloudfront.hls.ttvnw.net/v1/segment/backup-4003.mp4",
+      "#EXT-X-PROGRAM-DATE-TIME:2026-10-03T12:00:08.000Z",
+      MAIN_MAP,
+      "#EXTINF:2.000,live",
+      "https://edge.j.cloudfront.hls.ttvnw.net/v1/segment/main-1004.mp4",
+    ]);
+    // two EXT-X-MAP lines added and nothing removed; the same segments and MEDIA-SEQUENCE
+    expect(lines.length).toBe(main.split("\n").length + 2);
+    expect(readSegments(lines)).toHaveLength(readSegments(main.split("\n")).length);
+    expect(lines.filter((l) => l.startsWith("#EXT-X-MEDIA-SEQUENCE"))).toEqual(["#EXT-X-MEDIA-SEQUENCE:1000"]);
+  });
+
+  test("the last segment from another source: the main EXT-X-MAP comes back before the prefetch lines", () => {
+    const live = fixture("m3u8/media-live-fmp4.m3u8").trimEnd() + "\n#EXT-X-TWITCH-PREFETCH:https://edge.j.cloudfront.hls.ttvnw.net/v1/segment/main-1006.mp4";
+    const main = asAd(live, "main-1005.mp4");
+    const lines = mergeWithBackups([main, fixture("m3u8/backup-fmp4-other-map.m3u8")]).text.split("\n");
+    expect(lines.slice(-3)).toEqual([
+      "https://edge.j.cloudfront.hls.ttvnw.net/v1/segment/backup-4005.mp4",
+      '#EXT-X-MAP:URI="https://edge.j.cloudfront.hls.ttvnw.net/v1/segment/init-main.mp4"',
+      "#EXT-X-TWITCH-PREFETCH:https://edge.j.cloudfront.hls.ttvnw.net/v1/segment/main-1006.mp4",
+    ]);
+  });
+
+  test("an fMP4 backup is not used in a TS playlist, nor a TS backup in an fMP4 one", () => {
+    const ts = asAd(fixture("m3u8/media-live-ts.m3u8"), "live-1001.ts");
+    const fmp4Backup = fixture("m3u8/backup-fmp4-other-map.m3u8");
+    expect(mergeWithBackups([ts, fmp4Backup]).replaced).toBe(0);
+
+    const fmp4 = asAd(fixture("m3u8/media-live-fmp4.m3u8"), "main-1001.mp4");
+    const tsBackup = fixture("m3u8/media-live-ts.m3u8").replaceAll("/live-", "/backup-");
+    expect(mergeWithBackups([fmp4, tsBackup]).replaced).toBe(0);
   });
 });

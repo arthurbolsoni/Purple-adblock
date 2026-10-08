@@ -4,16 +4,50 @@
 // (docs/findings/2026-10-07-backups-and-rewritten-playlists.md).
 
 import { detectAds, isAdUri, isStitchedMarker } from "./ad-detector";
-import { readSegments } from "./segments";
+import { readSegments, type SegmentLines } from "./segments";
 
 export { readSegments } from "./segments";
 export type { SegmentLines } from "./segments";
 
-const sameSecond = (a: number | null, b: number | null) => a != null && b != null && Math.floor(a / 1000) === Math.floor(b / 1000);
+type Candidate = SegmentLines & { uriLine: string; map: string | null };
 
-// Replaces each ad segment of the main playlist (first text) with the first live segment of a backup that starts in
-// the same second. Ad segments are the detector's, in the main playlist and in each backup (T-203); only segment lines
-// are copied from a backup, never its tags. Without a replacement the main text comes back unchanged.
+// EXT-X-MAP line in effect for each segment, in segment order; null in a playlist without one
+function mapsOf(lines: string[], segments: SegmentLines[]): (string | null)[] {
+  const maps: (string | null)[] = [];
+  let current: string | null = null;
+  let next = 0;
+  lines.forEach((raw, index) => {
+    const line = raw.trim();
+    if (line.startsWith("#EXT-X-MAP:")) current = line;
+    while (next < segments.length && segments[next].uri === index) {
+      maps.push(current);
+      next++;
+    }
+  });
+  return maps;
+}
+
+// T-501 (F-13): a backup segment matches when its PROGRAM-DATE-TIME is less than half the ad segment's duration away
+const nearest = (candidates: Candidate[], segment: SegmentLines): Candidate | undefined => {
+  if (segment.time == null) return undefined;
+  const tolerance = ((segment.duration > 0 ? segment.duration : 2) * 1000) / 2;
+  let best: Candidate | undefined;
+  for (const candidate of candidates) {
+    if (candidate.time == null) continue;
+    const distance = Math.abs(candidate.time - segment.time);
+    if (distance < tolerance && (!best || distance < Math.abs(best.time! - segment.time))) best = candidate;
+  }
+  return best;
+};
+
+const isAheadLine = (line: string) => line.startsWith("#EXT-X-TWITCH-PREFETCH:") || line.startsWith("#EXT-X-PRELOAD-HINT:") || line.startsWith("#EXT-X-PART:");
+
+// Replaces each ad segment of the main playlist (first text) with the nearest live segment of a backup whose
+// PROGRAM-DATE-TIME is less than half the segment's duration away (T-501), trying the backups in order. Ad segments are
+// the detector's, in the main playlist and in each backup (T-203); only segment lines are copied from a backup, never its
+// tags. A backup segment with another EXT-X-MAP brings that MAP line before it, and the main one comes back before the
+// next main segment or the prefetch lines after the last one (T-501); a backup that uses EXT-X-MAP is not used in a
+// playlist without one, nor the other way round. Without a replacement the main text comes back unchanged.
 export function mergeM3u8Contents(contents: string[]): string {
   return mergeWithBackups(contents).text;
 }
@@ -26,29 +60,55 @@ export function mergeWithBackups(contents: string[]): { text: string; replaced: 
   const lines = main.split("\n");
   const backupSegments = backups.map((text) => {
     const backupLines = text.split("\n");
+    const segments = readSegments(backupLines);
+    const maps = mapsOf(backupLines, segments);
     const ads = new Set(detectAds(text).adSegments);
-    return readSegments(backupLines).flatMap((segment, index) => (ads.has(index) ? [] : [{ ...segment, uriLine: backupLines[segment.uri].trim() }]));
+    return segments.flatMap((segment, index): Candidate[] => (ads.has(index) ? [] : [{ ...segment, uriLine: backupLines[segment.uri].trim(), map: maps[index] }]));
   });
 
+  const segments = readSegments(lines);
+  const mainMaps = mapsOf(lines, segments);
   const ads = new Set(detectAds(main).adSegments);
-  let replaced = 0;
+  const replacements = new Map<number, Candidate>();
   const remaining: number[] = [];
-  for (const [index, segment] of readSegments(lines).entries()) {
+  for (const [index, segment] of segments.entries()) {
     if (!ads.has(index)) continue;
-    remaining.push(index);
-    for (const candidates of backupSegments) {
-      const replacement = candidates.find((candidate) => sameSecond(candidate.time, segment.time));
-      if (!replacement) continue;
-
-      const extinf = `#EXTINF:${replacement.durationText},${replacement.title}`;
-      if (segment.extinf >= 0) lines[segment.extinf] = extinf;
-      lines[segment.uri] = replacement.uriLine;
-      replaced++;
-      remaining.pop();
-      break;
-    }
+    const usable = (candidate: Candidate) => (candidate.map == null) === (mainMaps[index] == null);
+    const replacement = backupSegments.map((candidates) => nearest(candidates.filter(usable), segment)).find(Boolean);
+    if (replacement) replacements.set(index, replacement);
+    else remaining.push(index);
   }
-  return { text: replaced ? lines.join("\n") : main, replaced, remaining };
+  if (!replacements.size) return { text: main, replaced: 0, remaining };
+
+  // the line each segment starts at for the MAP it needs: its #EXTINF, else its URI
+  const anchors = new Map(segments.map((segment, index) => [segment.extinf >= 0 ? segment.extinf : segment.uri, index]));
+  const lastUri = segments.length ? segments[segments.length - 1].uri : -1;
+  const out: string[] = [];
+  let mainMap: string | null = null;
+  let outMap: string | null = null;
+  const useMap = (map: string | null) => {
+    if (map == null || map === outMap) return;
+    out.push(map);
+    outMap = map;
+  };
+  lines.forEach((raw, index) => {
+    const line = raw.trim();
+    if (line.startsWith("#EXT-X-MAP:")) {
+      mainMap = outMap = line;
+      out.push(raw);
+      return;
+    }
+    const anchored = anchors.get(index);
+    if (anchored != null) useMap(replacements.get(anchored)?.map ?? mainMap);
+    else if (index > lastUri && isAheadLine(line)) useMap(mainMap);
+
+    const owner = segments.findIndex((segment) => segment.extinf === index || segment.uri === index);
+    const replacement = owner >= 0 ? replacements.get(owner) : undefined;
+    if (!replacement) out.push(raw);
+    else if (segments[owner].extinf === index) out.push(`#EXTINF:${replacement.durationText},${replacement.title}`);
+    else out.push(replacement.uriLine);
+  });
+  return { text: out.join("\n"), replaced: replacements.size, remaining };
 }
 
 const uriAttr = (line: string) => /URI="([^"]*)"/.exec(line)?.[1] ?? null;

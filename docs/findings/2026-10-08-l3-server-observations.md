@@ -1,6 +1,6 @@
 # Server behavior in the level 3 runs of 2026-10-08
 
-Date: 2026-10-08, 03:10 to 05:04. Logged out. Builds: one per task (T-203 to T-402), each checked with L3-01, L3-02 (3 or 4 runs), L3-07 and L3-08.
+Date: 2026-10-08, 03:10 to 05:16. Logged out. Builds: one per task (T-203 to T-501), each checked with L3-01, L3-02 (3 or 4 runs), L3-07 and L3-08.
 
 ## Probe
 
@@ -61,6 +61,10 @@ A midroll came during L3-07 on the dedicated profile (`/channel-c`, about 05:00)
 The break overlapped the whitelist window of L3-07. Purple's events: `backupUsed` on every ad poll before the channel was added (`site`, `popout`), `whitelisted` on every poll while it was listed (1.8 to 10.3 s), and `backupUsed` on every ad poll after it was removed (`site`, `frontpage`, `popout`, `picture-by-picture`). The player fetched 7 ad segments from the network, all listed while the channel was whitelisted, as the whitelist means.
 
 In the same window, both loads of one L3-01 run on `/channel-c` saw only the announcement of a `MIDROLL` (0 ad segments in 4 and 7 polls).
+
+## A preroll on the T-501 build
+
+L3-02 on `/channel-a` (fresh profile, about 05:12): 33 of 37 main polls inside a preroll. Purple sent 37 token requests through the page; 30 of the 58 backup polls had ad segments of their own. The player got `autoplay` (360p) backups on 21 polls and `site` on 7, and two polls with ad segments listed (`blankInserted` twice); it requested 4 of those ad segments and all 4 were answered in the worker. No ad overlay; no merge happened.
 
 ## Midrolls
 
