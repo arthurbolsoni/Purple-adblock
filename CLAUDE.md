@@ -68,7 +68,8 @@ bun platform/tampermonkey/build.js          # userscript from serviceWorker/dist
 bun run build                               # worker, dist/purple-adblock-<version>-<platform>.zip and the userscript
 bun run dev                                 # worker with sourcemaps and unpacked extensions in dist/purple-adblock-<platform>/
 bun cli/build.ts dev                        # unpacked extensions in dist/ (used by levels 2 and 3)
-cargo test --manifest-path sim/Cargo.toml   # sim/ unit tests (after T-006)
+cargo test --manifest-path sim/Cargo.toml   # sim/ tests (part of bun run check; ffmpeg and ffprobe on PATH)
+cargo run --release --manifest-path sim/Cargo.toml --bin media   # synthetic media into sim/media/ (T-007)
 bun run e2e:build                           # extension build + dist/purpleadblocker.user.js for levels 2 and 3
 python e2e/run.py <L2-xx|L3-xx|all>         # levels 2 and 3; --mode extension|userscript, --repeat N, --report FILE
 ```

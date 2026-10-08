@@ -92,7 +92,7 @@ Runs in parallel with phases 1 to 7. Phase 1 to 6 tasks list L2/L3 scenarios tha
 - Tests: `cargo test`, L2-01
 
 ### T-007 Synthetic media
-- [ ] Status
+- [x] Status · done 2026-10-08: `cargo run --release --manifest-path sim/Cargo.toml --bin media` (`sim::media`) writes `sim/media/` with ffmpeg: `live-720p`, `live-360p` (60 s, `testsrc2` and 440 Hz) and `ad-720p`, `ad-360p` (16 s, SMPTE bars and 880 Hz) in H.264 main/AAC MPEG-TS, and `live-720p-hevc`, `ad-720p-hevc` in HEVC (`hvc1`)/AAC fMP4 with `init.mp4`; 2 s segments, one keyframe each; ffmpeg runs in each folder (given a Windows path it wrote `init.mp4` to its working directory). `tests/media.rs` encodes 2 s of each and checks container and codecs with ffprobe, and that live and ad differ (about 2 s per run, in `bun run check`)
 - Files: `sim/media.sh` or `sim/src/bin/media.rs` (new), `.gitignore`
 - Done when:
   - ffmpeg generates into `sim/media/` (gitignored): live and ad renditions in H.264/AAC MPEG-TS at the variant sizes used by the scenarios, and an HEVC rendition in fMP4 with an init segment for `EXT-X-MAP`;

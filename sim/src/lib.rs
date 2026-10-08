@@ -3,6 +3,7 @@
 //! `sim/page/` (T-008). See docs/tests.md, "Level 2".
 
 pub mod gql;
+pub mod media;
 pub mod playlist;
 pub mod scenario;
 pub mod server;

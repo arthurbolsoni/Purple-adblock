@@ -97,7 +97,7 @@ sim/                               # level 2 server (Rust)
   Cargo.toml
   src/                             # cargo test
   scenarios/*.json                 # one scenario per reproduced behavior set
-  media/                           # generated with ffmpeg, gitignored
+  media/                           # generated with ffmpeg (cargo run --bin media), gitignored
   page/                            # isolated player page (Purple bundle + IVS SDK)
 e2e/                               # levels 2 and 3 drivers (Python + nodriver + Edge)
   run.py                           # entry: python e2e/run.py <scenario|all> [--mode extension|userscript|record]
