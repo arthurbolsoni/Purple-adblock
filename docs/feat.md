@@ -50,7 +50,7 @@ Three groups: strategies that already exist (E-xx, none is removed), fixes to ex
 | F-07 | Updated `PlaybackAccessToken` hash, falling back to the full query (`playbackAccessToken_Template`, already in the code) | Brave + Purple | - | T-403 |
 | F-08 | Usher parameters from the original request reused for backups; `token` and `sig` encoded | Brave | - | T-404 |
 | F-09 | Configurable playerType list, with `autoplay` (360p) as last resort | Brave + Purple | `backupPlayerTypes`, `lowQualityFallback = true` | T-405 |
-| F-10 | The type that worked is tried first on the next break; a type that returned ads is skipped for 5 s | Brave | `pinBackupPlayerType = true` | T-406 |
+| F-10 | The type that worked is tried first on the next break, except `autoplay` and `picture-by-picture` (360p, T-802); a type that returned ads is skipped for 5 s | Brave | `pinBackupPlayerType = true` | T-406, T-802 |
 | F-11 | Backup with the same codec and quality as the main stream | Brave | - | T-407 |
 | F-12 | Page token requested as `popout` and usher without `parent_domains` (PbP excluded to keep E10) | Brave | `forcePopoutToken = true` | T-408 |
 | F-13 | Merge with time tolerance and the `EXT-X-MAP` of each segment's source | Purple + fix | - | T-501 |
@@ -138,7 +138,7 @@ The wait between `pause` and `play` at each break edge (F-15) comes from `pauseP
 
 ### F-10: pinned and contaminated types
 
-- With `pinBackupPlayerType`, the type of the last clean backup delivered moves to the front of the list; `autoplay` is never pinned and stays last.
+- With `pinBackupPlayerType`, the type of the last clean backup delivered moves to the front of the list; `autoplay` is never pinned and stays last. `picture-by-picture` (360p only) is not pinned either: a break that ended on it started the next midroll on its 360p master for 5 and 24 s (T-802).
 - A type none of whose servers gave a clean backup (ad segments, or its own break announced, F-03) is skipped for 5 s: no playlist fetch and no token request. The token requested when it failed is used once the 5 s are over.
 
 ## Settings (`Setting`)

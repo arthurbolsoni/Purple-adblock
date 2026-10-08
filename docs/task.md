@@ -466,15 +466,15 @@ Odd behaviors seen in the runs. Each task ends with its cause in a finding (and 
 - Tests: TS-801, soak
 
 ### T-802 A midroll starts on the 360p picture-by-picture master
-- [ ] Status · F-10
+- [x] Status · F-10 · done 2026-10-08: on 8 pairs of breaks on one load the next break started on the type the previous one ended on (8 of 8); 2 ended on `picture-by-picture` and the next midroll stayed 24 s and 5 s on its 360p master. F-10 now pins neither `autoplay` nor `picture-by-picture` ([finding](findings/2026-10-08-backup-quality-at-break-start.md))
 - Origin: the 17:27 break on `/channel-d` ended on `picture-by-picture`, pinned (F-10), and the 17:37:52 midroll started on its 360p master, then moved to `site` 720p60 after 5 s; soak d's 10:49:00 break also started on it ([prewarm backups](findings/2026-10-08-prewarm-backups.md#first-backup)).
 - Check: how often a break ends pinned to `picture-by-picture` in soaks d to f, and whether the 720p types were clean again when the next break started.
 - Done when: the count and a decision are in a finding; a fix task (for example, not pinning `picture-by-picture` while another type gave a clean backup in the same break) if the behavior changes.
 - Tests: probe over the soak recordings; TS for any change
 
-### T-803 First backup at 160p in a break running at the channel load
-- [ ] Status · F-11
-- Origin: soak e 15:15:45 on `/channel-a` (`site` 160p30, 6 blank segments) and soak f 18:30:38 on `/channel-k` (`site` 160p, 6 blank segments); the other breaks at a load started on 720p ([prewarm backups](findings/2026-10-08-prewarm-backups.md#soak-f)).
+### T-803 First backup at 160p in a midroll right after the page opened
+- [x] Status · F-11 · done 2026-10-08: no change. T-407 follows the variant the player polls; 5 and 12 s after the page opened the player was still on its 160p variant, and the backups moved to 720p60 with it 6 to 7 s later. Two other breaks that early started on 720p ([finding](findings/2026-10-08-backup-quality-at-break-start.md))
+- Origin: soak e 15:15:45 on `/channel-a` (`site` 160p30, 6 blank segments) and soak f 18:30:38 on `/channel-k` (`site` 160p, 6 blank segments), taken at first for breaks running at the load; the other early breaks started on 720p ([prewarm backups](findings/2026-10-08-prewarm-backups.md#soak-f)).
 - Check: the variant target (T-407) before the player reports a quality, the `setQuality` messages at the load, and the main variant then.
 - Done when: the cause is in a finding; a fix task if Purple picks the lowest variant without a reason.
 - Tests: probe over the soak recordings; TS for any change

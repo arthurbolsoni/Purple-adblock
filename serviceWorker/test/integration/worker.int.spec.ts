@@ -684,6 +684,20 @@ describe("pinned and contaminated backup types", () => {
     expect((await poll(worker)).media).toEqual(["chunked.m3u8", "popout-chunked.m3u8", "autoplay-chunked.m3u8"]);
   });
 
+  // T-802: a break that ended on the 360p picture-by-picture master started the next midroll on it
+  test("picture-by-picture is never pinned", async () => {
+    setSystemTime(T0);
+    const worker = await breakWith({ popout: ads, "picture-by-picture": clean }, {}, midroll, midroll, live, midroll);
+    await poll(worker);
+    await servers(worker, 3);
+    expect((await poll(worker)).text).toBe(clean); // popout has ads, picture-by-picture is clean
+    await poll(worker); // live: the break is over
+    await servers(worker, 3);
+
+    setSystemTime(T0 + 6000);
+    expect((await poll(worker)).media).toEqual(["chunked.m3u8", "popout-chunked.m3u8", "picture-by-picture-chunked.m3u8"]);
+  });
+
   test("a type that returned ads is skipped for 5 s, with no new token, then tried again", async () => {
     setSystemTime(T0);
     const worker = await breakWith({ popout: ads, frontpage: fixture("m3u8/backup-announced-break.m3u8") }, {}, midroll);

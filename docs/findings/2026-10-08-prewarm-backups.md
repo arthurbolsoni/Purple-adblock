@@ -40,7 +40,7 @@ Seconds are counted from the break's first poll. "Announced" counts the backup p
 | d | `ext-b` | - | 10:49:00 | `picture-by-picture` 360p, 2.6 s | 1 | 0 / 10 | 14 / 0 |
 | d | `ext-b` | - | 11:05:00 | `site` 480p, 2.3 s | 1 | 0 / 12 | 12 / 0 |
 
-The two breaks at the channel load in soak e (15:15:45 and 15:15:58, the break already running when the page opened) had no picture-by-picture request before them and no F-19. Their first backup was `site` 160p30 after 3.3 s with 6 blank segments, and `site` 720p60 after 4.3 s with 3 blank segments.
+The midroll at 15:15:45 in soak e came 12 s after `ext-a`'s page opened, and `ext-c`, whose page opened at 15:15:53, got it at its first polls (15:15:58). It had no picture-by-picture request before it and no F-19. Their first backup was `site` 160p30 after 3.3 s with 6 blank segments, and `site` 720p60 after 4.3 s with 3 blank segments.
 
 ### First polls of a midroll
 
@@ -100,7 +100,7 @@ Every midroll below is the first break of a channel load and came after a pictur
 
 In soak f, F-19 asked 6 tokens once per channel load (every backup type but `picture-by-picture`, whose master E10 had stored), at the load's first picture-by-picture request. On `/channel-t` that request, at 17:56:14, had no midroll after it, and the next one, at 18:04:14, found every type stored and asked none. Without F-19, Purple asked the same types at the first poll with ad segments, and played the stored `picture-by-picture` master in the meantime. In the 20 s after the start, both moved on between `site`, `popout` and `frontpage` as those announced breaks of their own; no backup playlist had ad segments.
 
-Two breaks were already running when the page opened (`/channel-f` 17:47:52, `/channel-k` 18:30:38) and had no request before them. Their first backup was `site` 720p after 2.4 s with 3 blank segments, and `site` 160p after 3.4 s with 6. On `/channel-f` the 5 backup playlists with a break had ad segments, as in the prerolls of 2026-10-07 ([backups](2026-10-07-backups-and-rewritten-playlists.md)).
+Two breaks came in the first seconds of a load and had no request before them: `/channel-f` 17:47:52, already running when the page opened 6 s before, and `/channel-k` 18:30:38, a midroll announced 5 s after the page opened. Their first backup was `site` 720p after 2.4 s with 3 blank segments, and `site` 160p after 3.4 s with 6. On `/channel-f` the 5 backup playlists with a break had ad segments, as in the prerolls of 2026-10-07 ([backups](2026-10-07-backups-and-rewritten-playlists.md)).
 
 Soak f had 26 picture-by-picture requests, 10 with a midroll after them, 3.4 to 13.4 s later (B-044).
 
@@ -122,5 +122,5 @@ The worker made no media playlist request after 15:16:19, so the soak saw no bre
 
 ## Open
 
-- The pinned type at a break's end can be the 360p `picture-by-picture` master, and the next midroll starts on it (T-802).
+- The pinned type at a break's end could be the 360p `picture-by-picture` master, and the next midroll started on it: `picture-by-picture` is no longer pinned (T-802, [backup quality](2026-10-08-backup-quality-at-break-start.md)).
 - Logged in, and on channels outside the Brazilian directory.

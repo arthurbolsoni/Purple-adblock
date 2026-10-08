@@ -178,7 +178,8 @@ export class Player {
       if (backup.dump) dump.push(...backup.dump);
       if (backup.contaminated && !backup.data) this.contaminatedUntil.set(type, Date.now() + CONTAMINATED_MS);
       if (backup.data) {
-        if (type !== StreamType.AUTOPLAY) this.pinnedType = type;
+        // F-10: autoplay and picture-by-picture (360p) are never pinned (T-802: the next midroll started on the 360p master)
+        if (type !== StreamType.AUTOPLAY && type !== StreamType.PICTURE) this.pinnedType = type;
         this.emit({ type: "backupUsed", playerType: type, quality: backup.variant?.quality });
         return backup.data;
       }
