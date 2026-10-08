@@ -107,7 +107,8 @@
       targetDuration: number(lines, "#EXT-X-TARGETDURATION"),
       mediaSequence: number(lines, "#EXT-X-MEDIA-SEQUENCE"),
       segments: uris.length,
-      adSegments: titles.filter(isAdTitle).length,
+      // the 2.6.7 title markers, and with a stitched-ad marker any title other than "live" (T-203)
+      adSegments: adHosts.length,
       titles: unique(titles.map((t) => (isAdTitle(t) ? t.split("|")[0] + "|" : t).slice(0, 24))),
       durations: unique(lines.filter((l) => l.startsWith("#EXTINF:")).map((l) => l.slice(8).split(",")[0])),
       dateranges: unique(dateranges.map((l) => attr(l, "CLASS") || "-")),
