@@ -53,4 +53,4 @@ Midrolls only come up over hours of watching. A soak on this build is recorded i
 
 ## Open
 
-- The main playlist's own announcement (B-034) still passes untouched as `MARKED_LIVE` (T-202), with the prefetch lines to its first ad segments. Whether the player starts the ad overlay from it is not isolated (T-601).
+- The main playlist's own announcement (B-034) passes as `MARKED_LIVE` (T-202). Since 2026-10-08 its prefetch lines to the first ad segments go ([blank segments](2026-10-08-blank-segments.md#the-announced-breaks-prefetch-lines)). Whether the player starts the ad overlay from the announcement itself is not isolated (T-601).

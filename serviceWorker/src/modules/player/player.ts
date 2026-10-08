@@ -103,8 +103,16 @@ export class Player {
       this.emit({ type: "whitelisted" });
       return text;
     }
-    // T-202: markers over live segments: the ad comes client-side (F-04); no backup, no pause/play
-    if (detectAds(text).class === AdClass.MARKED_LIVE) return text;
+    // T-202: markers over live segments: the ad comes client-side (F-04); no backup, no pause/play.
+    // F-14: a stitched break announced past the last segment (B-034) ends with prefetch lines to its first ad segments,
+    // which the player fetched before the first poll with ad segments: they go, and their URIs are answered blank
+    if (detectAds(text).class === AdClass.MARKED_LIVE) {
+      if (this.setting?.stripFallback === false) return text;
+      const announced = blankAds(text, [], url);
+      if (!announced.uris.length) return text;
+      this.listBlank(announced.uris, announced.uris.length);
+      return announced.text;
+    }
     // is ads and is the principal stream
     if (!this.isAds(text, true)) {
       this.scope.logger("Stream is free");
@@ -141,11 +149,7 @@ export class Player {
     // F-14: the ad segments left are answered with the blank segment when the player requests them (stripFallback)
     if (!merged.remaining.length || this.setting?.stripFallback === false) return merged.text;
     const blanked = blankAds(merged.text, merged.remaining, url);
-    const now = Date.now();
-    const added = blanked.uris.slice(0, blanked.segments).filter((uri) => !this.isBlankSegment(uri)).length;
-    for (const [uri, at] of this.blankUris) if (now - at > BLANK_TTL_MS) this.blankUris.delete(uri);
-    for (const uri of blanked.uris) this.blankUris.set(uri, now);
-    if (added) this.emit({ type: "blankInserted", count: added });
+    this.listBlank(blanked.uris, blanked.segments);
     return blanked.text;
   }
 
@@ -208,6 +212,15 @@ export class Player {
   }
 
   isPlayerPlaylist = (url: string) => this.playerVariants.has(withoutQuery(url));
+
+  // F-14: `uris` are answered with the blank segment from now on; blankInserted counts the new ones among the first `counted`
+  private listBlank(uris: string[], counted: number) {
+    const now = Date.now();
+    const added = uris.slice(0, counted).filter((uri) => !this.isBlankSegment(uri)).length;
+    for (const [uri, at] of this.blankUris) if (now - at > BLANK_TTL_MS) this.blankUris.delete(uri);
+    for (const uri of uris) this.blankUris.set(uri, now);
+    if (added) this.emit({ type: "blankInserted", count: added });
+  }
 
   // F-14: an ad URI listed by a poll in the last BLANK_TTL_MS, answered with the blank segment instead of Twitch's
   isBlankSegment = (url: string) => {

@@ -24,7 +24,7 @@ The userscript has no content script or popup: `bundle.js` is the whole script a
    - `picture-by-picture` → `onChannelPicture` → stores the PbP stream and returns an empty response.
 6. `Player.onFetch` (classes from `ad-detector.ts`, T-201; with a stitched-ad marker, segments titled other than `live`, inside a `twitch-stitched-ad` range or under a non-live stream source are ads, T-203):
    - no stream stored for the channel (playlist before the usher) → original text;
-   - `MARKED_LIVE` (markers over live segments) → original text, no backup lookup, no pause/play (T-202);
+   - `MARKED_LIVE` (markers over live segments) → original text, no backup lookup, no pause/play (T-202); a stitched break announced past the last segment (B-034) loses the prefetch, preload and part lines after the announcement, and their URIs are answered blank (F-14);
    - channel on the whitelist → original text (never reached in 2.6.7, C-10; the worker keeps the `setSettings` value since T-602);
    - no ads → original text (T-101);
    - ads → walks `backupPlayerTypes` (F-09: `site`, `popout`, `frontpage`, `picture-by-picture`, `mobile_web`, `embed`, then `autoplay` as `android` with `lowQualityFallback`; T-405), variants read with `m3u8-parser` (T-104); the first clean backup replaces the whole playlist: no ad segment and no stitched-ad marker, so a backup announcing its own break is skipped (T-204); a type without one gets a new token and is left out of the chain for 5 s; the type of the last clean backup goes first (F-10, T-406);

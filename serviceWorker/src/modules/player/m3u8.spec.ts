@@ -234,6 +234,16 @@ describe("blankAds", () => {
     expect(blankAds(main, ads(main), URL).uris).not.toContain(`${SEG}init-main.mp4`);
   });
 
+  // a break announced after the last segment (B-034), with no ad segment yet: only its prefetch lines go
+  test("backup-announced-break with no ad segment: the two prefetch lines after the announcement go, the live one stays", () => {
+    const announced = fixture("m3u8/backup-announced-break.m3u8");
+    const result = blankAds(announced, [], URL);
+    expect(result.text.split("\n")).toEqual(announced.split("\n").filter((l) => !l.includes("/ad-3009.ts") && !l.includes("/ad-3010.ts")));
+    expect(result.text).toContain(`#EXT-X-TWITCH-PREFETCH:${SEG}backup-3008.ts`);
+    expect(result.uris).toEqual([`${SEG}ad-3009.ts`, `${SEG}ad-3010.ts`]);
+    expect(result.segments).toBe(0);
+  });
+
   test("relative URIs are resolved against the playlist URL", () => {
     const main = "#EXTM3U\n#EXT-X-PROGRAM-DATE-TIME:2026-10-03T12:00:00.000Z\n#EXTINF:2.000,Amazon|AD_ID\nad-1.ts\n";
     expect(blankAds(main, [0], URL).uris).toEqual(["https://video-weaver.example.hls.ttvnw.net/v1/playlist/ad-1.ts"]);

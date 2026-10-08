@@ -47,7 +47,12 @@ The preroll in L3-01 (userscript, dedicated profile, `/channel-c`; the direct lo
 
 The level 3 summary now has `adMedia`: the ad segments listed in the playlists the player got, how many it requested, and how many of those were fetched from the network versus answered in the worker. It comes from the worker log, where a URL the player requested with no `network` fetch was answered by Purple. L3-02, L3-03 and the soak report accept a break whose listed ad segments never reached the network.
 
+## The announced break's prefetch lines
+
+On the T-401 build, a midroll in L3-02 (`/channel-b`) failed the check above: the player fetched 2 of the 3 ad segments of the first poll with ad segments from the network ([page GQL headers](2026-10-08-page-gql-headers.md)). The two polls before it announced the break (B-034) and went to the player untouched as `MARKED_LIVE` (T-202). An announcement ends with two prefetch lines that point at the first ad segments, and those two segments are the ones fetched.
+
+Brave's script removes every prefetch line as soon as a playlist carries ad tags, announcement included ("LL-HLS prefetch/preload hints can point at upcoming ad segments before any EXTINF line or ad signifier has materialized in the playlist"). Purple now does the same for the prefetch, preload and part lines after a stitched-ad marker announced past the last segment: they go, and their URIs are answered blank. The rest of the announced playlist stays as Twitch sent it, with no backup lookup and no pause/play. A `MARKED_LIVE` playlist without such an announcement, such as a `twitch-maf-ad` slot, still comes back untouched. TS-502 covers it; the next soak checks it live.
+
 ## Open
 
 - What the player shows and how it recovers when a whole break is blank: Brave's script pairs the blank segment with a player reload at the end of the break (F-15, T-601).
-- The announced break in the main playlist still passes untouched (T-202), with the prefetch lines to its first ad segments ([ad segment coverage](2026-10-08-ad-segment-coverage.md#open)).

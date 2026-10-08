@@ -72,7 +72,7 @@ Three groups: strategies that already exist (E-xx, none is removed), fixes to ex
 | Class | Condition | Action |
 | --- | --- | --- |
 | `NONE` | no marker | original text |
-| `MARKED_LIVE` | playlist marker, no ad segment | original text; the ad arrives through CSAI and is handled by F-04 |
+| `MARKED_LIVE` | playlist marker, no ad segment | original text; the ad arrives through CSAI and is handled by F-04. When the marker is a stitched break announced past the last segment (B-034), its prefetch, preload and part lines go and are answered blank (F-14) |
 | `SSAI` | at least one ad segment | backup chain (E3, E4), merge (E5), blank segment (F-14) |
 
 A backup is usable when it has no ad segment and no stitched-ad marker (T-204). A backup with live segments under a stitched-ad marker announces its own break (B-034, B-036); it is skipped like one with ads (its server dropped, a new token for its type), and only its live segments serve the merge. Skipping was chosen over stripping the announcement:
@@ -93,7 +93,7 @@ The page `fetch` hook reads the request headers of the page's `gql.twitch.tv/gql
 
 ### F-14: blank segment
 
-As in Brave's script: the ad segments the merge left keep their lines in the playlist, and the worker answers their URIs with `BLANK_MP4`, an fMP4 init segment without samples (1137 bytes, copied with its source and notices in `blank-segment.ts`). Their requests never reach Twitch. The `EXT-X-MAP` only ad segments use is answered the same way. `EXT-X-PART` lines of an ad segment, and `EXT-X-PART`, `EXT-X-PRELOAD-HINT` and `EXT-X-TWITCH-PREFETCH` lines after an ad tail or a break announced after the last segment, are removed, and their URIs answered blank. A URI stays answered blank for 120 s after the last poll that listed it. `blankInserted` counts the segments blanked for the first time. With `stripFallback` off, the merged playlist goes to the player as it is.
+As in Brave's script: the ad segments the merge left keep their lines in the playlist, and the worker answers their URIs with `BLANK_MP4`, an fMP4 init segment without samples (1137 bytes, copied with its source and notices in `blank-segment.ts`). Their requests never reach Twitch. The `EXT-X-MAP` only ad segments use is answered the same way. `EXT-X-PART` lines of an ad segment, and `EXT-X-PART`, `EXT-X-PRELOAD-HINT` and `EXT-X-TWITCH-PREFETCH` lines after an ad tail or a break announced after the last segment, are removed, and their URIs answered blank. A break announced past the last segment of a `MARKED_LIVE` playlist (B-034) gets the same treatment for the prefetch, preload and part lines after the announcement, the rest of the playlist untouched. A URI stays answered blank for 120 s after the last poll that listed it. `blankInserted` counts the segments blanked for the first time. With `stripFallback` off, the merged playlist goes to the player as it is.
 
 ### F-10: pinned and contaminated types
 

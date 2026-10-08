@@ -568,6 +568,36 @@ describe("blank segments", () => {
     expect(blankEvents(worker)).toEqual([6]);
   });
 
+  // a main playlist announcing its break (B-034) is MARKED_LIVE (T-202), but its last prefetch lines point at the first
+  // ad segments: on twitch.tv the player fetched them before the first poll with ad segments
+  // (docs/findings/2026-10-08-page-gql-headers.md)
+  test("an announced break: its prefetch lines to ad segments go and are answered blank; no backup lookup, no pause/play", async () => {
+    const announced = fixture("m3u8/backup-announced-break.m3u8");
+    const AD_PREFETCH = "https://edge.j.cloudfront.hls.ttvnw.net/v1/segment/ad-3009.ts";
+    const worker = setup();
+    worker.twitch.mediaPlaylist(MAIN, announced);
+    worker.send("setSettings", { whitelist: [], toggleProxy: false, proxyUrl: "", debug: true });
+    await worker.text(USHER);
+
+    const delivered = await worker.text(MAIN);
+    expect(delivered.split("\n")).toEqual(announced.split("\n").filter((l) => !l.includes("/ad-3009.ts") && !l.includes("/ad-3010.ts")));
+    expect((await (await worker.fetch(AD_PREFETCH)).arrayBuffer()).byteLength).toBe(1137);
+    expect(worker.twitch.calls.filter((c) => c.url === AD_PREFETCH)).toEqual([]);
+    expect(blankEvents(worker)).toEqual([2]);
+    await Bun.sleep(5);
+    expect(worker.twitch.callsOf("gql")).toEqual([]);
+    expect(worker.posted.filter((m) => m.type === "pause" || m.type === "play")).toEqual([]);
+  });
+
+  test("stripFallback off: an announced break comes out identical", async () => {
+    const announced = fixture("m3u8/backup-announced-break.m3u8");
+    const worker = setup();
+    worker.twitch.mediaPlaylist(MAIN, announced);
+    worker.send("setSettings", { whitelist: [], toggleProxy: false, proxyUrl: "", stripFallback: false });
+    await worker.text(USHER);
+    expect(await worker.text(MAIN)).toBe(announced);
+  });
+
   test("stripFallback off: the ad segments are requested from Twitch", async () => {
     const worker = await prerollEverywhere({ stripFallback: false });
     await worker.text(MAIN);
