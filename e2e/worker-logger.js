@@ -4,6 +4,7 @@
 //   replaced self.fetch ("player"); URL without the query string, status or error
 // - "server": what Twitch answered, read from a clone of the network response before Purple sees it: a digest of
 //   masters and media playlists, and of PlaybackAccessToken responses (status, errors, token flags; no ids, no tokens)
+// - "serverText": full text of a media playlist from the server that carries ad markers
 // - "delivered": the digest of each media playlist the player got from Purple's hook; "playlist": its text
 // - "console": Purple's console lines and console errors; "error" and "rejection": uncaught ones
 (() => {
@@ -11,7 +12,7 @@
   const id = Math.random().toString(36).slice(2, 8);
   const post = (entry) => {
     try {
-      channel.postMessage(Object.assign({ worker: id, at: Math.round(performance.now()) }, entry));
+      channel.postMessage(Object.assign({ worker: id, at: Math.round(performance.now()), wall: Date.now() }, entry));
     } catch (e) {}
   };
   const urlOf = (input) => String((input && input.url) || input);
@@ -39,6 +40,7 @@
     const line = lines.find((l) => l.startsWith(tag + ":"));
     return line ? Number(line.slice(tag.length + 1)) : null;
   };
+  const AD_TEXT = /stitched|twitch-maf-ad|X-TV-TWITCH-AD-ROLL-TYPE|#EXTINF:[^\n]*(Amazon|DCM,)/;
   // Purple 2.6.7's markers in the segment title
   const isAdTitle = (title) => title.includes("Amazon") || title.includes("stitched") || title.includes("DCM,");
 
@@ -126,7 +128,11 @@
       response
         .clone()
         .text()
-        .then((body) => post(Object.assign(entry, { playlist: response.ok ? digest(body) : null })), () => post(entry));
+        .then((body) => {
+          post(Object.assign(entry, { playlist: response.ok ? digest(body) : null }));
+          // full text of a media playlist with ad markers ("serverText"), for the soak recordings
+          if (response.ok && !body.includes("#EXT-X-STREAM-INF") && AD_TEXT.test(body)) post({ kind: "serverText", url, text: body.slice(0, 100000) });
+        }, () => post(entry));
     } else if (u.host === "gql.twitch.tv" && u.pathname === "/gql") {
       let request = [];
       try {

@@ -3,7 +3,7 @@
 // Same worker checks as docs/findings/probes/worker_boot_probe.py, plus a log from inside each worker.
 (() => {
   if (window.__e2e) return;
-  const state = (window.__e2e = { workers: [], messages: [], hookAt: null, workerLog: [], media: [], playlists: [], server: [], delivered: [], csai: [] });
+  const state = (window.__e2e = { workers: [], messages: [], hookAt: null, workerLog: [], media: [], playlists: [], server: [], delivered: [], csai: [], serverTexts: [] });
   const LOG_LIMIT = 2000;
   const now = () => Math.round(performance.now());
 
@@ -38,6 +38,10 @@
       // the last 60 only
       state.playlists.push(e.data);
       if (state.playlists.length > 60) state.playlists.shift();
+    } else if (kind === "serverText") {
+      // the last 300 only
+      state.serverTexts.push(e.data);
+      if (state.serverTexts.length > 300) state.serverTexts.shift();
     } else if (kind === "server" || kind === "delivered") {
       if (state[kind].length < 3000) state[kind].push(e.data);
     } else if (state.workerLog.length < LOG_LIMIT) state.workerLog.push(e.data);
@@ -49,10 +53,75 @@
       for (const entry of list.getEntries()) {
         if (!entry.name.includes("edge.ads.twitch.tv")) continue;
         const u = new URL(entry.name);
-        state.csai.push({ at: Math.round(entry.startTime), path: u.pathname, bp: u.searchParams.get("bp"), queryKeys: [...u.searchParams.keys()].sort() });
+        state.csai.push({
+          at: Math.round(entry.startTime),
+          wall: Math.round(performance.timeOrigin + entry.startTime),
+          path: u.pathname,
+          bp: u.searchParams.get("bp"),
+          queryKeys: [...u.searchParams.keys()].sort(),
+          initiator: entry.initiatorType,
+          status: entry.responseStatus,
+          duration: Math.round(entry.duration),
+        });
       }
     }).observe({ type: "resource", buffered: true });
   } catch (e) {}
+
+  // what edge.ads.twitch.tv answered the page: a digest of the body (VAST tags and counts, no ids or URLs)
+  state.csaiAnswers = [];
+  // structure of a JSON answer: keys and value types down to depth 4, array lengths; no values
+  const shape = (value, depth = 0) => {
+    if (Array.isArray(value)) return depth > 3 ? `array(${value.length})` : [`array(${value.length})`, ...value.slice(0, 1).map((v) => shape(v, depth + 1))];
+    if (value && typeof value === "object") {
+      if (depth > 3) return "object";
+      return Object.fromEntries(Object.keys(value).slice(0, 60).map((k) => [k, shape(value[k], depth + 1)]));
+    }
+    return value === null ? "null" : typeof value;
+  };
+  const vast = (body) => {
+    let json = null;
+    try {
+      if (/^\s*[[{]/.test(body)) json = shape(JSON.parse(body));
+    } catch (e) {}
+    const count = (re) => (body.match(re) || []).length;
+    const values = (re) => [...new Set([...body.matchAll(re)].map((m) => m[1].trim()))].slice(0, 20);
+    return {
+      length: body.length,
+      json,
+      ads: count(/<Ad[\s>]/g),
+      inline: count(/<InLine[\s>]/g),
+      wrappers: count(/<Wrapper[\s>]/g),
+      creatives: count(/<Creative[\s>]/g),
+      mediaFiles: count(/<MediaFile[\s>]/g),
+      mediaTypes: values(/<MediaFile[^>]*type="([^"]*)"/g),
+      durations: values(/<Duration>\s*([^<]*)</g),
+      adSystems: values(/<AdSystem[^>]*>\s*(?:<!\[CDATA\[)?([^<\]]*)/g),
+      extensions: values(/<Extension[^>]*type="([^"]*)"/g),
+      errors: count(/<Error[\s>]/g),
+    };
+  };
+  const answer = (url, status, body) => {
+    try {
+      const u = new URL(url, location.href);
+      if (state.csaiAnswers.length < 200) state.csaiAnswers.push({ wall: Date.now(), path: u.pathname, bp: u.searchParams.get("bp"), status, body: vast(body || "") });
+    } catch (e) {}
+  };
+  const nativeFetch = window.fetch;
+  window.fetch = function (input, init) {
+    const url = String((input && input.url) || input);
+    const result = nativeFetch.apply(this, arguments);
+    if (url.includes("edge.ads.twitch.tv")) {
+      result.then((r) => r.clone().text().then((body) => answer(url, r.status, body)), (err) => answer(url, "error: " + err, ""));
+    }
+    return result;
+  };
+  const nativeOpen = XMLHttpRequest.prototype.open;
+  XMLHttpRequest.prototype.open = function (method, url, ...rest) {
+    if (String(url).includes("edge.ads.twitch.tv")) {
+      this.addEventListener("loadend", () => answer(String(url), this.status, this.responseType === "" || this.responseType === "text" ? this.responseText : ""));
+    }
+    return nativeOpen.call(this, method, url, ...rest);
+  };
 
   // Wraps the native Worker. Per worker: creation time, whether it came through Purple's injector
   // (Purple's class extends this proxy, so newTarget is not the proxy), whether its script holds

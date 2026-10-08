@@ -15,5 +15,5 @@ class Check:
 
 
 def registry():
-    from scenarios import l3_01, l3_02, l3_08
-    return {m.ID: m for m in (l3_01, l3_02, l3_08)}
+    from scenarios import l3_01, l3_02, l3_03, l3_08
+    return {m.ID: m for m in (l3_01, l3_02, l3_03, l3_08)}

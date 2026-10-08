@@ -47,6 +47,7 @@ All video endpoints are requested from the player worker. In Edge they are visib
 | --- | --- | --- |
 | CSAI requests | `edge.ads.twitch.tv`, query `bp=preroll` or `bp=midroll` | Reported (B-011) |
 | From the directory page | `GET /ads/format`, then `GET /ads`, `bp=midroll`; query keys `afmt`, `aid`, `bp`, `cb`, `did`, `dt`, `dur`, `gdprl`, `geoc`, `pbid`, `pid`, `pj`, `plat`, `sid`, `tcor`, `u`, `ulang`, `ws` (`/ads` adds `vtype`) | Observed (B-025) |
+| From a channel page, after a `twitch-maf-ad` marker | `GET /ads`, `bp=midroll`, 4 per marker; answers 204 (empty), 200 VAST XML (inline video ads), or 200 JSON with an HTML display creative (keys `creativeHtml`, `imp`, `width`, `height`, `cat`, `adv`, `crid`, `returnedAdFormat`, `updatedMafsDecision`, `transparencyInfo`, `adId`, `programId`, `adFeedbackInfo`, `creativeCfId`, `radsToken`) | Observed (B-033) |
 
 ## Player assets
 

@@ -43,6 +43,8 @@ Not seen in that session: `#EXT-X-TWITCH-PREFETCH`, `#EXT-X-PART`, `#EXT-X-PRELO
 | `EXT-X-MAP` | on the enhanced-broadcast channel only, AVC in fMP4 (B-023) |
 | `DATERANGE` attributes | `timestamp`: `X-SERVER-TIME`; `twitch-session`: `X-TV-TWITCH-SESSIONID`; `twitch-stream-source`: `X-TV-TWITCH-STREAM-SOURCE`; `twitch-trigger`: `X-TV-TWITCH-TRIGGER-URL` (B-021); all with `ID`, `START-DATE`, `END-ON-NEXT` |
 
+2026-10-07 and 08, soak sessions ([finding](../findings/2026-10-07-midroll-soak.md)): two more `DATERANGE` classes on live playlists, `twitch-maf-ad` (client-side ad slot, B-032) and `twitch-assignment` (`X-TV-TWITCH-CLUSTER`, `X-TV-TWITCH-NODE`, `X-TV-TWITCH-SERVING-ID`, no ad, B-038); `X-TV-TWITCH-STREAM-SOURCE` is `live` on live segments and the ad's title on ad segments (B-035); a playlist inside a break can hold up to 50 segments at a fixed `MEDIA-SEQUENCE` (B-034, B-039).
+
 ## Segment URIs
 
 - Absolute URLs on `*.j.cloudfront.hls.ttvnw.net`, `.ts`.

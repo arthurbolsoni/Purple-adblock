@@ -320,13 +320,21 @@ Recorder (T-005):
 - writes to `~/purple-recordings/<date>-<channel>/` (`manifest.json` + bodies), outside the repo; recordings carry tokens, ad ids and Twitch media and are never committed;
 - sanitized excerpts (no tokens, ids or media) go to `docs/server/` and, as playlists, to level 1 fixtures through `harness/sanitize.ts`.
 
+Long runs (`e2e/soak.py`): one Edge per session on a fresh temporary profile, in any mode, watching a live channel until a set time; several sessions run in parallel as separate processes and avoid each other's channels. Every 30 s the session empties `window.__e2e` (and `window.__purple.events` with `--debug`) into JSONL files under `~/purple-recordings/<date>-soak/<session>/`, together with a page monitor (ad overlay, player error, video progress, `<video>` elements, ad or picture-by-picture elements, sampled every second). The worker logger also keeps the full text of every server media playlist with ad markers (`serverText`). Breaks on the main stream and `edge.ads.twitch.tv` requests are logged as they happen; the channel changes when it goes offline, the player fails for 3 minutes, the page moves (raid), or after `--rotate` minutes without a break. `e2e/soak_report.py <dir>` prints watch time per channel and every break poll by poll, without ids, tokens or URLs.
+
+```bash
+python e2e/soak.py ext-a --mode extension --debug --until 02:30 --slot 0
+python e2e/soak.py rec-c --mode record --until 02:30 --slot 2
+python e2e/soak_report.py ~/purple-recordings/2026-10-07-soak
+```
+
 Ads are not deterministic. Every scenario asserts what always holds (hook installed, playback, no player error); ad-specific checks apply to the breaks recorded during the run.
 
 | ID | Scenario | Mode | Asserts | Covers |
 | --- | --- | --- | --- | --- |
 | L3-01 | Open a live channel picked from the directory, by direct load and by client-side navigation; channels behind the content classification gate are skipped | extension, userscript | every player worker created through the injector and running Purple's code (boot message seen); video playing; no player error | E1, T-101, T-103, T-107, T-111 |
 | L3-02 | Preroll (TR-001, TR-005: fresh profile per run, a random channel among the first directory cards, 40 s watched) | extension | every player worker runs Purple; no player error; video playing at the end; for a break recorded in the main stream: no ad overlay in any second and no ad segment in the playlists the player got | F-02 to F-14 |
-| L3-03 | Soak: one channel for 20 minutes (TR-002) | extension | every recorded break ends with a backup, a merge or blank segments; no player error | midrolls, T-601 |
+| L3-03 | Soak: one channel for 20 minutes (TR-002), fresh profile, recorded like `e2e/soak.py` | extension | player progressing at the end; every break recorded on the main stream reached the player without ad segments (a backup, a merge or blank segments) | midrolls, T-601 |
 | L3-04 | HEVC/AV1 channel (TR-006) | extension | master has an HEVC or AV1 variant; video playing; no player error | T-101, T-407 |
 | L3-05 | Popout player (TR-003) | extension | L3-01 checks on the popout URL | F-12 |
 | L3-06 | Switch channel by clicking, without reload (TR-004) | extension | second channel playing; events tagged with the new channel | T-107 |
