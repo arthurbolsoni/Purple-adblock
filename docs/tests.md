@@ -322,6 +322,7 @@ An isolated local page runs the real player with Purple against `sim/`, our Rust
 | L2-06 | HEVC in fMP4 with `EXT-X-MAP` | Q-007 (until observed) | video playing; no player error (issue #105) | T-101, T-407 |
 | L2-07 | GQL errors: `PersistedQueryNotFound`, `embed` server error | B-014, B-015 | fallback query used; next `playerType` tried | T-403 |
 | L2-08 | L2-02 to L2-05 without Purple | - | ad URIs requested (control case) | - |
+| L2-09 | L2-03's midroll with every backup 3 segments behind the stream clock (`sim/` `lag`, B-048); `L2_09_SCENARIO` runs the same checks on another scenario | B-048 | as L2-03 for the break and the video; the longest still stretch and the `waiting` events in the details | T-804 |
 
 ## Level 3: live site
 
@@ -359,6 +360,7 @@ Ads are not deterministic. Every scenario asserts what always holds (hook instal
 | L3-10 | Behavior hunt: `python e2e/record.py <channel or -> --seconds N [--fresh-profile] [--technique TR-xxx]` with Purple off, techniques chosen for open questions; `python docs/findings/probes/record_manifest_probe.py <recording>` reads it | record | new finding written; behaviors and questions updated | `docs/server/` |
 | L3-11 | Reload at the end of a break (`reloadAfterAd` set in storage before the channel opens; fresh profile, random directory channel, 60 s watched) | extension | every player worker runs Purple; video playing at the end; no player error; for a break Purple handled that ended in the run: `reloadRequested`, then `playerReloaded` with `ok`, no ad overlay; seconds the video stood still in the details | T-601 |
 | L3-12 | Break edges with the pause/play wait set in storage from `PURPLE_PAUSE_DELAY_MS` (default 0; fresh profile, random directory channel, 60 s watched) | extension | every player worker runs Purple; video playing at the end; no player error; the video plays again within 5 s of each edge; no ad overlay for a break recorded in the main stream; each edge (worker `pause`, `<video>` `pause` and `playing`, `currentTime`) in the details | T-604 |
+| L3-13 | Player reload kinds at the end of a break, run by the scenario from the page (`PURPLE_RELOAD_KIND`: `soft`, `soft-late`, `token`, `instance`; Purple's own reload off; fresh profile, random directory channel) | extension | every player worker runs Purple; the page found the player and reloaded it; video playing at the end; no player error; whether the main playlist had ad segments again after the reload, and the roll type, in the details | T-808 |
 
 Before ticking a task that changes behavior on twitch.tv (phases 1 to 6), run its level 2 scenarios and the level 3 scenarios in its Covers column. Before a release, run all of them. Results go in the PR description.
 

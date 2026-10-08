@@ -18,7 +18,10 @@ The first backup, the blank segments and the token requests compared in the prew
 
 C-13: `index.ts` keeps the first player the page creates in a worker. A later `create` in the same worker does not change it, and a `delete` of that player (the message the IVS SDK sends when a player is destroyed) lets the next `create` take over. Tests in `serviceWorker/test/integration/page.int.spec.ts`: a picture-by-picture player created after player 1 does not take pause and play, also after its own `delete`; after the first player's `delete`, the next player created does. The recorder also logs `delete` now.
 
+## Live check
+
+Soak g (2026-10-08 from 19:42, the C-13 build, 2 sessions): on `/channel-h` the page created the picture-by-picture player (id 2) at 20:12:42, the midroll started at 20:12:52, Purple's pause and play at its edges went to player 1, no picture-by-picture request followed, and the page deleted player 2 at 20:13:23. On `/channel-l` the page created players 2, 3 and 4 at three picture-by-picture requests with no midroll after them, and deleted each 41 s later.
+
 ## Open
 
-- A soak on the C-13 build: pause and play to player 1 at the midroll edges, and no picture-by-picture request right after them (T-801).
-- Whether the main player's video stopped longer at the midroll edges of soaks e and f, without E6, than in soak d.
+- Whether E6 is needed at midroll edges: in soak f, without it on the main player, midrolls stood still 0 s, against about 1 s with it (T-809).

@@ -1,0 +1,11 @@
+{
+  "id": "L2-09",
+  "description": "SSAI midroll 30 s into the session as in L2-03; site and popout tokens get the break, each on its own timeline; every token but popout (the page's, F-12) plays 3 segments behind the stream clock (B-048: a backup 1 to 5 segments behind the main playlist at a midroll's start)",
+  "channel": "simchannel",
+  "variants": [
+    { "name": "720p30", "resolution": "1280x720", "bandwidth": 3000000, "codecs": "avc1.4D401F,mp4a.40.2", "live": "live-720p", "ad": "ad-720p" },
+    { "name": "360p30", "resolution": "640x360", "bandwidth": 800000, "codecs": "avc1.4D401E,mp4a.40.2", "live": "live-360p", "ad": "ad-360p" }
+  ],
+  "breaks": [{ "at": 15, "segments": 8, "roll": "MIDROLL", "title": "3935266624" }],
+  "playerTypes": { "default": { "breaks": false, "lag": 3 }, "site": { "breaks": true, "lag": 3 }, "popout": { "breaks": true } }
+}

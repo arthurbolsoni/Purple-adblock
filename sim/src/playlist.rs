@@ -21,6 +21,8 @@ pub struct Timeline {
     pub first: i64,
     /// Whether the scenario's breaks apply to this token (its playerType).
     pub breaks: bool,
+    /// Segments its playlists end behind the stream clock (the scenario's `lag` for its playerType, B-048).
+    pub lag: i64,
 }
 
 /// Number of files in a rendition folder, for the media loop (a discontinuity where it wraps).
@@ -111,7 +113,7 @@ fn map_uri(t: &Timeline, v: &Variant, ad: bool) -> String {
 /// The media playlist a token's player gets at `now_ms`, and the segment URIs it lists (with their ad flag).
 pub fn media(scenario: &Scenario, v: &Variant, t: &Timeline, counts: Counts, now_ms: i64) -> (String, Vec<Listed>) {
     let seg = segment_ms(scenario);
-    let last = newest(scenario, t.epoch_ms, now_ms);
+    let last = newest(scenario, t.epoch_ms, now_ms) - t.lag;
     let first = last - scenario.window as i64 + 1;
     // B-034: once a break is over (the newest segment past it), the playlist is live again over its whole window,
     // the positions the ads took included: the broadcast went on under the break
@@ -299,7 +301,7 @@ mod tests {
     const COUNTS: Counts = Counts { live: 30, ad: 15 };
 
     fn timeline(breaks: bool) -> Timeline {
-        Timeline { session: 7, epoch_ms: EPOCH, first: 100, breaks }
+        Timeline { session: 7, epoch_ms: EPOCH, first: 100, breaks, lag: 0 }
     }
 
     fn preroll() -> Break {
@@ -413,9 +415,21 @@ mod tests {
     fn backups_share_the_stream_clock() {
         let s = scenario(vec![preroll()], false);
         let main = media(&s, &s.variants[0], &timeline(true), COUNTS, EPOCH + 112 * 2000).0;
-        let backup = media(&s, &s.variants[0], &Timeline { session: 8, epoch_ms: EPOCH, first: 110, breaks: false }, COUNTS, EPOCH + 112 * 2000).0;
+        let backup = media(&s, &s.variants[0], &Timeline { session: 8, epoch_ms: EPOCH, first: 110, breaks: false, lag: 0 }, COUNTS, EPOCH + 112 * 2000).0;
         let dates = |t: &str| t.lines().filter(|l| l.starts_with("#EXT-X-PROGRAM-DATE-TIME")).map(String::from).collect::<Vec<_>>();
         assert_eq!(dates(&main), dates(&backup));
+    }
+
+    #[test]
+    fn a_lagging_token_ends_its_playlist_behind_the_stream_clock() {
+        let s = scenario(vec![], false);
+        let now = EPOCH + 130 * 2000;
+        let sequence = |lag: i64| {
+            let t = Timeline { session: 9, epoch_ms: EPOCH, first: 100, breaks: false, lag };
+            let text = media(&s, &s.variants[0], &t, COUNTS, now).0;
+            text.lines().find_map(|l| l.strip_prefix("#EXT-X-MEDIA-SEQUENCE:")).unwrap().parse::<i64>().unwrap()
+        };
+        assert_eq!(sequence(0) - sequence(3), 3);
     }
 
     #[test]

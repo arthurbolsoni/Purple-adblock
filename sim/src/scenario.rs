@@ -80,6 +80,9 @@ pub enum BreakKind {
 pub struct PlayerType {
     #[serde(default = "yes")]
     pub breaks: bool,
+    /// Segments this type's playlists end behind the stream clock (B-048: a backup 1 to 5 behind the main playlist).
+    #[serde(default)]
+    pub lag: u64,
 }
 
 #[derive(Clone, Debug, Default, Deserialize, Serialize, PartialEq)]
@@ -117,6 +120,15 @@ impl Scenario {
             .or_else(|| self.player_types.get("default"))
             .map(|p| p.breaks)
             .unwrap_or(true)
+    }
+
+    /// Segments the playlists of `player_type` end behind the stream clock (0 unless the scenario sets `lag`).
+    pub fn lag_for(&self, player_type: &str) -> u64 {
+        self.player_types
+            .get(player_type)
+            .or_else(|| self.player_types.get("default"))
+            .map(|p| p.lag)
+            .unwrap_or(0)
     }
 
     pub fn variant(&self, name: &str) -> Option<&Variant> {
@@ -166,10 +178,18 @@ mod tests {
     #[test]
     fn player_types_fall_back_to_default_then_to_breaks() {
         let mut s = Scenario::from_json(MINIMAL).unwrap();
-        s.player_types.insert("default".into(), PlayerType { breaks: false });
-        s.player_types.insert("site".into(), PlayerType { breaks: true });
+        s.player_types.insert("default".into(), PlayerType { breaks: false, lag: 0 });
+        s.player_types.insert("site".into(), PlayerType { breaks: true, lag: 0 });
         assert!(s.breaks_for("site"));
         assert!(!s.breaks_for("frontpage"));
+    }
+
+    #[test]
+    fn lag_is_read_per_player_type_with_the_default_and_zero_otherwise() {
+        let text = MINIMAL.replace(r#""variants""#, r#""playerTypes":{"default":{"breaks":false,"lag":3},"site":{"breaks":true}},"variants""#);
+        let s = Scenario::from_json(&text).unwrap();
+        assert_eq!((s.lag_for("frontpage"), s.lag_for("site")), (3, 0));
+        assert_eq!(Scenario::from_json(MINIMAL).unwrap().lag_for("site"), 0);
     }
 
     #[test]

@@ -52,6 +52,7 @@ class Sim:
         self.base = f'http://127.0.0.1:{port}'
         self.bridged = []  # (method, url, status) of every request answered through the bridge
         self.errors = []
+        self.cancelled = []  # URLs the page cancelled before the answer reached it (not an error)
 
     def call(self, method, path, body=None):
         request = urllib.request.Request(self.base + path, data=body, method=method)
@@ -98,6 +99,11 @@ class Sim:
                 entries = [cdp.fetch.HeaderEntry(name=k, value=v) for k, v in headers.items() if k.lower() not in ('content-length', 'connection', 'transfer-encoding', 'date')]
                 await tab.send(cdp.fetch.fulfill_request(event.request_id, response_code=status, response_headers=entries, body=base64.b64encode(data).decode()))
             except Exception as error:
+                # the page cancelled the request while sim/ answered it (the player restarting at a pause/play):
+                # nothing is waiting for the answer
+                if 'Invalid InterceptionId' in str(error):
+                    self.cancelled.append(url)
+                    return
                 self.errors.append(f'{url[:120]}: {error}'[:300])
                 try:
                     await tab.send(cdp.fetch.fail_request(event.request_id, cdp.network.ErrorReason.FAILED))

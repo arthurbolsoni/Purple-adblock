@@ -17,7 +17,7 @@ Phases run in order. Inside a phase, the "Depends on" column says what must come
 | 5. Playlist assembly | T-501, T-502 | T-101, T-201 |
 | 6. Player control and settings | T-601 to T-604 | T-107, T-201 |
 | 7. Build and release | T-701, T-702 | Phase 0 |
-| 8. Investigations | T-801 to T-808 | - |
+| 8. Investigations | T-801 to T-810 | - |
 
 ## Phase 0: test base
 
@@ -457,7 +457,7 @@ Runs in parallel with phases 1 to 7. Phase 1 to 6 tasks list L2/L3 scenarios tha
 Odd behaviors seen in the runs. Each task ends with its cause in a finding (and in `docs/server/` when it is the server's), and a fix task when Purple causes it.
 
 ### T-801 Second picture-by-picture request at each midroll
-- [~] Status · C-13 · 2026-10-08: cause found and fixed in code. Since C-12, E6 pause/play went to the picture-by-picture player the page creates in the main player's worker (B-051); that player asked for a new master 0.2 to 0.4 s later (13 of 13 in soaks e and f). Now the first player the page creates in a worker keeps pause/play until the page deletes it. The live check is open ([finding](findings/2026-10-08-pbyp-player-pause.md))
+- [x] Status · C-13 · done 2026-10-08: since C-12, E6 pause/play went to the picture-by-picture player the page creates in the main player's worker (B-051); that player asked for a new master 0.2 to 0.4 s later (13 of 13 in soaks e and f). Now the first player the page creates in a worker keeps pause/play until the page deletes it. Soak g on the fix: at the `/channel-h` midroll pause/play went to player 1, no picture-by-picture request followed, and the page deleted player 2 41 s after creating it ([finding](findings/2026-10-08-pbyp-player-pause.md))
 - Origin: in soaks e and f a second picture-by-picture request came 8 to 11 s after each request a midroll followed; soak d had none ([prewarm backups](findings/2026-10-08-prewarm-backups.md#picture-by-picture-requests)).
 - Files: `serviceWorker/src/index.ts`, `e2e/recorder.js`
 - Done when:
@@ -480,7 +480,7 @@ Odd behaviors seen in the runs. Each task ends with its cause in a finding (and 
 - Tests: probe over the soak recordings; TS for any change
 
 ### T-804 The video waits 8 s inside a break after a backup behind the main playlist
-- [ ] Status · B-048
+- [x] Status · B-048 · done 2026-10-08: not reproduced. At level 2 (L2-09, `sim/` with backups 3 and 5 segments behind, 6 runs) the video never stood still; in soaks d to g it was the only stall of 7 s or more among 21 midrolls later in a load. The other long stalls came in breaks in the first 12 s after the page opened (T-810) ([finding](findings/2026-10-08-backup-behind.md))
 - Origin: soak d 09:44:54, 9 s into the break the `<video>` waited 8.1 s; just before, the first backup playlist had a `MEDIA-SEQUENCE` one below the main playlist's last poll ([pause length](findings/2026-10-08-pause-length.md#soak-d)).
 - Check: a level 2 scenario on `sim/` with a backup 1 to 5 segments behind at the break start.
 - Done when: reproduced or ruled out at level 2, with the cause in a finding; a fix task if Purple causes it.
@@ -506,6 +506,20 @@ Odd behaviors seen in the runs. Each task ends with its cause in a finding (and 
 - Check: backup playlists with ad segments in every break at a load across the soaks, by backup type and token age.
 - Done when: the rule is in `docs/server/`; a fix task if a backup type or a token timing avoids it.
 - Tests: probe over the soak recordings
+
+### T-809 Still video at midroll edges with E6 on the main player
+- [ ] Status · E6 · F-18
+- Origin: midrolls later in a load stood still 0 s in soak f, where E6's pause/play went to the picture-by-picture player (C-13), and about 1 s in soaks d and g, where they reached the main player; soak e, with the same C-13 bug, had 2 to 3 s ([backup behind](findings/2026-10-08-backup-behind.md#soaks)).
+- Check: midrolls with E6 on the main player (the C-13 build) and with E6 sent nowhere, on the same channels: still seconds, ad overlay, ad media reaching the player, and the player's position after each edge.
+- Done when: whether E6 is needed at midroll edges is in a finding; E6 stays (rule 2), and a change of when it runs goes behind a setting with its default recorded.
+- Tests: soak, L3-12
+
+### T-810 The video stands still 7 to 8 s in a break that starts right after the page opens
+- [ ] Status · E6
+- Origin: the four breaks that started 5 to 12 s after the page opened (soaks e and f) stood still 7 to 8 s; midrolls later in a load 0 to 3 s ([backup behind](findings/2026-10-08-backup-behind.md#soaks)).
+- Check: the same in record mode (no Purple) and with Purple, at the page load; what the player does in those seconds (first variant, E6 at the load, the break's first polls).
+- Done when: the cause is in a finding; a fix task if Purple causes it.
+- Tests: L3-02, soak
 
 ### T-808 New preroll after a player reload
 - [ ] Status · B-045 · Q-018
