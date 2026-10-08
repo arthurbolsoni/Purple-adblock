@@ -87,7 +87,7 @@ async def player_checks(tab, way, channel):
               {'workers': summary, 'hookAt': state['hookAt'], 'pageHook': state['pageHook']}),
         Check(f'{way}: video playing',
               video.get('readyState', 0) >= 3 and not video.get('paused', True) and advanced >= SAMPLE / 2,
-              {'video': video, 'advanced': advanced, 'workerLog': log, 'media': state['media'], 'playlists': state['playlists']}),
+              {'video': video, 'advanced': advanced, 'adOverlay': state['adOverlay'], 'workerLog': log, 'media': state['media'], 'playlists': state['playlists']}),
         Check(f'{way}: no player error', not state['playerError'] and not video.get('error'),
               {'overlay': state['playerError'], 'mediaError': video.get('error'), 'workerLog': log}),
     ]
