@@ -501,7 +501,7 @@ Odd behaviors seen in the runs. Each task ends with its cause in a finding (and 
 - Tests: L2 scenario
 
 ### T-807 Backups with ad segments in a break running at the channel load
-- [ ] Status · B-036
+- [x] Status · B-036 · done 2026-10-08: a backup token asked during a preroll, or when the page joins a running break, gets a preroll of its own (B-052): in the level 3 runs since T-401, backups had ad segments in 17 of 17 preroll loads (326 of 603 backup polls) and in 2 of 7 midroll loads (11 of 175). Purple drops those backups and blanks the ad segments left; no ad media reached the player. Per-type data is not recorded ([finding](findings/2026-10-08-backups-in-prerolls.md))
 - Origin: soak f 17:47:52 on `/channel-f`: the 5 backup playlists with a break had ad segments, while in midrolls no backup playlist had any since T-401 (B-036) ([prewarm backups](findings/2026-10-08-prewarm-backups.md#soak-f)).
 - Check: backup playlists with ad segments in every break at a load across the soaks, by backup type and token age.
 - Done when: the rule is in `docs/server/`; a fix task if a backup type or a token timing avoids it.
