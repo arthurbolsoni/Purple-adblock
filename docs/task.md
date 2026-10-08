@@ -362,7 +362,7 @@ Runs in parallel with phases 1 to 7. Phase 1 to 6 tasks list L2/L3 scenarios tha
 - Tests: TS-409, soak
 
 ### T-410 Prewarm only the types without a master
-- [~] Status · F-19 · 2026-10-08: the picture-by-picture route asks tokens only for the backup types with no stored master (TS-409); the soaks on several channels are open
+- [x] Status · F-19 · done 2026-10-08: the picture-by-picture route asks tokens only for the backup types with no stored master (TS-409). Soak f moved to another channel after each stitched midroll: at a channel's first midroll the first backup was `site` 720p with `prewarmBackups` (7 of 7 in soaks e and f) and the 360p `picture-by-picture` master without it (6 of 6 in soaks d and f), with the same blank segments; `prewarmBackups` is on by default ([finding](findings/2026-10-08-prewarm-backups.md#soak-f))
 - Origin: F-19 only changed the start of a channel's first midroll, when no backup type but `picture-by-picture` has a master (T-409); at every later page request it asks 7 tokens for types that already have one.
 - Files: `serviceWorker/src/modules/player/player.ts`
 - Done when:

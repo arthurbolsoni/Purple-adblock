@@ -11,7 +11,7 @@ Server-side ad insertion: ad segments are stitched into the media playlist the p
 - A preroll playlist can go on into a `MIDROLL` ad and then live segments, still at `MEDIA-SEQUENCE` 0, up to 42 segments (B-039).
 - Midroll stitched into the live playlist (2026-10-07, 1 break): announced 2 polls ahead at the end of the playlist (ad `DATERANGE` with a future `START-DATE`, `DISCONTINUITY`, the ad's `EXT-X-MAP`, a third prefetch line); ad segments are then appended while live ones leave; with no live segment left, `MEDIA-SEQUENCE` stops and the playlist grows until the pod is over; the live playlist then comes back further on (B-034).
 - A player reload with the same token right after a preroll can bring a new preroll (1 of 2 reloads, B-045).
-- The page requests a `picture-by-picture` master 3 to 11 s before each stitched midroll seen in the soaks; most of those requests (every 8 to 14 min) have no midroll after them (B-044). Two sessions on one channel get those requests at the same moments and the same midroll (B-049).
+- The page requests a `picture-by-picture` master 3 to 14 s before each stitched midroll seen in the soaks; most of those requests (every 8 to 14 min) have no midroll after them (B-044). Two sessions on one channel get those requests at the same moments and the same midroll (B-049).
 - Every stitched break in soaks d and e (14) began with 1 to 3 polls that only announced it (B-034), before the first poll with ad segments ([prewarm backups](../findings/2026-10-08-prewarm-backups.md#first-polls-of-a-midroll)).
 
 ## Markers

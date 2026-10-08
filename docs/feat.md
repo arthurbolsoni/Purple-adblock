@@ -58,7 +58,7 @@ Three groups: strategies that already exist (E-xx, none is removed), fixes to ex
 | F-16 | Settings applied without reloading the page | Purple | - | T-602 |
 | F-17 | Debug event log in the page (`window.__purple.events`), read by the browser tests | Purple | `debug = false` | T-110 |
 | F-18 | Wait between `pause` and `play` at the break edges (E6) from a setting | Purple | `pausePlayDelayMs = 0` | T-604 |
-| F-19 | Backup tokens requested when the page asks for a `picture-by-picture` master, a few seconds before a possible midroll (B-044). Soak e: the same blank segments, time to the first backup and token requests as without it; a 720p `site` first backup instead of the 360p `picture-by-picture` master at a channel's first midroll (1 break) ([finding](findings/2026-10-08-prewarm-backups.md)). Since T-410 only the backup types with no stored master get a token | Purple | `prewarmBackups = false` | T-409, T-410 |
+| F-19 | Backup tokens requested when the page asks for a `picture-by-picture` master, a few seconds before a possible midroll (B-044), only for the backup types with no stored master (T-410). Soak e: the same blank segments, time to the first backup and token requests as without it at later midrolls. Soaks e and f, a channel's first midroll: `site` 720p as the first backup with it (7 of 7), the 360p `picture-by-picture` master without it (6 of 6) ([finding](findings/2026-10-08-prewarm-backups.md)) | Purple | `prewarmBackups = true` (since T-410; `false` before) | T-409, T-410 |
 
 ### F-02: markers
 
@@ -156,7 +156,7 @@ The wait between `pause` and `play` at each break edge (F-15) comes from `pauseP
 | `stripFallback` | `boolean` | `true` | F-14 |
 | `reloadAfterAd` | `boolean` | `false` | F-15 |
 | `pausePlayDelayMs` | `number` | `0` | F-18 |
-| `prewarmBackups` | `boolean` | `false` | F-19 |
+| `prewarmBackups` | `boolean` | `true` | F-19 |
 
 The content script sends the stored `whitelist`, `toggleProxy`, `proxyUrl`, `debug`, `blockCsai`, `backupPlayerTypes`, `lowQualityFallback`, `pinBackupPlayerType`, `stripFallback`, `forcePopoutToken`, `reloadAfterAd`, `pausePlayDelayMs` and `prewarmBackups` when storage first answers, when a worker asks, and whenever one of them changes (T-602). The worker replaces its settings with each message it gets. The userscript uses the defaults.
 

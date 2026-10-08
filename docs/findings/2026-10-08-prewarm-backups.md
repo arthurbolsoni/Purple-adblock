@@ -1,4 +1,4 @@
-# Backup tokens at the page's picture-by-picture request (T-409)
+# Backup tokens at the page's picture-by-picture request (T-409, T-410)
 
 Date: 2026-10-08, 15:15 to 17:38 (soak e). Build: F-19 (`prewarmBackups`, `a23a025`), before T-410. Logged out, extension with `debug`, fresh profiles, `e2e/soak.py` with `--setting prewarmBackups=<true|false>`:
 
@@ -7,7 +7,7 @@ Date: 2026-10-08, 15:15 to 17:38 (soak e). Build: F-19 (`prewarmBackups`, `a23a0
 - `ext-b`: on, 80 min on `/channel-b`, which was offline (below); stopped at 16:36;
 - `ext-b2`: on, 16:37 to 17:38 (`--stop-after-breaks 3`, 60 min); it left `/channel-b` after 3.5 min with no live media playlist and watched `/channel-d`. The time limit came during its third midroll.
 
-Baseline without F-19: soak d of the same day ([pause length](2026-10-08-pause-length.md#soak-d)). Recordings: `~/purple-recordings/2026-10-08-soak-e` and `~/purple-recordings/2026-10-08-soak-d` (outside the repo). Probe: [`prewarm_probe.py`](probes/prewarm_probe.py).
+Soak f (T-410) is [below](#soak-f). Baseline without F-19: soak d of the same day ([pause length](2026-10-08-pause-length.md#soak-d)). Recordings: `~/purple-recordings/2026-10-08-soak-e` and `~/purple-recordings/2026-10-08-soak-d` (outside the repo). Probe: [`prewarm_probe.py`](probes/prewarm_probe.py).
 
 ## Picture-by-picture requests
 
@@ -56,18 +56,57 @@ At later midrolls every type still had a master from the previous break, and the
 
 ### Tokens asked before the break
 
-The tokens F-19 asked 5 to 9 s before a midroll got their own pod, like those asked during the break (B-036). In the three midrolls recorded in full, their playlists announced breaks of their own (12 to 14 per break), none had ad segments, and Purple moved between `site`, `popout` and `frontpage` within 20 s.
+The tokens F-19 asked 4.6 to 13.4 s before a midroll behaved like those asked during the break (B-036): the first backup from them gave way to another type 3.3 to 5.8 s after it started (soak e, 4 breaks; 2.7 to 5.6 s in the 6 of soak f). No backup playlist had ad segments. The recordings keep the hosts of a master's variants, not their URLs, so a backup playlist with a break announced cannot be traced to a token asked before or during the break.
 
-## Default
+### Soak e result
 
-`prewarmBackups` stays off.
+`prewarmBackups` stayed off after soak e.
 
 With it on:
 - the blank segments, the time to the first backup and the token requests during the break matched the same midroll with it off;
 - the first backup differed only at a channel's first midroll: `site` 720p60 in 1 break, against the `picture-by-picture` 360p master in 3 breaks without F-19;
 - F-19 asked 7 tokens at 14 page requests, and 4 of them had a midroll after them.
 
-Since T-410, F-19 asks tokens only for the types with no stored master.
+## Soak f
+
+Date: 2026-10-08, 17:42 to 18:33. Build: T-410 (`3b47008`): F-19 asks tokens only for the backup types with no stored master. Logged out, extension with `debug`, fresh profiles, `e2e/soak.py --leave-after-breaks 1 --rotate 30`, so each session moved to another channel after each stitched break:
+
+- `ext-a`, then `ext-a2`: on, 1 and 3 stitched breaks;
+- `ext-c`, then `ext-c2`: on, 2 and 3 stitched breaks;
+- `ext-b`, then `ext-b2`: off, 0 and 3 stitched breaks; `ext-b2` was stopped at 18:33.
+
+The first sessions were restarted at 17:48: `soak.py` had not counted a stitched midroll that started inside a `twitch-maf-ad` slot (`ac51fff`).
+
+### A channel's first midroll
+
+Every midroll below is the first break of a channel load and came after a picture-by-picture request. "After the request" counts the seconds from that request to the break's first poll. The first backup's seconds count from the break's first poll, and every break had 2 blank segments, the two announced prefetch URIs. "Tokens" are the token requests in the 30 s before the break and during it.
+
+| Soak | Session | F-19 | Channel | Midroll | After the request | First backup | Tokens before / during |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| e | `ext-b2` | on | `/channel-d` | 17:17:48 | 5.2 s | `site` 720p60, 3.4 s | 7 / 11 |
+| f | `ext-a` | on | `/channel-ac` | 17:44:47 | 4.6 s | `site` 720p, 3.6 s | 6 / 16 |
+| f | `ext-c` | on | `/channel-l` | 17:45:42 | 13.4 s | `site` 720p60, 4.4 s | 6 / 17 |
+| f | `ext-c2` | on | `/channel-t` | 18:04:17 | 3.4 s | `site` 720p, 2.4 s | 0 / 12 |
+| f | `ext-c2` | on | `/channel-g` | 18:14:50 | 7.8 s | `site` 720p60, 2.6 s | 6 / 12 |
+| f | `ext-a2` | on | `/channel-p` | 18:19:05 | 4.7 s | `site` 720p60, 2.2 s | 6 / 10 |
+| f | `ext-c2` | on | `/channel-o` | 18:19:07 | 9.6 s | `site` 720p, 2.3 s | 6 / 12 |
+| f | `ext-a2` | on | `/channel-af` | 18:29:23 | 10.6 s | `site` 720p, 2.4 s | 6 / 13 |
+| d | `ext-a` | off | `/channel-a` | 10:56:15 | 7.6 s | `picture-by-picture` 360p30, 2.2 s | 0 / 16 |
+| d | `ext-c` | off | `/channel-a` | 10:56:13 | 4.6 s | `picture-by-picture` 360p30, 2.1 s | 0 / 17 |
+| d | `ext-b` | off | `/channel-b` | 09:36:58 | 8.5 s | `picture-by-picture` 360p, 2.5 s | 0 / 24 |
+| f | `ext-b2` | off | `/channel-d` | 17:57:48 | 5.9 s | `picture-by-picture` 360p, 2.4 s | 0 / 12 |
+| f | `ext-b2` | off | `/channel-o` | 18:09:03 | 5.0 s | `picture-by-picture` 360p, 2.4 s | 0 / 27 |
+| f | `ext-b2` | off | `/channel-h` | 18:12:48 | 5.3 s | `picture-by-picture` 360p, 2.3 s | 0 / 20 |
+
+In soak f, F-19 asked 6 tokens once per channel load (every backup type but `picture-by-picture`, whose master E10 had stored), at the load's first picture-by-picture request. On `/channel-t` that request, at 17:56:14, had no midroll after it, and the next one, at 18:04:14, found every type stored and asked none. Without F-19, Purple asked the same types at the first poll with ad segments, and played the stored `picture-by-picture` master in the meantime. In the 20 s after the start, both moved on between `site`, `popout` and `frontpage` as those announced breaks of their own; no backup playlist had ad segments.
+
+Two breaks were already running when the page opened (`/channel-f` 17:47:52, `/channel-k` 18:30:38) and had no request before them. Their first backup was `site` 720p after 2.4 s with 3 blank segments, and `site` 160p after 3.4 s with 6. On `/channel-f` the 5 backup playlists with a break had ad segments, as in the prerolls of 2026-10-07 ([backups](2026-10-07-backups-and-rewritten-playlists.md)).
+
+Soak f had 26 picture-by-picture requests, 10 with a midroll after them, 3.4 to 13.4 s later (B-044).
+
+## Default
+
+`prewarmBackups` is on since T-410. At a channel's first midroll after a picture-by-picture request, the first backup was `site` 720p with it (8 of 8, soaks e and f) and the 360p `picture-by-picture` master without it (6 of 6, soaks d and f). The blank segments were the same. The time to the first backup was 2.2 to 4.4 s with it and 2.1 to 2.5 s without. The token requests from 30 s before the break to its end were 12 to 23 with it and 12 to 27 without.
 
 ## Offline channel
 
@@ -83,5 +122,5 @@ The worker made no media playlist request after 15:16:19, so the soak saw no bre
 
 ## Open
 
-- The first backup at a channel's first midroll with F-19, on more channels (1 break so far), with the T-410 build (T-410).
 - The pinned type at a break's end can be the 360p `picture-by-picture` master, and the next midroll starts on it.
+- Logged in, and on channels outside the Brazilian directory.

@@ -5,7 +5,7 @@ Usage: python docs/findings/probes/prewarm_probe.py <soak folder>...
 Per extension session (debug on):
 - every picture-by-picture master the page asked for (worker log "picture-by-picture master stored") and the seconds
   to the next break start, when one starts within 15 s;
-- per break (adDetected or blankInserted events less than 60 s apart; the first poll with ads can insert a blank
+- per break (adDetected or blankInserted events less than 60 s apart on one channel load; the first poll with ads can insert a blank
   segment before any adDetected): the channel and load, whether it is the load's first break and whether a
   picture-by-picture request came in the 15 s before it (a midroll, not a break already running at the load), what
   the player got in its first 1.5 s (a backup, blank segments, or both), the first
@@ -42,17 +42,17 @@ for folder in sys.argv[1:]:
                         for s in server if s.get('gql') for op in s['gql'] if str(op.get('operation') or '').startswith('PlaybackAccessToken'))
         backup_marks = sorted((wall(m['wall']), (m.get('ads') or 0) > 0) for m in rows(d / 'marks.jsonl') if m.get('role') == 'backup' and m.get('wall'))
         pictures = [e['wall'] for e in rows(d / 'workerLog.jsonl') if 'picture-by-picture master stored' in json.dumps(e.get('args', e))]
-        starts = [e['at'] for e in events if e['type'] in ('adDetected', 'blankInserted')]
-        breaks, start, last = [], None, None
-        for at in starts:
-            if start is None or at - last > 60_000:
+        starts = [(e['at'], (e.get('channel'), e.get('load'))) for e in events if e['type'] in ('adDetected', 'blankInserted')]
+        breaks, start, last, current = [], None, None, None
+        for at, load in starts:
+            if start is None or at - last > 60_000 or load != current:
                 if start is not None:
                     breaks.append((start, last))
-                start = at
+                start, current = at, load
             last = at
         if start is not None:
             breaks.append((start, last))
-        prewarms = [e['at'] for e in events if e['type'] == 'backupsPrewarmed']
+        prewarms = [(e['at'], (e.get('channel'), e.get('load'))) for e in events if e['type'] == 'backupsPrewarmed']
         print(f'== {Path(folder).name} {d.name}: {len(breaks)} breaks, {len(prewarms)} prewarms, {len(pictures)} picture-by-picture masters')
         for at in pictures:
             following = next((b for b, _ in breaks if 0 <= b - at <= 15_000), None)
@@ -73,7 +73,7 @@ for folder in sys.argv[1:]:
                 if e['type'] == 'backupUsed' and begin <= e['at'] <= begin + 20_000 and e.get('playerType') not in types:
                     types.append(e.get('playerType'))
             blanks = sum(e.get('count') or 0 for e in events if e['type'] == 'blankInserted' and begin <= e['at'] <= end)
-            prewarm = max((at for at in prewarms if at <= begin), default=None)
+            prewarm = max((at for at, on in prewarms if at <= begin and on == load), default=None)
             before = sum(1 for t in tokens if begin - 30_000 <= t < begin)
             during = sum(1 for t in tokens if begin <= t <= end + 2_000)
             marked = [ads for t, ads in backup_marks if begin - 5_000 <= t <= end + 2_000]

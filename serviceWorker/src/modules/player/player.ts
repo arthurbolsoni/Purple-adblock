@@ -61,12 +61,12 @@ export class Player {
     this.scope.postMessage({ type: "reload" });
   };
 
-  // F-19 (T-409): with prewarmBackups (default off), the page's picture-by-picture request, 3 to 11 s before each
-  // stitched midroll (B-044), brings a token and master for the backup types, at most once every PREWARM_MS.
+  // F-19 (T-409): with prewarmBackups (default on since T-410), the page's picture-by-picture request, 3 to 14 s before
+  // each stitched midroll (B-044), brings a token and master for the backup types, at most once every PREWARM_MS.
   // T-410: only the types with no stored master (none yet, or dropped when their backup failed or announced a break)
   prewarmBackups = () => {
     const stream = this.currentStream();
-    if (this.setting?.prewarmBackups !== true || !stream) return;
+    if (this.setting?.prewarmBackups === false || !stream) return;
     const now = Date.now();
     if (now - this.lastPrewarm < PREWARM_MS) return;
     const types = this.backupPlayerTypes().filter((type) => !stream.getStreamByStreamType(type).length);

@@ -190,14 +190,25 @@ describe("worker pipeline", () => {
       expect(events).toEqual([expect.objectContaining({ type: "backupsPrewarmed", count: 2 })]);
     });
 
-    test.each([[undefined], [false]])("prewarmBackups %p: no token request", async (on) => {
+    test("prewarmBackups false: no token request", async () => {
       const worker = setup();
-      prewarm(worker, on);
+      prewarm(worker, false);
       worker.twitch.master("channel", masterFor("picture-"), StreamType.PICTURE);
       await worker.text(USHER);
       await worker.fetch(PBYP);
       await Bun.sleep(5);
       expect(worker.twitch.callsOf("gql")).toEqual([]);
+    });
+
+    // T-410: on by default since soak f (docs/findings/2026-10-08-prewarm-backups.md)
+    test("without the setting, the tokens are asked (default on)", async () => {
+      const worker = setup();
+      prewarm(worker);
+      worker.twitch.master("channel", masterFor("picture-"), StreamType.PICTURE);
+      await worker.text(USHER);
+      await worker.fetch(PBYP);
+      await settle(() => worker.twitch.callsOf("gql").length === 2);
+      expect(worker.twitch.callsOf("gql").map((c) => c.playerType)).toEqual([StreamType.SITE, StreamType.FRONTPAGE]);
     });
 
     // usher has no frontpage master here, so frontpage stays without one after each prewarm
