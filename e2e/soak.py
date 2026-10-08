@@ -3,6 +3,7 @@ does during them (docs/server/) and what Purple delivers to the player.
 
     python e2e/soak.py <session> --mode extension|userscript|record [--debug] [--until HH:MM | --minutes N]
                        [--channel /name] [--avoid /a,/b] [--rotate MINUTES] [--out DIR] [--visible]
+                       [--setting KEY=JSON ...]
 
 One Edge on a fresh temporary profile (deleted at the end). Every DRAIN seconds the recorder's arrays in the page
 (window.__e2e, and window.__purple.events with --debug) are emptied into JSONL files under
@@ -261,7 +262,10 @@ async def soak(args, recorder, end):
     tried, load, failures = set(args.avoid.split(',')) if args.avoid else set(), 0, 0
     try:
         session = await lib.launch(args.mode, profile=profile, visible=args.visible, debug=args.debug)
-        recorder.note('launched', mode=args.mode, debug=args.debug, until=end.isoformat(timespec='minutes'))
+        settings = dict(args.setting or [])
+        if settings:
+            await lib.set_storage(session, **settings)
+        recorder.note('launched', mode=args.mode, debug=args.debug, settings=settings, until=end.isoformat(timespec='minutes'))
         watch = None
         while datetime.datetime.now() < end:
             if watch is None:
@@ -316,6 +320,16 @@ def end_time(args):
     return end if end > datetime.datetime.now() else end + datetime.timedelta(days=1)
 
 
+def setting(text):
+    key, _, value = text.partition('=')
+    if not key or not value:
+        raise argparse.ArgumentTypeError('expected KEY=JSON')
+    try:
+        return key, json.loads(value)
+    except json.JSONDecodeError as error:
+        raise argparse.ArgumentTypeError(f'{key}: {error}')
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument('session', help='name of the session directory')
@@ -330,6 +344,8 @@ def main():
     ap.add_argument('--rotate', type=float, default=50, help='minutes on a channel without a stitched break before moving on (0: never)')
     ap.add_argument('--out', default=os.path.join(RECORDINGS, f'{datetime.date.today().isoformat()}-soak'))
     ap.add_argument('--visible', action='store_true')
+    ap.add_argument('--setting', action='append', type=setting, metavar='KEY=JSON',
+                    help='extension mode: a stored setting before the first channel, e.g. pausePlayDelayMs=0 (repeatable)')
     args = ap.parse_args()
     sys.stdout.reconfigure(encoding='utf-8')
     recorder = Recorder(os.path.join(args.out, args.session))
