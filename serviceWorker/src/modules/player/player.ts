@@ -22,8 +22,9 @@ export const DEFAULT_BACKUP_PLAYER_TYPES: string[] = [
 export const CONTAMINATED_MS = 5000;
 // F-14: how long after the last poll that listed it an ad URI is still answered with the blank segment (as Brave's script)
 export const BLANK_TTL_MS = 120_000;
-// E6, F-18: wait between pause and play at the break edges unless pausePlayDelayMs sets another
-export const PAUSE_PLAY_DELAY_MS = 1500;
+// E6, F-18: wait between pause and play at the break edges unless pausePlayDelayMs sets another; 1500 until soak d
+// measured 0 against it (docs/findings/2026-10-08-pause-length.md)
+export const PAUSE_PLAY_DELAY_MS = 0;
 
 export class Player {
   integrityToken = ""; //the integrity token

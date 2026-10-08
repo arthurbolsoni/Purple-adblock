@@ -146,6 +146,7 @@ describe("Player.isAds", () => {
     const context = makeContext();
     const player = new Player(context);
 
+    player.setSettings({ whitelist: [], toggleProxy: false, proxyUrl: "", pausePlayDelayMs: 1500 });
     expect(player.isAds(ADS, true)).toBe(true);
     expect(player.playingAds).toBe(true);
     expect(context.posted).toEqual([{ type: "pause" }]);
@@ -170,7 +171,7 @@ describe("Player.isAds", () => {
     return { context, player };
   };
 
-  test.each([[undefined, 1500], [500, 500], [-1, 1500], ["fast", 1500]])("pausePlayDelayMs %p: play after %p ms", async (value, wait) => {
+  test.each([[500, 500], [1500, 1500]])("pausePlayDelayMs %p: play after %p ms", async (value, wait) => {
     jest.useFakeTimers();
     const { context, player } = withDelay(value);
     player.pauseAndPlay();
@@ -182,8 +183,9 @@ describe("Player.isAds", () => {
     expect(context.posted).toEqual([{ type: "pause" }, { type: "play" }, { type: "play" }]);
   });
 
-  test("pausePlayDelayMs 0: pause and both play in the same turn", () => {
-    const { context, player } = withDelay(0);
+  // T-604: the default is 0 since soak d (docs/findings/2026-10-08-pause-length.md)
+  test.each([[0], [undefined], [-1], ["fast"]])("pausePlayDelayMs %p: pause and both play in the same turn", (value) => {
+    const { context, player } = withDelay(value);
     player.pauseAndPlay();
     expect(context.posted).toEqual([{ type: "pause" }, { type: "play" }, { type: "play" }]);
   });
@@ -212,7 +214,8 @@ describe("Player.isAds", () => {
     const player = new Player(context);
     player.isAds(ADS, true);
     player.isAds(LIVE, true);
-    expect(context.posted).toEqual([{ type: "pause" }, { type: "pause" }]);
+    expect(context.posted.filter((m) => m.type === "pause")).toEqual([{ type: "pause" }, { type: "pause" }]);
+    expect(context.posted).not.toContainEqual({ type: "reload" });
   });
 
   test("a reload the page could not do falls back to pause/play", async () => {
@@ -225,7 +228,7 @@ describe("Player.isAds", () => {
     expect(context.posted).toEqual([]);
 
     player.onReloadResult(false);
-    expect(context.posted).toEqual([{ type: "pause" }]);
+    expect(context.posted).toEqual([{ type: "pause" }, { type: "play" }, { type: "play" }]);
     expect(events).toEqual([
       { type: "playerReloaded", ok: true, channel: "" },
       { type: "playerReloaded", ok: false, channel: "" },

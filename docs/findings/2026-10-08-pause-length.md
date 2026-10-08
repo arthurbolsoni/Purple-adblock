@@ -1,6 +1,6 @@
 # Pause length at the break edges (T-604)
 
-Date: 2026-10-08, 08:27 to 09:00. Build: T-604 (`pausePlayDelayMs`). Logged out, extension with `debug`, a fresh profile and a random directory channel per run, `pausePlayDelayMs` set in `chrome.storage.local` before the channel opened: L3-12, 8 runs at 0 ms and 8 at 1500 ms (the default), alternating. Reports: `~/purple-recordings/2026-10-08-t604/` (outside the repo). Probe: [`pause_edges_probe.py`](probes/pause_edges_probe.py).
+Date: 2026-10-08, 08:27 to 09:00 (L3-12) and 09:06 to 11:07 (soak d). Build: T-604 (`pausePlayDelayMs`). Logged out, extension with `debug`, a fresh profile and a random directory channel per run, `pausePlayDelayMs` set in `chrome.storage.local` before the channel opened: L3-12, 8 runs at 0 ms and 8 at 1500 ms (the default then), alternating. Reports: `~/purple-recordings/2026-10-08-t604/` (outside the repo). Probe: [`pause_edges_probe.py`](probes/pause_edges_probe.py).
 
 ## Runs
 
@@ -19,11 +19,29 @@ The ends of both midrolls fell after the run. In the soaks with the default, the
 
 With either wait, the player restarts its timeline at 0 after the pause/play. With 0 ms, `play` reaches the player in the same turn as `pause`; the `<video>` still fired `pause`, then `playing` 188 and 756 ms later.
 
+## Soak d
+
+`e2e/soak.py` with `--setting pausePlayDelayMs=<ms>`, logged out, fresh profiles, `debug` on, 120 minutes each: `ext-a` on `/channel-a` at 0 ms, `ext-c` on the same channel at 1500 ms, `ext-b` on `/channel-b` at 0 ms. Recordings: `~/purple-recordings/2026-10-08-soak-d` (outside the repo). Report: `python e2e/soak_report.py`; edges: [`soak_details_probe.py`](probes/soak_details_probe.py).
+
+| Session | Wait | Midroll | Length, ad segments, titles | `pause` to `playing`, start / end | Video not progressing |
+| --- | --- | --- | --- | --- | --- |
+| `ext-a` | 0 ms | 10:56:15 | 94 s, 32, `Amazon\|` and `FT\|` | 0.67 / 0.71 s | 3 s |
+| `ext-c` | 1500 ms | the same midroll, 10:56:13 | 93 s, 32 | 2.62 / 1.74 s | 5 s |
+| `ext-b` | 0 ms | 09:36:54 | 118 s, 42, `Amazon\|` and `InnovidAds\|` | 1.02 / 0.86 s | 2 s |
+| `ext-b` | 0 ms | 09:44:54 | 120 s, 41, `Amazon\|` and `InnovidAds\|` | 0.80 / 1.05 s | 9 s |
+| `ext-b` | 0 ms | 10:32:54 | 72 s, 16, a 10-digit number | 0.93 / 0.98 s | 2 s |
+| `ext-b` | 0 ms | 10:48:54 | 70 s, 16, `Amazon\|` | 0.95 / 0.97 s | 2 s |
+| `ext-b` | 0 ms | 11:05:00 | 54 s, 11, a 10-digit number | 0.88 / 0.98 s | 2 s |
+
+In all seven breaks the ad overlay stayed off, no ad media reached the player, no backup poll had ad segments, and the video played after the break. Each edge restarted the timeline at 0, at either wait.
+
+In the 09:44:54 break, 9 s after the start edge the `<video>` waited at `currentTime` 8.0 (`waiting`, then `pause` with no message from the worker) and played again 8.1 s later at 14.1. Just before, the first backup playlist the player got had a `MEDIA-SEQUENCE` one below the main playlist's last poll. The same drop (1 to 5) came at the start of the other three later breaks on `/channel-b`, which stopped for 2 s each, and not on `/channel-a` (B-048).
+
 ## Default
 
-`pausePlayDelayMs` stays at 1500 (E6 as before): at 0 ms there are two break ends and no break start during playback, the edge where the main playlist gives way to a backup.
+`pausePlayDelayMs` is 0 since soak d: 14 edges during playback at 0 ms (12 in soak d, 2 in L3-12), 6 of them break starts, took 0.19 to 1.05 s from `pause` to `playing`; at 1500 ms, 10 edges took 1.62 to 2.62 s. The 1500 ms value (since `10128a5`, 500 before it) stays one setting away.
 
 ## Open
 
-- Break starts during playback at 0 ms, and both edges of midrolls in a soak at 0 ms.
-- Whether a value between 0 and 1500 (500 before `10128a5`) changes anything at the start of a break.
+- The 8 s wait inside the 09:44:54 break: whether the backup's lower `MEDIA-SEQUENCE` causes it.
+- Edges on other channels and logged in, at 0 ms.
