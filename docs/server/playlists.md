@@ -12,6 +12,8 @@ Observed on 2026-10-03, one channel, logged out ([finding](../findings/2026-10-0
 
 `EXT-X-MEDIA` lines and the `STREAM-INF` attributes (`BANDWIDTH`, `RESOLUTION`, `CODECS`, `VIDEO`, `FRAME-RATE`) were not recorded in this session. Purple 2.6.7's variant regex expects `NAME="<quality>",AUTO...` followed by a `https://video...m3u8` URL.
 
+The page's master on 2026-10-08 had the same 24 `EXT-X-SESSION-DATA` keys as on 2026-10-07 ([L3 recorder](../findings/2026-10-08-l3-recorder.md)).
+
 The order of the variants changes from one master to the next, for the page's request and for backup tokens; the first `STREAM-INF` can be any quality (B-043, 2026-10-08).
 
 ## Media
@@ -46,6 +48,8 @@ Not seen in that session: `#EXT-X-TWITCH-PREFETCH`, `#EXT-X-PART`, `#EXT-X-PRELO
 | `DATERANGE` attributes | `timestamp`: `X-SERVER-TIME`; `twitch-session`: `X-TV-TWITCH-SESSIONID`; `twitch-stream-source`: `X-TV-TWITCH-STREAM-SOURCE`; `twitch-trigger`: `X-TV-TWITCH-TRIGGER-URL` (B-021); all with `ID`, `START-DATE`, `END-ON-NEXT` |
 
 2026-10-07 and 08, soak sessions ([finding](../findings/2026-10-07-midroll-soak.md)): two more `DATERANGE` classes on live playlists, `twitch-maf-ad` (client-side ad slot, B-032) and `twitch-assignment` (`X-TV-TWITCH-CLUSTER`, `X-TV-TWITCH-NODE`, `X-TV-TWITCH-SERVING-ID`, no ad, B-038); `X-TV-TWITCH-STREAM-SOURCE` is `live` on live segments and the ad's title on ad segments (B-035); a playlist inside a break can hold up to 50 segments at a fixed `MEDIA-SEQUENCE` (B-034, B-039).
+
+`EXT-X-TWITCH-PREFETCH` lines list the next segments before their `#EXTINF` lines; the player fetches the prefetch URI. On fMP4 streams the same position gets another URI when it becomes a segment line (B-046, 2026-10-08).
 
 ## Segment URIs
 

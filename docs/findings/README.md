@@ -25,6 +25,7 @@ New discoveries are added here as they happen. A later finding that contradicts 
 | [2026-10-08-blank-segments.md](2026-10-08-blank-segments.md) | Brave's `BLANK_MP4` (an init segment without samples) and how Purple answers the ad segments no backup replaced (T-502); a preroll handled on the build | open |
 | [2026-10-08-page-gql-headers.md](2026-10-08-page-gql-headers.md) | Page GQL headers on Purple's token requests (T-401); a midroll whose announced prefetch reached the network | open |
 | [2026-10-08-l3-server-observations.md](2026-10-08-l3-server-observations.md) | Prerolls and midrolls in the level 3 runs of 2026-10-08, by profile | open |
+| [2026-10-08-l3-recorder.md](2026-10-08-l3-recorder.md) | Level 3 recorder (`e2e/record.py`) and an L3-10 run: usher query values, poll interval, prefetch URIs on fMP4 streams, the player's `rufio` `POST`s | open |
 | [2026-10-08-pause-length.md](2026-10-08-pause-length.md) | Pause/play wait at the break edges (`pausePlayDelayMs`, T-604): 0 ms against 1500 ms on live breaks | open |
 | [2026-10-08-ad-break-reload.md](2026-10-08-ad-break-reload.md) | Player reload at the end of a break (`reloadAfterAd`, T-601): `setSrc` found on twitch.tv, the video back in 1 to 3 s, one reload of two brought a new preroll | open |
 | [2026-10-08-midroll-soak.md](2026-10-08-midroll-soak.md) | Soaks a, b and c on the 2026-10-08 builds: stitched midrolls with Purple on and off, ad overlay and backups per break, pause/play at the break edges, the page's picture-by-picture request before each midroll | open |

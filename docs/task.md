@@ -70,7 +70,7 @@ Runs in parallel with phases 1 to 7. Phase 1 to 6 tasks list L2/L3 scenarios tha
 - Tests: L3-01
 
 ### T-005 Level 3 recorder
-- [ ] Status
+- [x] Status · done 2026-10-08: `e2e/record.py` (record or extension mode, dedicated or fresh profile, `--technique` kept in the manifest; `-` takes a directory channel). Fetch at the response stage on usher, media playlists, segments, GQL and `edge.ads`, each paused request continued in its own task; twitch.tv loads once before Fetch is on (a navigation from `about:blank` with Fetch on never returned). The manifest marks segment, map and prefetch URIs as ads with the worker logger's rule and gives the usher query without `token`, `sig`, `play_session_id` and `p`. L3-10 run (120 s, fresh profile, Purple off): Q-005 values and Q-002 poll interval recorded; B-046 (prefetch URIs on fMP4) and B-047 (`rufio` `POST`s) are new ([finding](findings/2026-10-08-l3-recorder.md))
 - Depends on: T-004
 - Files: `e2e/record.py` (new)
 - Done when:

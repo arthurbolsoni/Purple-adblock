@@ -11,6 +11,7 @@ All video endpoints are requested from the player worker. In Edge they are visib
 | Path, v2 | `/api/v2/channel/hls/<channel>.m3u8`, requested by the Twitch page | Observed (B-002) |
 | Query built by Purple 2.6.7 | `allow_source`, `fast_bread`, `p`, `player_backend=mediaplayer`, `playlist_include_framerate`, `reassignments_supported`, `sig`, `supported_codecs=avc1`, `token` | Purple code |
 | Query sent by the Twitch page | 22 keys on 2026-10-08: `acmb`, `allow_source`, `browser_family`, `browser_version`, `cdm`, `enable_score`, `fast_bread`, `include_unavailable`, `lang`, `os_name`, `os_version`, `p`, `platform`, `play_session_id`, `player_backend`, `player_version`, `playlist_include_framerate`, `reassignments_supported`, `sig`, `supported_codecs`, `token`, `transcode_mode` (values not recorded) | Observed (soak worker log) |
+| Values sent by the Twitch page | 2026-10-08, logged out, Edge 154: `acmb` (base64 JSON: `AppVersion`, `ClientApp` `twilight`, the page URL), `allow_source=true`, `browser_family=edge`, `browser_version=154.0`, `cdm=wv`, `enable_score=true`, `fast_bread=true`, `include_unavailable=true`, `lang=en`, `os_name=Windows`, `os_version=NT 10.0`, `platform=web`, `player_backend=mediaplayer`, `player_version=1.57.0-rc.2`, `playlist_include_framerate=true`, `reassignments_supported=true`, `supported_codecs=av1,h265,h264`, `transcode_mode=cbr_v1`; `token`, `sig`, `play_session_id` and `p` not recorded in the repo | Observed ([L3 recorder](../findings/2026-10-08-l3-recorder.md)) |
 | Backup requests since T-404 | the page's request with `token`, `sig` and `p` replaced; the v2 path answers every playerType token | Observed (B-041) |
 | `parent_domains` | present when embedded; Brave's script removes it | Reported (B-013) |
 | Response | master playlist, see [playlists](playlists.md#master) | Observed |
@@ -32,7 +33,9 @@ All video endpoints are requested from the player worker. In Edge they are visib
 | Host | `<id>.j.cloudfront.hls.ttvnw.net` | Observed (B-006) |
 | Container | MPEG-TS (`.ts`) | Observed |
 | Requests | 18 in 30 s | Observed |
-| fMP4 / `EXT-X-MAP` | not seen yet; expected on HEVC/AV1 channels | Q-007 |
+| fMP4 / `EXT-X-MAP` | 2026-10-08: on an H.264 channel too: init segments `video/mp4`, media segments `application/octet-stream`, no `content-length` | Observed ([L3 recorder](../findings/2026-10-08-l3-recorder.md)) |
+| Which URI the player fetches | the `EXT-X-TWITCH-PREFETCH` one; on fMP4 it differs from the URI the same position gets later as a segment line | Observed (B-046) |
+| `POST` `<id>.rufio.hls.live-video.net/v1/segment/<token>` | sent by the player, answered 204 | Observed (B-047) |
 
 ## GQL
 

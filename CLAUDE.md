@@ -87,7 +87,7 @@ python e2e/run.py <L2-xx|L3-xx|all>         # levels 2 and 3; --mode extension|u
 - `platform/src/`: content script and popup. Manifests in `platform/chromium` and `platform/firefox`. The builders copy it without `*.spec.ts` (`cli/files.js`).
 - `platform/tampermonkey/`: userscript build.
 - `sim/` (planned, T-006 to T-009): Rust server reproducing Twitch's server, scenarios, synthetic media, isolated player page.
-- `e2e/`: nodriver drivers for levels 2 and 3. `lib.py` starts Edge on a hidden desktop in extension, userscript or record mode; `recorder.js` records workers and a log from inside them (`window.__e2e`); `scenarios/` holds one module per scenario. The level 3 recorder is planned (T-005).
+- `e2e/`: nodriver drivers for levels 2 and 3. `lib.py` starts Edge on a hidden desktop in extension, userscript or record mode; `recorder.js` records workers and a log from inside them (`window.__e2e`); `scenarios/` holds one module per scenario; `record.py` is the level 3 recorder (CDP `Fetch`, T-005) and `soak.py` the long runs.
 
 ## Rules
 
