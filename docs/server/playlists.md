@@ -12,6 +12,8 @@ Observed on 2026-10-03, one channel, logged out ([finding](../findings/2026-10-0
 
 `EXT-X-MEDIA` lines and the `STREAM-INF` attributes (`BANDWIDTH`, `RESOLUTION`, `CODECS`, `VIDEO`, `FRAME-RATE`) were not recorded in this session. Purple 2.6.7's variant regex expects `NAME="<quality>",AUTO...` followed by a `https://video...m3u8` URL.
 
+The order of the variants changes from one master to the next, for the page's request and for backup tokens; the first `STREAM-INF` can be any quality (B-043, 2026-10-08).
+
 ## Media
 
 Observed tags (same session):
