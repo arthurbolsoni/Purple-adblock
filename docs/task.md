@@ -422,7 +422,7 @@ Runs in parallel with phases 1 to 7. Phase 1 to 6 tasks list L2/L3 scenarios tha
 - Tests: TS-701
 
 ### T-702 Release workflows
-- [ ] Status · E11
+- [x] Status · E11 · done 2026-10-08: `release.yml` runs on a push to `main` and publishes the `package.json` version (tag and title) with `LICENSE`, both zips and the userscript; `pre-release.yml` runs on a pushed tag with a hyphen (`2.7.0-beta.1`) and publishes a pre-release of that tag (it ran on pushes to `develop` before). Both: `actions/checkout@v4`, `oven-sh/setup-bun@v2` (Bun 1.4.1), `bun install --frozen-lockfile`, `bun run build`, `softprops/action-gh-release@v2` in place of the archived `marvinpinto/action-automatic-releases`, `permissions: contents: write`; no `pull_request`, no `workflow_dispatch`, no test step. Not run on GitHub: nothing was pushed
 - Files: `.github/workflows/release.yml`, `.github/workflows/pre-release.yml`
 - Done when:
   - workflows use `oven-sh/setup-bun` and Bun commands only;

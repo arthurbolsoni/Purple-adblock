@@ -1,44 +1,30 @@
-# This is a basic workflow to help you get started with Actions
-
+# Builds the extensions and the userscript when a tag with a hyphen is pushed (2.7.0-beta.1) and publishes them as a
+# pre-release of that tag. Tests run locally before every commit; no workflow runs them (T-702).
 name: pre-release
 
-# Controls when the workflow will run
 on:
-#   # Triggers the workflow on push or pull request events but only for the "main" branch
   push:
-    branches: [ "develop" ]
+    tags: ["*-*"]
 
-  # Allows you to run this workflow manually from the Actions tab
-  workflow_dispatch:
+permissions:
+  contents: write
 
-# A workflow run is made up of one or more jobs that can run sequentially or in parallel
 jobs:
-  # This workflow contains a single job called "build"
-  build:
-    # The type of runner that the job will run on
+  pre-release:
     runs-on: ubuntu-latest
-
-    # Steps represent a sequence of tasks that will be executed as part of the job
     steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-node@v3
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
         with:
-          node-version: 16
-      - run: npm install
-      - run: npm run build
-
-      - name: version
-        run: |
-          echo "version=$(grep version package.json | awk -F \" '{print $4}')" >> $GITHUB_ENV
-      
-      - uses: "marvinpinto/action-automatic-releases@latest"
+          bun-version: 1.4.1
+      - run: bun install --frozen-lockfile
+      - run: bun run build
+      - uses: softprops/action-gh-release@v2
         with:
-          repo_token: "${{ secrets.GITHUB_TOKEN }}"
-          automatic_release_tag: "latest"
+          tag_name: ${{ github.ref_name }}
+          name: ${{ github.ref_name }}
           prerelease: true
-          title: ${{ env.version }}
           files: |
             LICENSE
             dist/*.zip
-            dist/*.xpi
             platform/tampermonkey/dist/purpleadblocker.user.js
