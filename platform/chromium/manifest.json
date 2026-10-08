@@ -15,8 +15,18 @@
     "manifest_version": 3,
     "permissions": [
         "activeTab",
-        "storage"
+        "storage",
+        "declarativeNetRequestWithHostAccess"
     ],
+    "declarative_net_request": {
+        "rule_resources": [
+            {
+                "id": "csai",
+                "enabled": true,
+                "path": "rules.json"
+            }
+        ]
+    },
     "host_permissions": [
         "https://*.twitch.tv/*"
     ],

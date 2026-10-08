@@ -33,7 +33,7 @@ const getSettings = () => window.postMessage({ type: "getSettings", value: null 
 
 describe("content script on Firefox (MV2)", () => {
   test("reads the settings from storage", () => {
-    expect(env.chrome.getCalls).toEqual([["whitelist", "toggleProxy", "proxyUrl", "debug"]]);
+    expect(env.chrome.getCalls).toEqual([["whitelist", "toggleProxy", "proxyUrl", "debug", "blockCsai"]]);
   });
 
   test("injects app/bundle.js before storage answers, and removes the tag once loaded", () => {
@@ -47,22 +47,21 @@ describe("content script on Firefox (MV2)", () => {
     expect(script.isConnected).toBe(false);
   });
 
-  test("a getSettings sent before storage answers gets the settings once it does", async () => {
+  // the page gets the settings once storage answers (pages without a player: blockCsai, debug, T-301), and a
+  // getSettings sent before then is answered too
+  test("once storage answers, the settings go to the page, and a getSettings sent before is answered", async () => {
     getSettings();
     await Bun.sleep(10);
     expect(replies).toEqual([]);
 
     env.chrome.flushStorage();
     await Bun.sleep(10);
-    expect(replies).toEqual([{ type: "setSettings", value: STORED }]);
+    expect(replies).toEqual([{ type: "setSettings", value: STORED }, { type: "setSettings", value: STORED }]);
   });
 
   test("answers later getSettings messages with the stored settings", async () => {
     getSettings();
     await Bun.sleep(10);
-    expect(replies).toEqual([
-      { type: "setSettings", value: STORED },
-      { type: "setSettings", value: STORED },
-    ]);
+    expect(replies).toEqual([{ type: "setSettings", value: STORED }, { type: "setSettings", value: STORED }, { type: "setSettings", value: STORED }]);
   });
 });

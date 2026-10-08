@@ -232,3 +232,32 @@ describe("debug events", () => {
     expect(events.at(-1).at).toBe(509);
   });
 });
+
+// T-301: client-side ads (B-025) answered in the page; counted per break type
+describe("client-side ads", () => {
+  const ADS = (bp: string) => `https://edge.ads.twitch.tv/ads?bp=${bp}&u=x`;
+  const csaiEvents = () => ((window as any).__purple?.events ?? []).filter((e: any) => e.type === "csaiBlocked");
+
+  test("by default a fetch to edge.ads.twitch.tv gets an empty 200 and never reaches the network", async () => {
+    const before = env.pageFetch.calls.length;
+    const response = await fetch(ADS("preroll"));
+    expect(response.status).toBe(200);
+    expect(await response.text()).toBe("");
+    expect(env.pageFetch.calls).toHaveLength(before);
+  });
+
+  test("blocked requests are counted per break type in the debug events", async () => {
+    await fetch(ADS("midroll"));
+    await fetch(ADS("midroll"));
+    const events = csaiEvents();
+    expect(events.at(-1)).toMatchObject({ type: "csaiBlocked", bp: "midroll", count: 2 });
+    expect(events.some((e: any) => e.bp === "preroll" && e.count === 1)).toBe(true);
+  });
+
+  test("with blockCsai off, the request reaches the network", async () => {
+    window.postMessage({ type: "setSettings", value: { whitelist: [], debug: true, blockCsai: false } }, "*");
+    await Bun.sleep(5);
+    await fetch(ADS("midroll"));
+    expect(env.pageFetch.calls.at(-1)!.url).toBe(ADS("midroll"));
+  });
+});

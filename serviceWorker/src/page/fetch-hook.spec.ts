@@ -82,3 +82,43 @@ describe("page fetch hook", () => {
     await expect(hooked(INTEGRITY)).rejects.toBe(error);
   });
 });
+
+// T-301: edge.ads.twitch.tv (client-side ads, B-025) answered in the page with an empty 200
+describe("page fetch hook, client-side ads", () => {
+  const ADS = "https://edge.ads.twitch.tv/ads?bp=midroll&u=x";
+
+  const csai = (block: boolean) => {
+    const original = mock(async () => new Response("real ad"));
+    const blocked: string[] = [];
+    const hooked = createFetchHook(original as any, { onIntegrity: () => {}, blockCsai: () => block, onCsaiBlocked: (url) => blocked.push(url) });
+    return { original, blocked, hooked };
+  };
+
+  test.each([
+    ["string", ADS],
+    ["Request", new Request(ADS)],
+    ["URL", new URL(ADS)],
+  ])("with blockCsai, a %s to edge.ads.twitch.tv never reaches the network and gets an empty 200", async (_, input) => {
+    const { original, blocked, hooked } = csai(true);
+
+    const response = await hooked(input as any);
+
+    expect(original).not.toHaveBeenCalled();
+    expect(response.status).toBe(200);
+    expect(await response.text()).toBe("");
+    expect(blocked).toEqual([ADS]);
+  });
+
+  test("with blockCsai off, it reaches the network", async () => {
+    const { original, blocked, hooked } = csai(false);
+    expect(await (await hooked(ADS)).text()).toBe("real ad");
+    expect(original).toHaveBeenCalledTimes(1);
+    expect(blocked).toEqual([]);
+  });
+
+  test("other hosts are not blocked", async () => {
+    const { original, hooked } = csai(true);
+    await hooked("https://ads.example/edge.ads.twitch.tv/x");
+    expect(original).toHaveBeenCalledTimes(1);
+  });
+});

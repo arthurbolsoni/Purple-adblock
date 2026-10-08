@@ -5,7 +5,7 @@ import { join } from "path";
 import { usePageEnv } from "../../serviceWorker/test/harness/page-env";
 
 // `debug` (T-109, T-110) is read from storage with the other settings
-const STORED = { whitelist: ["somechannel"], toggleProxy: false, proxyUrl: "", debug: true };
+const STORED = { whitelist: ["somechannel"], toggleProxy: false, proxyUrl: "", debug: true, blockCsai: false };
 const MANIFEST = await Bun.file(join(import.meta.dir, "..", "chromium", "manifest.json")).json();
 
 // storage answers only when the test calls flushStorage()
@@ -25,15 +25,15 @@ describe("content script on Chromium (MV3)", () => {
     expect(document.querySelectorAll("script")).toHaveLength(0);
   });
 
-  test("a getSettings sent before storage answers gets the settings once it does", async () => {
+  test("once storage answers, the settings go to the page, and a getSettings sent before is answered", async () => {
     window.postMessage({ type: "getSettings", value: null }, "*");
     await Bun.sleep(10);
     expect(replies).toEqual([]);
 
     env.chrome.flushStorage();
     await Bun.sleep(10);
-    expect(replies).toEqual([{ type: "setSettings", value: STORED }]);
-    expect(env.chrome.getCalls).toEqual([["whitelist", "toggleProxy", "proxyUrl", "debug"]]);
+    expect(replies).toEqual([{ type: "setSettings", value: STORED }, { type: "setSettings", value: STORED }]);
+    expect(env.chrome.getCalls).toEqual([["whitelist", "toggleProxy", "proxyUrl", "debug", "blockCsai"]]);
     expect(document.querySelectorAll("script")).toHaveLength(0);
   });
 });

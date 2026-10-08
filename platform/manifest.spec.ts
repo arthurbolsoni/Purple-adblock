@@ -32,3 +32,19 @@ describe("Firefox manifest", () => {
     expect(manifest.content_scripts).toEqual([{ matches: TWITCH, run_at: "document_start", js: ["content-script.js"] }]);
   });
 });
+
+// T-302: a static rule blocks edge.ads.twitch.tv for requests the page hooks do not see (iframes, beacons)
+describe("Chromium client-side ads rule", () => {
+  const manifest = read("chromium/manifest.json");
+
+  test("the manifest declares the ruleset, with host access only (no new permission warning)", () => {
+    expect(manifest.permissions).toContain("declarativeNetRequestWithHostAccess");
+    expect(manifest.permissions).not.toContain("declarativeNetRequest");
+    expect(manifest.declarative_net_request).toEqual({ rule_resources: [{ id: "csai", enabled: true, path: "rules.json" }] });
+  });
+
+  test("rules.json blocks ||edge.ads.twitch.tv^", () => {
+    const rules = read("chromium/rules.json");
+    expect(rules).toEqual([{ id: 1, priority: 1, action: { type: "block" }, condition: { urlFilter: "||edge.ads.twitch.tv^" } }]);
+  });
+});

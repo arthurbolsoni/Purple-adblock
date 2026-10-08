@@ -3,12 +3,16 @@
 // response, so rebuilding responses would break those requests.
 
 import { urlOf } from "../url";
+import { isEdgeAds } from "./xhr-hook";
 
 const INTEGRITY = { host: "gql.twitch.tv", pathname: "/integrity" };
 
 export type FetchHookHandlers = {
   // body of the page's https://gql.twitch.tv/integrity response
   onIntegrity: (body: string) => void;
+  // T-301 (F-04): requests to edge.ads.twitch.tv get an empty 200 in the page while this returns true
+  blockCsai?: () => boolean;
+  onCsaiBlocked?: (url: string) => void;
 };
 
 export { urlOf };
@@ -24,6 +28,17 @@ const isIntegrity = (input: RequestInfo | URL) => {
 
 export function createFetchHook(original: typeof fetch, handlers: FetchHookHandlers) {
   return async function (input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
+    let blocked = false;
+    try {
+      blocked = isEdgeAds(urlOf(input)) && (handlers.blockCsai?.() ?? false);
+    } catch {
+      blocked = false;
+    }
+    if (blocked) {
+      handlers.onCsaiBlocked?.(urlOf(input));
+      return new Response("", { status: 200 });
+    }
+
     const response = await original(input, init);
     try {
       if (isIntegrity(input)) {

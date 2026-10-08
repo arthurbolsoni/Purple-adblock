@@ -250,16 +250,16 @@ Runs in parallel with phases 1 to 7. Phase 1 to 6 tasks list L2/L3 scenarios tha
 ## Phase 3: CSAI blocking
 
 ### T-301 Block `edge.ads.twitch.tv` in the page
-- [ ] Status · F-04
+- [x] Status · F-04 · done 2026-10-07: `fetch` and XHR answered in the page while `blockCsai` (default on) holds; the content script now sends the settings as soon as storage answers, so pages without a player (the directory, B-025) get `blockCsai` and `debug` too; L3-08 passed in both modes, with the Purple-off control showing the requests
 - Files: `serviceWorker/src/page/fetch-hook.ts`, `serviceWorker/src/page/xhr-hook.ts` (new)
 - Done when:
   - with `blockCsai`, `fetch` and XHR to `edge.ads.twitch.tv` never leave the page and get an empty 200 response;
   - with `blockCsai` off, they pass through;
   - blocked requests are counted per type (`preroll`, `midroll`) in the logger.
-- Tests: TS-301
+- Tests: TS-301, L3-08
 
 ### T-302 DNR rule on Chromium
-- [ ] Status · F-04
+- [x] Status · F-04 · done 2026-10-07: permission `declarativeNetRequestWithHostAccess` (no new install warning; the rule applies to `*.twitch.tv`, already granted); Edge reports the `csai` ruleset enabled. The static rule does not follow `blockCsai`: a future toggle has to call `updateEnabledRulesets` from an extension page
 - Files: `platform/chromium/manifest.json`, `platform/chromium/rules.json` (new)
 - Done when the manifest declares `declarative_net_request` with a block rule for `||edge.ads.twitch.tv^` and the JSON is valid.
 - Tests: TS-302

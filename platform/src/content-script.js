@@ -15,21 +15,16 @@ function injectBundle() {
   (document.head || document.documentElement).appendChild(s);
 }
 
-const settings = new Promise((resolve) => storage().get(["whitelist", "toggleProxy", "proxyUrl", "debug"], resolve));
+// stored settings the page and the worker read (docs/feat.md, "Settings")
+const SETTINGS_KEYS = ["whitelist", "toggleProxy", "proxyUrl", "debug", "blockCsai"];
+const settings = new Promise((resolve) => storage().get(SETTINGS_KEYS, resolve));
+const sendSettings = () => settings.then((items) => window.postMessage({ type: "setSettings", value: items }, "*"));
 
-// The worker asks for the settings when it boots, which can happen before storage answers.
+// The page gets the settings as soon as storage answers, also on pages without a player (blockCsai, debug), and
+// again whenever a worker asks for them (its boot can come before storage answers).
+sendSettings();
 window.addEventListener("message", (event) => {
-  if (event.data && event.data.type == "getSettings") {
-    settings.then((items) =>
-      window.postMessage(
-        {
-          type: "setSettings",
-          value: items,
-        },
-        "*",
-      ),
-    );
-  }
+  if (event.data && event.data.type == "getSettings") sendSettings();
 });
 
 if (!bundleInMainWorld()) injectBundle();

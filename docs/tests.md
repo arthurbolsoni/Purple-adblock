@@ -220,7 +220,7 @@ Builds a fake worker scope and boots the worker code on it, the way it runs insi
 | TS-201 | T-201 | unit | each F-02 marker detected; non-ad markers give `NONE`, including `twitch-trigger` with only a trigger URL (B-021); `stitched` outside the title gives `NONE`; `stitched`, `Amazon` and `DCM,` in the title give `SSAI`; URI patterns give `SSAI`; correct indexes on `media-ssai-midroll` and `media-ssai-preroll`; `media-marked-live` gives `MARKED_LIVE`; `Player.hasAds` is `SSAI` only |
 | TS-202 | T-202 | int | `media-marked-live` comes out identical, zero GQL calls, no pause/play messages; during an ad break, a `MARKED_LIVE` backup replaces the playlist |
 | TS-301 | T-301 | unit (happy-dom) | `fetch` to `edge.ads.twitch.tv` never reaches the real `fetch` and gets an empty 200; XHR ends with `readyState 4`, status 200 and `onload` without network; with `blockCsai` off it passes; counters for `preroll` and `midroll` |
-| TS-302 | T-302 | unit | `rules.json` is valid, with a `block` action and `urlFilter` `\|\|edge.ads.twitch.tv^`; the manifest declares the permission and the file |
+| TS-302 | T-302 | unit | `rules.json` is valid, with a `block` action and `urlFilter` `\|\|edge.ads.twitch.tv^`; the manifest declares `declarativeNetRequestWithHostAccess` (not `declarativeNetRequest`) and the file |
 | TS-401 | T-401 | unit (happy-dom) + int | a page GQL request with headers sends update messages to the worker; `Device-ID` as alternate name; `/integrity` capture still works; the worker's token request carries the headers (checked in `FakeTwitch.calls`) |
 | TS-402 | T-402 | int | request and response matched by `id`; two responses out of order; no response within 5 s (fake timers) falls back to the direct request |
 | TS-403 | T-403 | unit | default body carries the new hash; `PersistedQueryNotFound` triggers a second call with the full query; `token-flat.json` accepted |
@@ -331,7 +331,7 @@ Ads are not deterministic. Every scenario asserts what always holds (hook instal
 | L3-05 | Popout player (TR-003) | extension | L3-01 checks on the popout URL | F-12 |
 | L3-06 | Switch channel by clicking, without reload (TR-004) | extension | second channel playing; events tagged with the new channel | T-107 |
 | L3-07 | Whitelist through `chrome.storage.local` from the extension popup page | extension | `whitelisted` events; no rewrites for that channel | E7, T-602 |
-| L3-08 | CSAI | extension | requests to `edge.ads.twitch.tv` blocked | F-04 |
+| L3-08 | CSAI: the directory page, which requests `edge.ads.twitch.tv` right after loading (B-025) | extension, userscript; record as the control | no request to `edge.ads.twitch.tv` leaves the page; with `debug` on, `csaiBlocked` events; record: the requests leave the page | F-04, T-301, T-302 |
 | L3-09 | Logged in (TR-007) | extension | L3-01 and L3-02 checks | F-05 |
 | L3-10 | Behavior hunt: recorder with Purple off, techniques chosen for open questions | record | new finding written; behaviors and questions updated | `docs/server/` |
 

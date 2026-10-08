@@ -2,6 +2,7 @@
 //@ts-expect-error
 import txt from "../dist/app.worker.js?raw";
 import { createFetchHook } from "./page/fetch-hook";
+import { installXhrHook } from "./page/xhr-hook";
 import { WorkerRegistry } from "./page/worker-registry";
 
 declare global {
@@ -14,6 +15,9 @@ const EVENT_LIMIT = 500;
 // the `debug` setting, from the content script's setSettings (the userscript has no settings: off)
 let debug = false;
 const logger = (...args: any[]) => debug && console.log("[Purple]:", ...args);
+// F-04: answer edge.ads.twitch.tv in the page (default on, so the userscript blocks too)
+let blockCsai = true;
+const csaiBlocked: Record<string, number> = {};
 
 (function () {
   // every worker created through the injector; on a direct channel load the player creates two
@@ -83,7 +87,21 @@ const logger = (...args: any[]) => debug && console.log("[Purple]:", ...args);
     global.request = fetch;
     global.fetch = createFetchHook(global.request, {
       onIntegrity: (body) => registry.broadcast({ funcName: "setIntegrity", value: body }),
+      blockCsai: () => blockCsai,
+      onCsaiBlocked,
     });
+    installXhrHook(XMLHttpRequest, () => blockCsai, onCsaiBlocked);
+  }
+
+  // T-301: blocked requests counted per break type (`bp`: preroll, midroll)
+  function onCsaiBlocked(url: string) {
+    let bp = "other";
+    try {
+      bp = new URL(url).searchParams.get("bp") || "other";
+    } catch {}
+    csaiBlocked[bp] = (csaiBlocked[bp] ?? 0) + 1;
+    logger("CSAI request blocked:", bp, csaiBlocked);
+    recordEvent({ type: "csaiBlocked", bp, count: csaiBlocked[bp], at: Date.now() });
   }
 
   // Requests from one worker are answered to that worker; settings and quality go to every worker.
@@ -142,6 +160,7 @@ const logger = (...args: any[]) => debug && console.log("[Purple]:", ...args);
     window.addEventListener("message", (event) => {
       if (event.data?.type === "setSettings") {
         debug = event.data.value?.debug === true;
+        blockCsai = event.data.value?.blockCsai !== false;
         if (debug && !window.__purple) window.__purple = { events: [] };
         //send settings to every worker
         registry.broadcast({ funcName: "setSettings", value: event.data.value });

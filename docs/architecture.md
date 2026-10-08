@@ -15,19 +15,20 @@ The userscript has no content script or popup: `bundle.js` is the whole script a
 
 1. `app/bundle.js` runs in the page before Twitch's scripts create the player workers (T-111). On Firefox the content script adds it as a `<script>` without waiting for `storage`.
 2. `index.ts` replaces `window.Worker`. When a worker is created, it downloads the script with a synchronous XHR and builds a blob with `app.worker.js` followed by the original script. If the download fails, the worker starts from the original URL.
-3. Every worker built this way joins a `WorkerRegistry` (`page/worker-registry.ts`) after the page's first message to it (the player's init), and leaves it on `terminate()` (T-107). Nothing from Purple reaches a worker before that message. On a direct channel load the player creates two workers. The page `fetch` hook (`page/fetch-hook.ts`, T-106) is installed when the bundle loads; it reads only `https://gql.twitch.tv/integrity`, from a clone, and gives every response to the page unchanged.
-4. In the worker, `app.worker.ts` calls `bootstrapWorker(self)`, which keeps the original `fetch` as `self.request`, creates `AppController` and replaces `fetch` with a dispatcher over the `@Fetch` routes (first match in declaration order):
+3. The page answers `fetch` and XHR to `edge.ads.twitch.tv` with an empty 200 while `blockCsai` holds (`page/fetch-hook.ts`, `page/xhr-hook.ts`, T-301); on Chromium a static rule (`rules.json`, T-302) blocks what the hooks do not see. The content script sends the settings to the page as soon as storage answers, and again when a worker asks.
+4. Every worker built this way joins a `WorkerRegistry` (`page/worker-registry.ts`) after the page's first message to it (the player's init), and leaves it on `terminate()` (T-107). Nothing from Purple reaches a worker before that message. On a direct channel load the player creates two workers. The page `fetch` hook (`page/fetch-hook.ts`, T-106) is installed when the bundle loads; it reads only `https://gql.twitch.tv/integrity`, from a clone, and gives every response to the page unchanged.
+5. In the worker, `app.worker.ts` calls `bootstrapWorker(self)`, which keeps the original `fetch` as `self.request`, creates `AppController` and replaces `fetch` with a dispatcher over the `@Fetch` routes (first match in declaration order):
    - `usher.ttvnw.net/api/channel/hls/` and `usher.ttvnw.net/api/v2/channel/hls/` (except `picture-by-picture`) → `onChannel` → `Player.setChannel` with the channel from the URL path (T-103);
    - `ttvnw.net/v1/playlist/` → `onFetch` → `Player.onFetch`; an exception returns Twitch's playlist;
    - `picture-by-picture` → `onChannelPicture` → stores the PbP stream and returns an empty response.
-5. `Player.onFetch` (classes from `ad-detector.ts`, T-201):
+6. `Player.onFetch` (classes from `ad-detector.ts`, T-201):
    - no stream stored for the channel (playlist before the usher) → original text;
    - `MARKED_LIVE` (markers over live segments) → original text, no backup lookup, no pause/play (T-202);
    - channel on the whitelist → original text (never reached in 2.6.7, C-10);
    - no ads → original text (T-101);
    - ads → walks `backupPlayerTypes` (F-09: `site`, `popout`, `frontpage`, `picture-by-picture`, `mobile_web`, `embed`, then `autoplay` as `android` with `lowQualityFallback`; T-405), variants read with `m3u8-parser` (T-104); the first backup that is not SSAI replaces the whole playlist; a type without one gets a new token;
    - none clean → `mergeM3u8Contents` edits the main playlist's lines: each ad segment with a live backup segment in the same second gets that segment's `#EXTINF` and URI lines; every other line stays (T-101).
-6. When the ad state changes → pause and play on the player.
+7. When the ad state changes → pause and play on the player.
 
 ## Current messages
 
