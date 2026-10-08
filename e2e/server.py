@@ -34,6 +34,18 @@ def media_summary(digests):
     }
 
 
+def ad_media(state, delivered):
+    """Ad segments listed in the playlists the player got: how many the player requested, and of those how many were
+    fetched from the network and how many Purple answered in the worker (the blank segment, T-502)."""
+    fetches = [e for e in state.get('workerLog') or [] if e.get('kind') == 'fetch']
+    network = {e['url'] for e in fetches if e.get('level') == 'network'}
+    player = {e['url'] for e in fetches if e.get('level') == 'player'}
+    paths = {p for d in delivered for p in (d['playlist'].get('adSegmentPaths') or [])}
+    requested = paths & player
+    return {'listed': len(paths), 'requested': len(requested), 'fromNetwork': len(requested & network),
+            'answeredByPurple': len(requested - network)}
+
+
 def timeline(records):
     """One line per poll: time, media sequence, segments, ad segments, DATERANGE classes, roll types."""
     return [
@@ -74,6 +86,7 @@ def summarize(state):
         'mainTimeline': timeline([s for s in media if s['url'] in player_urls]),
         'backupTimeline': timeline([s for s in media if s['url'] not in player_urls]),
         'delivered': media_summary([d['playlist'] for d in delivered]),
+        'adMedia': ad_media(state, delivered),
         # distinct token answers: playerType, errors and token flags, with how many times each came back
         'tokens': [{**json.loads(key), 'count': n} for key, n in Counter(
             json.dumps({'playerType': a.get('playerType'), 'errors': a['errors'], 'tokenFlags': a.get('tokenFlags')}, sort_keys=True) for a in gql
@@ -94,5 +107,6 @@ def one_line(summary):
     return (
         f"masters [{masters}] | main {main['pollsWithAds']}/{main['polls']} polls with ads {main['rollTypes'] or ''} | "
         f"backups {backups['pollsWithAds']}/{backups['polls']} | to player {delivered['pollsWithAds']}/{delivered['polls']} | "
+        f"ad segments requested {summary['adMedia']['requested']}, from network {summary['adMedia']['fromNetwork']} | "
         f"tokens {summary['tokenRequests']} | csai {len(summary['csai'])}"
     )

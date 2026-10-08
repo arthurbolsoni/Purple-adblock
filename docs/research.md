@@ -69,6 +69,7 @@ The "Brave Twitch Adblock Rules" list (`brave-lists/brave-twitch.txt`) has the s
 ### No clean backup
 
 - Removes ad segments, including ad `EXT-X-PART`, `EXT-X-TWITCH-PREFETCH` and `EXT-X-PRELOAD-HINT` lines, and injects a blank MP4 (`BLANK_MP4`). The viewer sees a black screen instead of the ad.
+- Checked on 2026-10-08 (commit `60346357` of `brave/adblock-resources`): `stripAdSegments` keeps the `#EXTINF` and URI lines of ad segments and caches the URIs (120 s); the worker's `fetch` hook answers a cached URI with `BLANK_MP4`, an fMP4 init segment (`ftyp`, `moov` with an `mp4a` and an `avc1` track) with no samples, 1137 bytes. During ads every `EXT-X-TWITCH-PREFETCH` and `EXT-X-PRELOAD-HINT` line is removed, and `EXT-X-PART` lines with an ad URI.
 - Reloads the player at the end of the break, at most one reload every 30 s (`ReloadCooldownSeconds`).
 
 ### CSAI

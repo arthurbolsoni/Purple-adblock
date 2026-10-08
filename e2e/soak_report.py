@@ -207,6 +207,11 @@ def session_report(directory):
                               'maf': [d for d in (parsed or {}).get('dateranges', []) if d['class'] == 'twitch-maf-ad']})
             backups = [s for s in media if not is_main(s) and start - 10 <= wall(s) <= end + 10]
             to_player = [d for d in delivered if start - 5 <= wall(d) <= end + 5]
+            # ad segments listed to the player: requested by it, and fetched from the network or answered by Purple (T-502)
+            fetches = [e for e in data['workerLog'] if e['load'] == n and e.get('kind') == 'fetch' and start - 10 <= wall(e) <= end + 60]
+            listed = {p for d in to_player for p in (d['playlist'].get('adSegmentPaths') or [])}
+            requested = listed & {e['url'] for e in fetches if e.get('level') == 'player'}
+            from_network = requested & {e['url'] for e in fetches if e.get('level') == 'network'}
             console = Counter(e['text'][:120] for e in data['workerLog']
                               if e['load'] == n and e.get('kind') == 'console' and start - 10 <= wall(e) <= end + 30)
             events = Counter(json.dumps({k: e.get(k) for k in ('type', 'playerType', 'count')}) for e in data['events']
@@ -233,6 +238,8 @@ def session_report(directory):
                             'clean': sum(1 for s in backups if not ad_marks(s['playlist']))},
                 'tokens': dict(tokens),
                 'toPlayer': {'polls': len(to_player), 'kinds': dict(Counter((ad_marks(d['playlist']) or {}).get('kind', 'NONE') for d in to_player)),
+                             'adMedia': {'listed': len(listed), 'requested': len(requested), 'fromNetwork': len(from_network),
+                                         'answeredByPurple': len(requested - from_network)},
                              # consecutive playlists to the player whose MEDIA-SEQUENCE went down
                              'sequenceBack': sum(1 for x, y in zip(to_player, to_player[1:])
                                                  if (x['playlist'].get('mediaSequence') or 0) > (y['playlist'].get('mediaSequence') or 0))}

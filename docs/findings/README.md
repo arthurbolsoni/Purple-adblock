@@ -22,4 +22,5 @@ New discoveries are added here as they happen. A later finding that contradicts 
 | [2026-10-08-ad-segment-coverage.md](2026-10-08-ad-segment-coverage.md) | Ad segments by title, `twitch-stitched-ad` range and stream source in the soak recordings; backups announcing their own break (T-203, T-204) | open |
 | [2026-10-08-settings-without-reload.md](2026-10-08-settings-without-reload.md) | Whitelist changed in storage while a channel plays (L3-07, T-602); prerolls on fresh profiles that night | closed |
 | [2026-10-08-backup-type-pinning.md](2026-10-08-backup-type-pinning.md) | Pinned and contaminated backup types (T-406): tests and live runs, no break in them | open |
+| [2026-10-08-blank-segments.md](2026-10-08-blank-segments.md) | Brave's `BLANK_MP4` (an init segment without samples) and how Purple answers the ad segments no backup replaced (T-502); a preroll handled on the build | open |
 | [../research.md](../research.md) | Brave's Twitch scriptlet | closed |

@@ -18,6 +18,7 @@ The userscript has no content script or popup: `bundle.js` is the whole script a
 3. The page answers `fetch` and XHR to `edge.ads.twitch.tv` with an empty 200 while `blockCsai` holds (`page/fetch-hook.ts`, `page/xhr-hook.ts`, T-301); on Chromium a static rule (`rules.json`, T-302) blocks what the hooks do not see. The content script sends the settings to the page as soon as storage answers, again when a worker asks, and whenever a stored setting changes (`storage.onChanged`, T-602).
 4. Every worker built this way joins a `WorkerRegistry` (`page/worker-registry.ts`) after the page's first message to it (the player's init), and leaves it on `terminate()` (T-107). Nothing from Purple reaches a worker before that message. On a direct channel load the player creates two workers. The page `fetch` hook (`page/fetch-hook.ts`, T-106) is installed when the bundle loads; it reads only `https://gql.twitch.tv/integrity`, from a clone, and gives every response to the page unchanged.
 5. In the worker, `app.worker.ts` calls `bootstrapWorker(self)`, which keeps the original `fetch` as `self.request`, creates `AppController` and replaces `fetch` with a dispatcher over the `@Fetch` routes (first match in declaration order):
+   - an ad URI Purple listed for the blank segment (F-14) → `onBlankSegment` → `BLANK_MP4`, with no request to Twitch (T-502);
    - `usher.ttvnw.net/api/channel/hls/` and `usher.ttvnw.net/api/v2/channel/hls/` (except `picture-by-picture`) → `onChannel` → `Player.setChannel` with the channel from the URL path (T-103);
    - `ttvnw.net/v1/playlist/` → `onFetch` → `Player.onFetch`; an exception returns Twitch's playlist;
    - `picture-by-picture` → `onChannelPicture` → stores the PbP stream and returns an empty response.
@@ -27,14 +28,15 @@ The userscript has no content script or popup: `bundle.js` is the whole script a
    - channel on the whitelist → original text (never reached in 2.6.7, C-10; the worker keeps the `setSettings` value since T-602);
    - no ads → original text (T-101);
    - ads → walks `backupPlayerTypes` (F-09: `site`, `popout`, `frontpage`, `picture-by-picture`, `mobile_web`, `embed`, then `autoplay` as `android` with `lowQualityFallback`; T-405), variants read with `m3u8-parser` (T-104); the first clean backup replaces the whole playlist: no ad segment and no stitched-ad marker, so a backup announcing its own break is skipped (T-204); a type without one gets a new token and is left out of the chain for 5 s; the type of the last clean backup goes first (F-10, T-406);
-   - none clean → `mergeM3u8Contents` edits the main playlist's lines: each ad segment with a live backup segment in the same second gets that segment's `#EXTINF` and URI lines; every other line stays (T-101); ad segments on both sides come from the detector (T-203).
+   - none clean → `mergeM3u8Contents` edits the main playlist's lines: each ad segment with a live backup segment in the same second gets that segment's `#EXTINF` and URI lines; every other line stays (T-101); ad segments on both sides come from the detector (T-203);
+   - ad segments left → with `stripFallback`, their lines stay and their URIs, with any `EXT-X-MAP` only they use, are answered with the blank segment; part, preload and prefetch lines that point at ad media go (F-14, T-502). This also covers the first poll of a break, before any backup token is ready.
 7. When the ad state changes → pause and play on the player.
 
 ## Current messages
 
 | From → to | Message | Effect |
 | --- | --- | --- |
-| worker → page | `{ type: "getSettings" }` | page forwards `window.postMessage({ type: "getSettings" })`; the content script answers once `storage` has answered, with `whitelist`, `toggleProxy`, `proxyUrl`, `debug` (logs and events, C-09, F-17), `blockCsai`, `backupPlayerTypes`, `lowQualityFallback` and `pinBackupPlayerType` |
+| worker → page | `{ type: "getSettings" }` | page forwards `window.postMessage({ type: "getSettings" })`; the content script answers once `storage` has answered, with `whitelist`, `toggleProxy`, `proxyUrl`, `debug` (logs and events, C-09, F-17), `blockCsai`, `backupPlayerTypes`, `lowQualityFallback`, `pinBackupPlayerType` and `stripFallback` |
 | content script → page | `{ type: "setSettings", value }`, also on every change to a stored setting (T-602) | page sends `{ funcName: "setSettings", value }` to every registered worker; the worker's player keeps `value` |
 | page → worker | `{ funcName: "setIntegrity", value }` | sent to every registered worker; the worker stores the integrity token |
 | worker → page | `{ type: "pause" }`, `{ type: "play" }` | page sends `{ funcName: "pause" \| "play", id: 1 }` to the worker that asked (player's internal RPC) |
@@ -72,7 +74,7 @@ intercepted fetch
            └─ SSAI
                 ├─ backups by playerType (E3, F-07..F-11) → first clean one replaces the playlist (E4)
                 ├─ none clean → merge by time (E5, F-13)
-                └─ ad segments left → blank segment (F-14)
+                └─ ad segments left → their URIs answered with the blank segment in the worker (F-14)
 ```
 
 Any exception on this path returns Twitch's original response (rule 5 in `CLAUDE.md`).

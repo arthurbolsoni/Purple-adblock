@@ -5,7 +5,7 @@ import { afterEach, describe, expect, setSystemTime, test } from "bun:test";
 import { Parser } from "m3u8-parser";
 import { silenceConsole } from "../harness/console";
 import { fixture } from "../harness/fixtures";
-import { createWorkerScope } from "../harness/worker-scope";
+import { createWorkerScope, type WorkerHarness } from "../harness/worker-scope";
 import { StreamType } from "../../src/modules/stream/interface/stream.enum";
 
 silenceConsole();
@@ -44,7 +44,8 @@ const twoTypes = (worker: ReturnType<typeof createWorkerScope>) =>
 describe("worker pipeline", () => {
   test("bootstrapping registers the routes and asks the page for settings", () => {
     const worker = setup();
-    expect(worker.router.routes.map((r) => (typeof r.match === "string" ? r.match : "variant of the player's master"))).toEqual([
+    expect(worker.router.routes.map((r) => (typeof r.match === "string" ? r.match : r.propertyKey === "onBlankSegment" ? "ad URI answered blank" : "variant of the player's master"))).toEqual([
+      "ad URI answered blank",
       "usher.ttvnw.net/api/v2/channel/hls/",
       "usher.ttvnw.net/api/channel/hls/",
       "variant of the player's master",
@@ -498,5 +499,63 @@ describe("pinned and contaminated backup types", () => {
 
     setSystemTime(T0 + 5001);
     expect((await poll(worker)).media).toEqual(["chunked.m3u8", "popout-chunked.m3u8", "frontpage-chunked.m3u8"]);
+  });
+});
+
+// T-502 (F-14): ad segments no backup replaced stay in the playlist; the worker answers their requests with the blank
+// segment (BLANK_MP4), so Twitch never gets them
+describe("blank segments", () => {
+  const preroll = fixture("m3u8/media-ssai-preroll.m3u8");
+  const AD = "https://edge.j.cloudfront.hls.ttvnw.net/v1/segment/adsquared/ad-1000.ts";
+  const T0 = new Date("2026-10-08T12:00:00.000Z").getTime();
+
+  afterEach(() => setSystemTime());
+
+  // the main playlist and both backups each inside their own preroll: no live segment to merge
+  const prerollEverywhere = async (settings: Record<string, unknown> = {}) => {
+    const worker = setup();
+    worker.twitch.master("channel", masterFor("frontpage-"), StreamType.FRONTPAGE);
+    worker.twitch.master("channel", masterFor("picture-"), StreamType.PICTURE);
+    worker.twitch.mediaPlaylist(MAIN, preroll);
+    worker.twitch.mediaPlaylist(FRONTPAGE, preroll.replaceAll("/adsquared/ad-", "/adsquared/fp-"));
+    worker.twitch.mediaPlaylist(PICTURE, preroll.replaceAll("/adsquared/ad-", "/adsquared/pp-"));
+    const backupPlayerTypes = [StreamType.FRONTPAGE, StreamType.PICTURE];
+    worker.send("setSettings", { whitelist: [], toggleProxy: false, proxyUrl: "", debug: true, backupPlayerTypes, lowQualityFallback: false, ...settings });
+    await worker.text(USHER);
+    return worker;
+  };
+  const blankEvents = (worker: WorkerHarness) => worker.posted.filter((m) => m.type === "purpleEvent" && m.event.type === "blankInserted").map((m) => m.event.count);
+  const adRequests = (worker: WorkerHarness) => worker.twitch.calls.filter((c) => c.url === AD);
+
+  test("every backup in its own preroll: the playlist keeps its lines, the ad URIs get the blank segment, Twitch gets none", async () => {
+    const worker = await prerollEverywhere();
+    expect(await worker.text(MAIN)).toBe(preroll);
+    await settle(() => worker.player.currentStream().serverList.length >= 3);
+    expect(await worker.text(MAIN)).toBe(preroll);
+
+    const response = await worker.fetch(AD);
+    expect((await response.arrayBuffer()).byteLength).toBe(1137);
+    expect(adRequests(worker)).toEqual([]);
+    expect(blankEvents(worker)).toEqual([6]);
+  });
+
+  test("stripFallback off: the ad segments are requested from Twitch", async () => {
+    const worker = await prerollEverywhere({ stripFallback: false });
+    await worker.text(MAIN);
+    await worker.fetch(AD);
+    expect(adRequests(worker)).toHaveLength(1);
+    expect(blankEvents(worker)).toEqual([]);
+  });
+
+  test("an ad URI is answered blank until 120 s after the last poll that listed it", async () => {
+    setSystemTime(T0);
+    const worker = await prerollEverywhere();
+    await worker.text(MAIN);
+
+    setSystemTime(T0 + 119_000);
+    expect((await (await worker.fetch(AD)).arrayBuffer()).byteLength).toBe(1137);
+    setSystemTime(T0 + 121_000);
+    await worker.fetch(AD);
+    expect(adRequests(worker)).toHaveLength(1);
   });
 });

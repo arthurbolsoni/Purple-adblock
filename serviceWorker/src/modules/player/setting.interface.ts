@@ -8,4 +8,5 @@ export type Setting = {
   backupPlayerTypes?: string[];
   lowQualityFallback?: boolean;
   pinBackupPlayerType?: boolean;
+  stripFallback?: boolean;
 };

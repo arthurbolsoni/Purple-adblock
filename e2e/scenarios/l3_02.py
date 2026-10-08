@@ -50,8 +50,10 @@ async def run(session):
     if server.break_recorded(summary):
         checks += [
             Check('break: no ad overlay', overlay_seconds == 0, {'secondsWithOverlay': overlay_seconds, 'of': len(samples), 'purple': purple}),
-            Check('break: no ad segment reached the player', summary['delivered']['pollsWithAds'] == 0,
-                  {'main': summary['main'], 'delivered': summary['delivered'], 'backups': summary['backups'], 'purple': purple}),
+            # an ad segment Purple answers with the blank segment (T-502) stays listed but never leaves the worker
+            Check('break: no ad media reached the player (no ad segment delivered, or none fetched from the network)',
+                  summary['delivered']['pollsWithAds'] == 0 or summary['adMedia']['fromNetwork'] == 0,
+                  {'main': summary['main'], 'delivered': summary['delivered'], 'adMedia': summary['adMedia'], 'backups': summary['backups'], 'purple': purple}),
         ]
     else:
         checks.append(Check('break recorded in the main stream', True, {'main': summary['main'], 'secondsWithOverlay': overlay_seconds}, skipped=True))

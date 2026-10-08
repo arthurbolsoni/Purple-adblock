@@ -2,7 +2,7 @@ import { Stream } from "../stream/stream";
 import { Setting } from "./setting.interface";
 import { StreamType } from "../stream/interface/stream.enum";
 import { Server } from "../stream/interface/stream.types";
-import { mergeWithBackups } from "./m3u8";
+import { blankAds, mergeWithBackups } from "./m3u8";
 import { AdClass, detectAds, isCleanBackup } from "./ad-detector";
 import { parseVariants } from "../stream/master";
 import type { PurpleEvent, WorkerContext } from "../../scope";
@@ -19,6 +19,8 @@ export const DEFAULT_BACKUP_PLAYER_TYPES: string[] = [
 
 // F-10: how long a type whose backup had ads (or announced its own break) is left out of the chain
 export const CONTAMINATED_MS = 5000;
+// F-14: how long after the last poll that listed it an ad URI is still answered with the blank segment (as Brave's script)
+export const BLANK_TTL_MS = 120_000;
 
 export class Player {
   integrityToken = ""; //the integrity token
@@ -32,6 +34,7 @@ export class Player {
   private playerVariants = new Map<string, Stream>(); //variant URL (without query) of the player's masters -> stream
   private pinnedType: string | null = null; // F-10: type of the last clean backup delivered
   private contaminatedUntil = new Map<string, number>(); // F-10: type -> time (ms) until which it is skipped
+  private blankUris = new Map<string, number>(); // F-14: ad URI -> time (ms) of the last poll that listed it
 
   constructor(private readonly scope: WorkerContext) {}
 
@@ -92,7 +95,8 @@ export class Player {
     return this.setting?.whitelist?.includes(this.actualChannel) || false;
   }
 
-  async onFetch(text: string): Promise<string> {
+  // `url`: the media playlist's URL, to resolve relative segment URIs (T-502)
+  async onFetch(text: string, url: string = ""): Promise<string> {
     // no stream stored for the channel yet (media playlist before the usher)
     if (!this.currentStream()) return text;
     if (this.isWhitelist()) {
@@ -134,7 +138,15 @@ export class Player {
     
     const merged = mergeWithBackups([text, ...dump]);
     if (merged.replaced) this.emit({ type: "segmentsReplaced", count: merged.replaced });
-    return merged.text;
+    // F-14: the ad segments left are answered with the blank segment when the player requests them (stripFallback)
+    if (!merged.remaining.length || this.setting?.stripFallback === false) return merged.text;
+    const blanked = blankAds(merged.text, merged.remaining, url);
+    const now = Date.now();
+    const added = blanked.uris.slice(0, blanked.segments).filter((uri) => !this.isBlankSegment(uri)).length;
+    for (const [uri, at] of this.blankUris) if (now - at > BLANK_TTL_MS) this.blankUris.delete(uri);
+    for (const uri of blanked.uris) this.blankUris.set(uri, now);
+    if (added) this.emit({ type: "blankInserted", count: added });
+    return blanked.text;
   }
 
 
@@ -196,6 +208,12 @@ export class Player {
   }
 
   isPlayerPlaylist = (url: string) => this.playerVariants.has(withoutQuery(url));
+
+  // F-14: an ad URI listed by a poll in the last BLANK_TTL_MS, answered with the blank segment instead of Twitch's
+  isBlankSegment = (url: string) => {
+    const at = this.blankUris.get(url);
+    return at != null && Date.now() - at <= BLANK_TTL_MS;
+  };
 
   // debug event (F-17) for the current channel
   private emit(event: Omit<PurpleEvent, "channel">) {

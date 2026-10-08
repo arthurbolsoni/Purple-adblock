@@ -52,7 +52,8 @@ describe("debug off (default)", () => {
 });
 
 describe("debug on", () => {
-  test("the worker logs and posts adDetected and backupUsed, with channel, playerType and time", async () => {
+  // the first poll has no backup yet: its ad segments are answered blank (T-502); the second gets the frontpage backup
+  test("the worker logs and posts adDetected, blankInserted and backupUsed, with channel, playerType and time", async () => {
     const log = spyOn(console, "log").mockImplementation(() => {});
     const worker = adBreak();
     worker.send("setSettings", { whitelist: [], debug: true });
@@ -62,8 +63,9 @@ describe("debug on", () => {
 
     expect(log).toHaveBeenCalled();
     const posted = events(worker);
-    expect(posted.map((e) => e.type)).toEqual(["adDetected", "adDetected", "backupUsed"]);
-    expect(posted[2]).toMatchObject({ type: "backupUsed", channel: "channel", playerType: StreamType.FRONTPAGE });
+    expect(posted.map((e) => e.type)).toEqual(["adDetected", "blankInserted", "adDetected", "backupUsed"]);
+    expect(posted[1]).toMatchObject({ type: "blankInserted", channel: "channel", count: 3 });
+    expect(posted[3]).toMatchObject({ type: "backupUsed", channel: "channel", playerType: StreamType.FRONTPAGE });
     expect(posted.every((e) => e.channel === "channel" && e.at >= before)).toBe(true);
   });
 

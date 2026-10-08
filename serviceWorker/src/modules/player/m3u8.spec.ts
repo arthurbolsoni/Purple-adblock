@@ -1,7 +1,8 @@
 // T-101: the merge edits the lines of the main playlist; every line that is not a replaced segment stays as it was.
 import { describe, expect, test } from "bun:test";
 import { fixture } from "../../../test/harness/fixtures";
-import { mergeM3u8Contents, readSegments } from "./m3u8";
+import { blankAds, mergeM3u8Contents, mergeWithBackups, readSegments } from "./m3u8";
+import { detectAds } from "./ad-detector";
 
 const sampleM3U8_withDates_1 = `#EXTM3U
 #EXT-X-TARGETDURATION:10
@@ -160,5 +161,87 @@ describe("mergeM3u8Contents", () => {
   test("#EXTINF is written as <duration>,<title> even when the backup line has no comma", () => {
     const backup = sampleM3U8_withDates_2.replace("#EXTINF:10,\n#EXT-X-PROGRAM-DATE-TIME:2023-01-01T00:00:20.000Z", "#EXTINF:10\n#EXT-X-PROGRAM-DATE-TIME:2023-01-01T00:00:20.000Z");
     expect(mergeM3u8Contents([sampleM3U8_withDates_1, backup])).toContain("#EXTINF:10,\nsegmentC.ts");
+  });
+});
+
+// T-502 (F-14): ad segments no backup replaced keep their lines; their URIs are answered with a blank segment by the
+// worker. Prefetch, preload and part lines that point at ad media go; every other line stays.
+describe("blankAds", () => {
+  const LIVE = fixture("m3u8/media-live-ts.m3u8");
+  const URL = "https://video-weaver.example.hls.ttvnw.net/v1/playlist/chunked.m3u8";
+  const SEG = "https://edge.j.cloudfront.hls.ttvnw.net/v1/segment/";
+  const ads = (text: string) => detectAds(text).adSegments;
+
+  test("media-ssai-preroll: the text is unchanged and the six ad URIs are listed", () => {
+    const preroll = fixture("m3u8/media-ssai-preroll.m3u8");
+    const result = blankAds(preroll, ads(preroll), URL);
+    expect(result.text).toBe(preroll);
+    expect(result.segments).toBe(6);
+    expect(result.uris).toEqual([0, 1, 2, 3, 4, 5].map((n) => `${SEG}adsquared/ad-100${n}.ts`));
+  });
+
+  test("an ad in the middle: the prefetch lines of the live tail stay", () => {
+    const main = asAd(LIVE, "live-1001.ts");
+    const result = blankAds(main, ads(main), URL);
+    expect(result.text).toBe(main);
+    expect(result.uris).toEqual([`${SEG}live-1001.ts`]);
+  });
+
+  test("an ad at the end: the prefetch lines after it go, and their URIs are answered blank too", () => {
+    const main = asAd(LIVE, "live-1005.ts");
+    const result = blankAds(main, ads(main), URL);
+    expect(result.text.split("\n")).toEqual(main.split("\n").filter((l) => !l.startsWith("#EXT-X-TWITCH-PREFETCH")));
+    expect(result.segments).toBe(1);
+    expect(result.uris).toEqual([`${SEG}live-1005.ts`, `${SEG}live-1006.ts`, `${SEG}live-1007.ts`]);
+  });
+
+  test("a prefetch line with an ad URI pattern goes, with a live tail", () => {
+    const main = asAd(LIVE, "live-1001.ts").replace("/live-1007.ts", "/adsquared/ad-1007.ts");
+    const result = blankAds(main, ads(main), URL);
+    expect(result.text).not.toContain("ad-1007.ts");
+    expect(result.text).toContain("#EXT-X-TWITCH-PREFETCH:https://edge.j.cloudfront.hls.ttvnw.net/v1/segment/live-1006.ts");
+  });
+
+  test("a break announced after the last segment: the prefetch lines after the announcement go", () => {
+    const announcement = '#EXT-X-DATERANGE:ID="stitched-ad-1",CLASS="twitch-stitched-ad",START-DATE="2026-10-03T12:00:14.000Z",DURATION=20.234';
+    const main = asAd(LIVE, "live-1001.ts").replace(`\n#EXT-X-TWITCH-PREFETCH:${SEG}live-1007.ts`, `\n${announcement}\n#EXT-X-TWITCH-PREFETCH:${SEG}live-1007.ts`);
+    const result = blankAds(main, ads(main), URL);
+    expect(result.text).toContain(`#EXT-X-TWITCH-PREFETCH:${SEG}live-1006.ts`);
+    expect(result.text).not.toContain(`#EXT-X-TWITCH-PREFETCH:${SEG}live-1007.ts`);
+    expect(result.text).toContain(announcement);
+  });
+
+  test("LL-HLS: the parts of an ad segment go; the parts and preload hint of the live segment in progress stay", () => {
+    const parts = `#EXT-X-PART:DURATION=1.000,URI="${SEG}part-500-0.ts",INDEPENDENT=YES\n#EXT-X-PART:DURATION=1.000,URI="${SEG}part-500-1.ts"\n`;
+    const live = fixture("m3u8/media-ll-hls.m3u8").replace("#EXT-X-PROGRAM-DATE-TIME:2026-10-03T12:00:00.000Z", parts + "#EXT-X-PROGRAM-DATE-TIME:2026-10-03T12:00:00.000Z");
+    const main = asAd(live, "live-500.ts");
+    const result = blankAds(main, ads(main), URL);
+    expect(result.text).not.toContain("part-500-");
+    for (const kept of ["part-502-0.ts", "part-502-1.ts", "#EXT-X-PRELOAD-HINT", "#EXT-X-SERVER-CONTROL", "#EXT-X-PART-INF"]) expect(result.text).toContain(kept);
+    expect(result.uris).toEqual([`${SEG}live-500.ts`, `${SEG}part-500-0.ts`, `${SEG}part-500-1.ts`]);
+  });
+
+  test("media-preroll-ft: the EXT-X-MAP that only ad segments use is answered blank too; its line stays", () => {
+    const preroll = fixture("m3u8/media-preroll-ft.m3u8");
+    const result = blankAds(preroll, ads(preroll), URL);
+    expect(result.text).toBe(preroll);
+    expect(result.uris).toContain(`${SEG}init-ft.mp4`);
+    expect(result.segments).toBe(6);
+  });
+
+  test("an EXT-X-MAP that live segments use is not answered blank", () => {
+    const main = asAd(fixture("m3u8/media-live-fmp4.m3u8"), "main-1001.mp4");
+    expect(blankAds(main, ads(main), URL).uris).not.toContain(`${SEG}init-main.mp4`);
+  });
+
+  test("relative URIs are resolved against the playlist URL", () => {
+    const main = "#EXTM3U\n#EXT-X-PROGRAM-DATE-TIME:2026-10-03T12:00:00.000Z\n#EXTINF:2.000,Amazon|AD_ID\nad-1.ts\n";
+    expect(blankAds(main, [0], URL).uris).toEqual(["https://video-weaver.example.hls.ttvnw.net/v1/playlist/ad-1.ts"]);
+  });
+
+  test("the merge reports the ad segments it left: none with backup-clean, all three without a backup", () => {
+    const midroll = fixture("m3u8/media-ssai-midroll.m3u8");
+    expect(mergeWithBackups([midroll, fixture("m3u8/backup-clean.m3u8")]).remaining).toEqual([]);
+    expect(mergeWithBackups([midroll]).remaining).toEqual([3, 4, 5]);
   });
 });

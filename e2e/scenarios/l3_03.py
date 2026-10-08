@@ -48,8 +48,10 @@ async def run(session):
         return checks + [Check('breaks reached the player without ad segments', True, 'no break recorded', skipped=True)]
     for b in report['breaks']:
         to_player = (b['toPlayer'] or {}).get('kinds', {})
-        checks.append(Check(f"break at {b['start']} ({b['kind']}, {b['roll']}) reached the player without ad segments",
-                            not to_player.get('SSAI'),
+        ad_media = (b['toPlayer'] or {}).get('adMedia') or {}
+        # ad segments Purple answers with the blank segment (T-502) stay listed but never reach the network
+        checks.append(Check(f"break at {b['start']} ({b['kind']}, {b['roll']}) reached the player without ad media",
+                            not to_player.get('SSAI') or ad_media.get('fromNetwork') == 0,
                             {k: b[k] for k in ('seconds', 'pollKinds', 'maxAdSegments', 'backups', 'toPlayer', 'adOverlaySeconds',
                                                'notProgressingSeconds', 'purpleEvents')}))
     return checks

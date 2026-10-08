@@ -24,12 +24,14 @@ const attr = (line: string, name: string) => {
   return line.slice(start, line.indexOf('"', start));
 };
 
+export const isAdUri = (uri: string) => URI_MARKERS.some((marker) => uri.includes(marker));
+
 export const isAdSegment = (title: string, uri: string) =>
-  TITLE_MARKERS.some((marker) => title.includes(marker)) || URI_MARKERS.some((marker) => uri.includes(marker));
+  TITLE_MARKERS.some((marker) => title.includes(marker)) || isAdUri(uri);
 
 const numberAttr = (line: string, name: string) => parseFloat(new RegExp(`[:,]${name}=([0-9.]+)`).exec(line)?.[1] ?? "");
 
-const isStitchedMarker = (line: string) =>
+export const isStitchedMarker = (line: string) =>
   line.startsWith("#EXT-X-DATERANGE:") && (attr(line, "CLASS").startsWith("twitch-stitched") || attr(line, "ID").startsWith("stitched-ad"));
 
 const isPlaylistMarker = (line: string) => {

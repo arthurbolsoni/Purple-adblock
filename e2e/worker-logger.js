@@ -78,12 +78,18 @@
     }
     const titles = [];
     const adHosts = [];
+    const adPaths = [];
+    // with a stitched-ad marker, a title other than "live" is an ad too (T-203: "FT|...", a 10-digit number)
+    const stitched = lines.some((l) => l.startsWith("#EXT-X-DATERANGE:") && /CLASS="twitch-stitched|ID="stitched-ad/.test(l));
     let title = "";
     for (const line of lines) {
       if (line.startsWith("#EXTINF:")) title = line.slice(line.indexOf(",") + 1);
       else if (line && !line.startsWith("#")) {
         titles.push(title);
-        if (isAdTitle(title)) adHosts.push(hostOf(line));
+        if (isAdTitle(title) || (stitched && title && title !== "live")) {
+          adHosts.push(hostOf(line));
+          adPaths.push(short(line));
+        }
         title = "";
       }
     }
@@ -112,6 +118,8 @@
       prefetch: lines.filter((l) => l.startsWith("#EXT-X-TWITCH-PREFETCH:")).length,
       segmentHosts: unique(uris.map(hostOf)),
       adSegmentHosts: unique(adHosts),
+      // host + path of the ad segments, to tell whether the player got them from the network (kept local, not committed)
+      adSegmentPaths: unique(adPaths),
     };
   };
 

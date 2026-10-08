@@ -84,11 +84,15 @@ describe("@Fetch / createRouter", () => {
 
   test("AppController routes: usher v1 and v2, media playlist by URL or path, picture-by-picture", () => {
     // the player's master listed one variant outside the v1/playlist path (T-104)
-    const appService = { isPlayerPlaylist: (url: string) => url === "https://edge.playlist.ttvnw.net/v2/hls/a.m3u8" };
+    // and one ad segment URI is answered with the blank segment (T-502)
+    const appService = {
+      isPlayerPlaylist: (url: string) => url === "https://edge.playlist.ttvnw.net/v2/hls/a.m3u8",
+      isBlankSegment: (url: string) => url === "https://example.j.cloudfront.hls.ttvnw.net/ad.ts",
+    };
     const controller = new AppController(appService as any, { postMessage() {}, request: fetch, logger() {} });
     const router = createRouter(controller);
 
-    expect(router.routes.map((r) => r.propertyKey)).toEqual(["onChannel", "onChannel", "onFetch", "onFetch", "onChannelPicture"]);
+    expect(router.routes.map((r) => r.propertyKey)).toEqual(["onBlankSegment", "onChannel", "onChannel", "onFetch", "onFetch", "onChannelPicture"]);
 
     const routeOf = (url: string) => router.routeFor(url)?.propertyKey;
     expect(routeOf("https://edge.playlist.ttvnw.net/v2/hls/a.m3u8")).toBe("onFetch");
@@ -99,6 +103,7 @@ describe("@Fetch / createRouter", () => {
     expect(routeOf("https://usher.ttvnw.net/api/v2/channel/hls/somechannel.m3u8?player_type=picture-by-picture")).toBe("onChannelPicture");
     expect(routeOf("https://video-weaver.example.hls.ttvnw.net/v1/playlist/abc.m3u8")).toBe("onFetch");
     expect(routeOf("https://example.j.cloudfront.hls.ttvnw.net/segment.ts")).toBeUndefined();
+    expect(routeOf("https://example.j.cloudfront.hls.ttvnw.net/ad.ts")).toBe("onBlankSegment");
   });
 });
 

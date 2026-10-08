@@ -1,6 +1,7 @@
 import { Controller } from "./decorator/controller.decorator";
 import { Fetch, Message } from "./decorator/handler.decorator";
 import { Player } from "./modules/player/player";
+import { blankSegment } from "./modules/player/blank-segment";
 import { StreamType } from "./modules/stream/interface/stream.enum";
 import type { WorkerContext } from "./scope";
 import { urlOf } from "./url";
@@ -22,6 +23,14 @@ export class AppController {
   @Message("setIntegrity")
   async setIntegrity(data: any) {
     this.appService.setIntegrityToken(JSON.parse(data.value).token);
+  }
+
+  // F-14 (T-502): an ad segment the player was left with gets the blank segment; the request never reaches Twitch
+  @Fetch(function (this: AppController, url: string) {
+    return this.appService.isBlankSegment(url);
+  })
+  async onBlankSegment(): Promise<Response> {
+    return blankSegment();
   }
 
   @Fetch("usher.ttvnw.net/api/channel/hls/", "picture-by-picture")
@@ -47,7 +56,7 @@ export class AppController {
   async onFetch(input: any, options: any): Promise<Response> {
     const body: string = await (await this.scope.request(input, options)).text();
     try {
-      return new Response(await this.appService.onFetch(body));
+      return new Response(await this.appService.onFetch(body, urlOf(input)));
     } catch (e) {
       // a failure in the blocking logic must not stop the player: it gets Twitch's playlist
       this.scope.logger(e);
