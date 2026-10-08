@@ -13,7 +13,7 @@ Phases run in order. Inside a phase, the "Depends on" column says what must come
 | 1. Fixes to existing code | T-101 to T-111 | Phase 0 |
 | 2. Detection | T-201 to T-204 | T-101 |
 | 3. CSAI blocking | T-301, T-302 | T-106 |
-| 4. Backup streams | T-401 to T-409 | T-104, T-105, T-106, T-107 |
+| 4. Backup streams | T-401 to T-410 | T-104, T-105, T-106, T-107 |
 | 5. Playlist assembly | T-501, T-502 | T-101, T-201 |
 | 6. Player control and settings | T-601 to T-604 | T-107, T-201 |
 | 7. Build and release | T-701, T-702 | Phase 0 |
@@ -352,12 +352,22 @@ Runs in parallel with phases 1 to 7. Phase 1 to 6 tasks list L2/L3 scenarios tha
 - Tests: TS-408
 
 ### T-409 Backup tokens at the page's picture-by-picture request
-- [ ] Status · F-19
+- [x] Status · F-19 · done 2026-10-08: soak e, on and off on one channel, on alone on another; the default stays off. The blank segments, the time to the first backup and the token requests during the break matched; every stitched break in soaks d and e started with 1 to 3 polls that only announce it, answered blank whatever the tokens. The prewarmed tokens got their own pod. At a channel's first midroll the first backup was `site` 720p60 with F-19 (1 break) and the `picture-by-picture` 360p master without it (3 breaks in soak d); 4 of the 14 prewarms had a midroll after them ([finding](findings/2026-10-08-prewarm-backups.md))
 - Origin: every stitched midroll in the soaks came 3 to 11 s after the page asked for a `picture-by-picture` master (B-044); Purple asks for backup tokens only at the first poll with ads, so that poll gets blank segments.
 - Files: `serviceWorker/src/modules/player/player.ts`, `app.controller.ts`, `setting.interface.ts`, `platform/src/content-script.js`
 - Done when:
   - with `prewarmBackups` (default off), the picture-by-picture route asks a new token and master for every backup type, at most once a minute;
   - a soak with it on and off on the same channel compares, at each midroll start: whether a clean backup was there at the first poll with ads, blank segments, token requests during the break, and whether tokens asked before the break got their own pod;
+  - the default changes only on that evidence, recorded in `docs/feat.md`.
+- Tests: TS-409, soak
+
+### T-410 Prewarm only the types without a master
+- [~] Status · F-19 · 2026-10-08: the picture-by-picture route asks tokens only for the backup types with no stored master (TS-409); the soaks on several channels are open
+- Origin: F-19 only changed the start of a channel's first midroll, when no backup type but `picture-by-picture` has a master (T-409); at every later page request it asks 7 tokens for types that already have one.
+- Files: `serviceWorker/src/modules/player/player.ts`
+- Done when:
+  - with `prewarmBackups`, the picture-by-picture route asks tokens only for the backup types with no stored master;
+  - soaks on several channels compare the first backup at each channel's first midroll with it on and off;
   - the default changes only on that evidence, recorded in `docs/feat.md`.
 - Tests: TS-409, soak
 

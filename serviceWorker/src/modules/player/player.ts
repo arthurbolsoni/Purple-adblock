@@ -62,14 +62,16 @@ export class Player {
   };
 
   // F-19 (T-409): with prewarmBackups (default off), the page's picture-by-picture request, 3 to 11 s before each
-  // stitched midroll (B-044), brings a new token and master for every backup type, at most once every PREWARM_MS
+  // stitched midroll (B-044), brings a token and master for the backup types, at most once every PREWARM_MS.
+  // T-410: only the types with no stored master (none yet, or dropped when their backup failed or announced a break)
   prewarmBackups = () => {
     const stream = this.currentStream();
     if (this.setting?.prewarmBackups !== true || !stream) return;
     const now = Date.now();
     if (now - this.lastPrewarm < PREWARM_MS) return;
+    const types = this.backupPlayerTypes().filter((type) => !stream.getStreamByStreamType(type).length);
+    if (!types.length) return;
     this.lastPrewarm = now;
-    const types = this.backupPlayerTypes();
     for (const type of types) stream.createStreamAccess(type, this.integrityToken, type === StreamType.AUTOPLAY ? "android" : "web");
     this.emit({ type: "backupsPrewarmed", count: types.length });
   };

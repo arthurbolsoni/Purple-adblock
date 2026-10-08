@@ -30,4 +30,5 @@ New discoveries are added here as they happen. A later finding that contradicts 
 | [2026-10-08-pause-length.md](2026-10-08-pause-length.md) | Pause/play wait at the break edges (`pausePlayDelayMs`, T-604): 0 ms against 1500 ms on live breaks | open |
 | [2026-10-08-ad-break-reload.md](2026-10-08-ad-break-reload.md) | Player reload at the end of a break (`reloadAfterAd`, T-601): `setSrc` found on twitch.tv, the video back in 1 to 3 s, one reload of two brought a new preroll | open |
 | [2026-10-08-midroll-soak.md](2026-10-08-midroll-soak.md) | Soaks a, b and c on the 2026-10-08 builds: stitched midrolls with Purple on and off, ad overlay and backups per break, pause/play at the break edges, the page's picture-by-picture request before each midroll | open |
+| [2026-10-08-prewarm-backups.md](2026-10-08-prewarm-backups.md) | Backup tokens at the page's picture-by-picture request (`prewarmBackups`, T-409): midroll starts with and without it, picture-by-picture requests per channel, an offline channel's recorded video | open |
 | [../research.md](../research.md) | Brave's Twitch scriptlet | closed |

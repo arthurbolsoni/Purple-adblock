@@ -58,7 +58,7 @@ Three groups: strategies that already exist (E-xx, none is removed), fixes to ex
 | F-16 | Settings applied without reloading the page | Purple | - | T-602 |
 | F-17 | Debug event log in the page (`window.__purple.events`), read by the browser tests | Purple | `debug = false` | T-110 |
 | F-18 | Wait between `pause` and `play` at the break edges (E6) from a setting | Purple | `pausePlayDelayMs = 0` | T-604 |
-| F-19 | Backup tokens requested when the page asks for a `picture-by-picture` master, a few seconds before a possible midroll (B-044) | Purple | `prewarmBackups = false` | T-409 |
+| F-19 | Backup tokens requested when the page asks for a `picture-by-picture` master, a few seconds before a possible midroll (B-044). Soak e: the same blank segments, time to the first backup and token requests as without it; a 720p `site` first backup instead of the 360p `picture-by-picture` master at a channel's first midroll (1 break) ([finding](findings/2026-10-08-prewarm-backups.md)). Since T-410 only the backup types with no stored master get a token | Purple | `prewarmBackups = false` | T-409, T-410 |
 
 ### F-02: markers
 

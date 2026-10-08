@@ -200,6 +200,7 @@ describe("worker pipeline", () => {
       expect(worker.twitch.callsOf("gql")).toEqual([]);
     });
 
+    // usher has no frontpage master here, so frontpage stays without one after each prewarm
     test("at most once a minute", async () => {
       const worker = setup();
       prewarm(worker, true);
@@ -213,8 +214,36 @@ describe("worker pipeline", () => {
       expect(worker.twitch.callsOf("gql")).toHaveLength(2);
       setSystemTime(new Date("2026-10-08T12:01:01Z"));
       await worker.fetch(PBYP);
-      await settle(() => worker.twitch.callsOf("gql").length === 4);
-      expect(worker.twitch.callsOf("gql")).toHaveLength(4);
+      await settle(() => worker.twitch.callsOf("gql").length === 3);
+      expect(worker.twitch.callsOf("gql").map((c) => c.playerType)).toEqual([StreamType.SITE, StreamType.FRONTPAGE, StreamType.FRONTPAGE]);
+    });
+
+    // T-410: a type keeps its master until its backup fails or announces a break; only the others get a token
+    test("only the backup types with no stored master get a token", async () => {
+      const worker = setup();
+      prewarm(worker, true);
+      worker.twitch.master("channel", masterFor("picture-"), StreamType.PICTURE);
+      await worker.text(USHER);
+      worker.player.currentStream().setStreamAccess(masterFor("frontpage-"), StreamType.FRONTPAGE);
+      await worker.fetch(PBYP);
+      await settle(() => worker.twitch.callsOf("gql").length === 1);
+      await Bun.sleep(5);
+      expect(worker.twitch.callsOf("gql").map((c) => c.playerType)).toEqual([StreamType.SITE]);
+      const events = worker.posted.filter((m) => m.type === "purpleEvent" && m.event.type === "backupsPrewarmed").map((m) => m.event);
+      expect(events).toEqual([expect.objectContaining({ type: "backupsPrewarmed", count: 1 })]);
+    });
+
+    test("every backup type with a master: no token request and no event", async () => {
+      const worker = setup();
+      prewarm(worker, true);
+      worker.twitch.master("channel", masterFor("picture-"), StreamType.PICTURE);
+      await worker.text(USHER);
+      worker.player.currentStream().setStreamAccess(masterFor("site-"), StreamType.SITE);
+      worker.player.currentStream().setStreamAccess(masterFor("frontpage-"), StreamType.FRONTPAGE);
+      await worker.fetch(PBYP);
+      await Bun.sleep(5);
+      expect(worker.twitch.callsOf("gql")).toEqual([]);
+      expect(worker.posted.filter((m) => m.type === "purpleEvent" && m.event.type === "backupsPrewarmed")).toEqual([]);
     });
   });
 
