@@ -85,6 +85,19 @@ L3-01 at 22:36, dedicated profile, userscript mode, client-side navigation into 
 - Each backup token Purple requested got either its own preroll from the start (`MEDIA-SEQUENCE` 0, 3 ad segments) or the live playlist with no preroll; 3 of 8 backup polls were live, and those went to the player (2 of 5 polls that reached the player still had ad segments).
 - Inferred: a backup token is a new viewer session for the server, with its own preroll decision.
 
+### Token requests per player type
+
+`probes/token_probe.py` at 22:47, from a channel page on twitch.tv, logged out, Purple off, headers `Client-ID` only (no `Client-Integrity`): one `PlaybackAccessToken` per player type of F-09, each with the current persisted hash (`ed230aa1…`), Purple 2.6.7's hash (`0828119d…`) and the full query.
+
+| Player type (platform) | Current hash | 2.6.7 hash | Full query |
+| --- | --- | --- | --- |
+| `site`, `popout`, `frontpage`, `picture-by-picture`, `mobile_web`, `embed` (`web`) | 200, token | 200, token | 200, token |
+| `autoplay` (`android`) | 200, token with `platform: android` | 200, token with `platform: web` | 200, token with `platform: android` |
+
+- 21 requests, all with the `{ data: { streamPlaybackAccessToken } }` shape (`embed` included) and no GraphQL error.
+- Every token had `server_ads: true`, `show_ads: true`, `hide_ads: false`, and the requested `player_type`.
+- The 2.6.7 hash ignores the `platform` variable.
+
 ## Consequences
 
 - `twitch-trigger` alone is not an ad marker; the detector (T-201) must not treat it as one.

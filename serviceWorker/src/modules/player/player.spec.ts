@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, jest, spyOn, test } from "bun:test";
-import { Player } from "./player";
+import { DEFAULT_BACKUP_PLAYER_TYPES, Player } from "./player";
 import { Stream } from "../stream/stream";
 import { StreamType } from "../stream/interface/stream.enum";
 import { fixture } from "../../../test/harness/fixtures";
@@ -196,6 +196,7 @@ describe("Player.onFetch", () => {
     const frontpageUrl = "https://video-weaver.example.hls.ttvnw.net/v1/playlist/frontpage-chunked.m3u8";
     const context = makeContext({ [frontpageUrl]: LIVE });
     const player = new Player(context);
+    player.setSettings({ whitelist: [], toggleProxy: false, proxyUrl: "", backupPlayerTypes: [StreamType.FRONTPAGE, StreamType.PICTURE], lowQualityFallback: false });
     player.setChannel("channel");
     player.currentStream().setStreamAccess(master("frontpage"), StreamType.FRONTPAGE);
 
@@ -209,6 +210,7 @@ describe("Player.onFetch", () => {
     const context = makeContext({ [url720]: LIVE });
     const player = new Player(context);
     player.quality = "720p60";
+    player.setSettings({ whitelist: [], toggleProxy: false, proxyUrl: "", backupPlayerTypes: [StreamType.FRONTPAGE, StreamType.PICTURE], lowQualityFallback: false });
     player.setChannel("channel");
     player.currentStream().setStreamAccess(master("frontpage"), StreamType.FRONTPAGE);
 
@@ -284,7 +286,8 @@ describe("Player.onFetch", () => {
     };
 
     const out = await player.onFetch(ADS);
-    expect(requested).toEqual([StreamType.FRONTPAGE, StreamType.PICTURE]);
+    // T-405: F-09 order, autoplay last (lowQualityFallback is on by default)
+    expect(requested).toEqual([...DEFAULT_BACKUP_PLAYER_TYPES, StreamType.AUTOPLAY]);
     expect(out).toContain("https://seg.example/ad-100.ts");
     expect(player.freeStream).toBe(false);
   });

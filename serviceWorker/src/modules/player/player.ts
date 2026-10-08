@@ -7,6 +7,16 @@ import { AdClass, detectAds } from "./ad-detector";
 import { parseVariants } from "../stream/master";
 import type { PurpleEvent, WorkerContext } from "../../scope";
 
+// F-09 (docs/feat.md)
+export const DEFAULT_BACKUP_PLAYER_TYPES: string[] = [
+  StreamType.SITE,
+  StreamType.POPOUT,
+  StreamType.FRONTPAGE,
+  StreamType.PICTURE,
+  StreamType.MOBILE_WEB,
+  StreamType.EMBED,
+];
+
 export class Player {
   integrityToken = ""; //the integrity token
 
@@ -96,20 +106,15 @@ export class Player {
 
     const dump: string[] = [];
 
-    const frontpage = await this.fetchm3u8ByStreamType(StreamType.FRONTPAGE);
-    if (!frontpage.data) this.currentStream().createStreamAccess(StreamType.FRONTPAGE, this.integrityToken);
-    if (frontpage.dump) dump.push(...frontpage.dump);
-    if (frontpage.data) {
-      this.emit({ type: "backupUsed", playerType: StreamType.FRONTPAGE });
-      return frontpage.data;
-    }
-
-    const picture = await this.fetchm3u8ByStreamType(StreamType.PICTURE);
-    if (!picture.data) this.currentStream().createStreamAccess(StreamType.PICTURE, this.integrityToken);
-    if (picture.dump) dump.push(...picture.dump);
-    if (picture.data) {
-      this.emit({ type: "backupUsed", playerType: StreamType.PICTURE });
-      return picture.data;
+    // F-09: the first backup without ads replaces the playlist (E4); a type without one gets a new token
+    for (const type of this.backupPlayerTypes()) {
+      const backup = await this.fetchm3u8ByStreamType(type);
+      if (!backup.data) this.currentStream().createStreamAccess(type, this.integrityToken, type === StreamType.AUTOPLAY ? "android" : "web");
+      if (backup.dump) dump.push(...backup.dump);
+      if (backup.data) {
+        this.emit({ type: "backupUsed", playerType: type });
+        return backup.data;
+      }
     }
 
     if (dump?.length) {
@@ -124,7 +129,13 @@ export class Player {
   }
 
 
-  async fetchm3u8ByStreamType(accessType: StreamType): Promise<{ data: string | null; dump: string[] }> {
+  // F-09: the setting's list (default: DEFAULT_BACKUP_PLAYER_TYPES); autoplay only with lowQualityFallback (default on), last
+  backupPlayerTypes(): string[] {
+    const types = (this.setting?.backupPlayerTypes ?? DEFAULT_BACKUP_PLAYER_TYPES).filter((type) => type !== StreamType.AUTOPLAY);
+    return this.setting?.lowQualityFallback === false ? types : [...types, StreamType.AUTOPLAY];
+  }
+
+  async fetchm3u8ByStreamType(accessType: StreamType | string): Promise<{ data: string | null; dump: string[] }> {
     let dump: string[] = [];
     let data: string = "";
 

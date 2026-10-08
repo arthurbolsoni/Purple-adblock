@@ -284,7 +284,7 @@ Runs in parallel with phases 1 to 7. Phase 1 to 6 tasks list L2/L3 scenarios tha
 - Tests: TS-402
 
 ### T-403 Updated hash and full-query fallback
-- [ ] Status · F-07 · E3
+- [x] Status · F-07 · E3 · done 2026-10-07: `platform` sent with the current hash; on twitch.tv both hashes and the full query answer every F-09 type, and only the current hash honors `platform` (B-030, `probes/token_probe.py`)
 - Files: `serviceWorker/src/modules/twitch/twitch.service.ts`
 - Done when:
   - default hash is `ed230aa1e33e07eebb8928504583da78a5173989fadfb1ac94be06a04f3cdbe9`;
@@ -302,7 +302,7 @@ Runs in parallel with phases 1 to 7. Phase 1 to 6 tasks list L2/L3 scenarios tha
 - Tests: TS-404
 
 ### T-405 PlayerType list
-- [ ] Status · F-09 · E3, E4
+- [x] Status · F-09 · E3, E4 · done 2026-10-07: the chain walks F-09's list (the setting's list once C-10 is fixed, T-602); L3-01 passed in both modes; no break came up in the 3 L3-02 runs after it, so the new chain is not seen live yet
 - Files: `serviceWorker/src/modules/player/player.ts`, `serviceWorker/src/modules/stream/interface/stream.enum.ts`, `setting.interface.ts`
 - Done when:
   - the chain walks `backupPlayerTypes` (default in `docs/feat.md`) instead of the fixed `frontpage` → `picture-by-picture` sequence;

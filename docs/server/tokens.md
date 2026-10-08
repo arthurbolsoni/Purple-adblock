@@ -10,6 +10,8 @@
 | `variables` | `isLive`, `login`, `isVod`, `vodID`, `playerType` | same plus `platform` (`web`, or `android` for `autoplay`) |
 | Full query fallback | `PlaybackAccessToken_Template` (present, unused) | not used |
 
+Observed on 2026-10-07 ([finding](../findings/2026-10-07-l3-server-observations.md#token-requests-per-player-type)): both hashes and the full query return a token for every F-09 player type; only the current hash and the full query honor `platform` (B-030). Purple sends the current hash with `platform` since T-403, and the full query (with `$platform`) when the persisted query fails or returns no token.
+
 ## Headers
 
 | Header | Purple 2.6.7 | Brave script (Reported) |

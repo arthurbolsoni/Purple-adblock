@@ -37,6 +37,10 @@ const setup = () => {
   return worker;
 };
 
+// The 2.6.7 chain (frontpage, then picture-by-picture), for tests about the mechanics rather than the type list (T-405)
+const twoTypes = (worker: ReturnType<typeof createWorkerScope>) =>
+  worker.player.setSettings({ whitelist: [], toggleProxy: false, proxyUrl: "", backupPlayerTypes: [StreamType.FRONTPAGE, StreamType.PICTURE], lowQualityFallback: false });
+
 describe("worker pipeline", () => {
   test("bootstrapping registers the routes and asks the page for settings", () => {
     const worker = setup();
@@ -90,6 +94,7 @@ describe("worker pipeline", () => {
 
   test("ad break: backup tokens are requested, then the clean frontpage backup replaces the playlist", async () => {
     const worker = setup();
+    twoTypes(worker);
     const midroll = fixture("m3u8/media-ssai-midroll.m3u8");
     const clean = fixture("m3u8/backup-clean.m3u8");
     worker.twitch.master("channel", masterFor("frontpage-"), StreamType.FRONTPAGE);
@@ -221,6 +226,7 @@ describe("worker pipeline", () => {
 
   test("a media playlist listed in the player's master is handled even without the v1/playlist path", async () => {
     const worker = createWorkerScope();
+    twoTypes(worker);
     const variant = "https://edge.playlist.ttvnw.net/v2/hls/opaque-1.m3u8";
     worker.twitch.master("channel", `#EXTM3U
 #EXT-X-STREAM-INF:BANDWIDTH=1000000,RESOLUTION=1280x720,IVS-NAME="720p60"
@@ -244,6 +250,7 @@ ${variant}
   // T-105
   test("two concurrent ad polls make one token request per playerType and store one server each", async () => {
     const worker = setup();
+    twoTypes(worker);
     worker.twitch.master("channel", masterFor("frontpage-"), StreamType.FRONTPAGE);
     worker.twitch.master("channel", masterFor("picture-"), StreamType.PICTURE);
     worker.twitch.mediaPlaylist(MAIN, fixture("m3u8/media-ssai-midroll.m3u8"));
@@ -292,5 +299,57 @@ ${variant}
     worker.send("setIntegrity", JSON.stringify({ token: "INTEGRITY" }));
     expect(worker.player.quality).toBe("720p60");
     expect(worker.player.integrityToken).toBe("INTEGRITY");
+  });
+});
+
+// T-405: the backup chain walks the player types of F-09; autoplay (platform android) only with lowQualityFallback
+describe("backup player types", () => {
+  const DEFAULT_ORDER = ["site", "popout", "frontpage", "picture-by-picture", "mobile_web", "embed", "autoplay"];
+
+  const breakWith = (backups: Record<string, string | null>) => {
+    const worker = createWorkerScope();
+    worker.twitch.master("channel", masterFor(""));
+    worker.twitch.mediaPlaylist(MAIN, fixture("m3u8/media-ssai-midroll.m3u8"));
+    for (const [type, playlist] of Object.entries(backups)) {
+      if (type === "site") continue; // the page's master: its variant is MAIN, which has the ad
+      worker.twitch.master("channel", masterFor(`${type}-`), type);
+      if (playlist) worker.twitch.mediaPlaylist(`${HOST}${type}-chunked.m3u8`, playlist);
+    }
+    return worker;
+  };
+
+  test("the first poll requests a token for every type, in the F-09 order, autoplay with platform android", async () => {
+    const worker = breakWith({});
+    await worker.text(USHER);
+    await worker.text(MAIN);
+    await settle(() => worker.twitch.callsOf("gql").length === DEFAULT_ORDER.length);
+
+    const gql = worker.twitch.callsOf("gql");
+    expect(gql.map((c) => c.playerType)).toEqual(DEFAULT_ORDER);
+    const platforms = gql.map((c) => JSON.parse(c.body!).variables.platform);
+    expect(platforms).toEqual(["web", "web", "web", "web", "web", "web", "android"]);
+  });
+
+  test("site with ads and popout clean: the popout playlist replaces the main one", async () => {
+    const clean = fixture("m3u8/backup-clean.m3u8");
+    const worker = breakWith({ site: null, popout: clean, frontpage: clean });
+    await worker.text(USHER);
+    await worker.text(MAIN);
+    await settle(() => worker.player.currentStream().serverList.length >= 3);
+
+    expect(await worker.text(MAIN)).toBe(clean);
+    const media = worker.twitch.callsOf("media").map((c) => c.url.replace(HOST, ""));
+    expect(media.slice(2)).toEqual(["chunked.m3u8", "popout-chunked.m3u8"]);
+  });
+
+  test("without lowQualityFallback, autoplay is not requested", async () => {
+    const worker = breakWith({});
+    await worker.text(USHER);
+    worker.player.setSettings({ whitelist: [], toggleProxy: false, proxyUrl: "", lowQualityFallback: false } as any);
+    await worker.text(MAIN);
+    await settle(() => worker.twitch.callsOf("gql").length === DEFAULT_ORDER.length - 1);
+    await Bun.sleep(5);
+
+    expect(worker.twitch.callsOf("gql").map((c) => c.playerType)).toEqual(DEFAULT_ORDER.slice(0, -1));
   });
 });
