@@ -7,6 +7,7 @@ import type { WorkerContext } from "../../scope";
 export class Stream {
   serverList: Server[] = []; //the list of servers links m3u8
   channelName: string; //the channel name
+  usherUrl?: string; // F-08: the page's usher request for the channel; backups reuse its path and parameters
   twitchService: TwitchService;
   private pendingAccess = new Map<string, Promise<void>>(); //token requests in flight, by playerType
 
@@ -46,7 +47,7 @@ export class Stream {
     try {
       const streamDataAccess = await this.twitchService.playbackAccessToken(this.channelName, playerType, integrityToken, platform);
       this.scope.logger("New Connection: ", playerType, streamDataAccess.token.includes('"hide_ads":true'));
-      const m3u8Text = await this.twitchService.getM3U8(this.channelName, streamDataAccess);
+      const m3u8Text = await this.twitchService.getM3U8(this.channelName, streamDataAccess, this.usherUrl);
       // the new master replaces the playerType's previous server
       const previous = this.getStreamByStreamType(playerType);
       const before = this.serverList.length;

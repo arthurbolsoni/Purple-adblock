@@ -1,7 +1,7 @@
 // T-403: current persisted query hash with `platform`, flat response shape, full-query fallback.
 import { describe, expect, test } from "bun:test";
 import { fixtureJson } from "../../../test/harness/fixtures";
-import { TwitchService } from "./twitch.service";
+import { TwitchService, usherUrl } from "./twitch.service";
 
 const HASH = "ed230aa1e33e07eebb8928504583da78a5173989fadfb1ac94be06a04f3cdbe9";
 
@@ -65,5 +65,49 @@ describe("TwitchService.playbackAccessToken", () => {
     const { twitch, requests } = service(fixtureJson("gql/persisted-not-found.json"), fixtureJson("gql/token-integrity-error.json"));
     await expect(twitch.playbackAccessToken("channel", "site", "")).rejects.toThrow();
     expect(requests).toHaveLength(2);
+  });
+});
+
+// T-404 (F-08): a backup usher URL is the page's own request with only token, sig and p replaced
+describe("usherUrl", () => {
+  const ACCESS = { token: '{"channel":"somechannel","x":"a&b#c+d"}', signature: "s+i/g=" };
+  const PAGE =
+    "https://usher.ttvnw.net/api/v2/channel/hls/somechannel.m3u8?acmb=e30%3D&allow_source=true&p=1234567&play_session_id=PLAY_SESSION_ID" +
+    "&player_backend=mediaplayer&sig=PAGE_SIG&supported_codecs=av1,h265,h264&token=PAGE_TOKEN&transcode_mode=cbr_v1";
+
+  test("the page's parameters stay, in their order; token, sig and p change; the v2 path stays", () => {
+    const url = new URL(usherUrl("somechannel", ACCESS, PAGE));
+    expect(url.origin + url.pathname).toBe("https://usher.ttvnw.net/api/v2/channel/hls/somechannel.m3u8");
+    expect([...url.searchParams.keys()]).toEqual(["acmb", "allow_source", "p", "play_session_id", "player_backend", "sig", "supported_codecs", "token", "transcode_mode"]);
+    expect(url.searchParams.get("supported_codecs")).toBe("av1,h265,h264");
+    expect(url.searchParams.get("play_session_id")).toBe("PLAY_SESSION_ID");
+    expect(url.searchParams.get("token")).toBe(ACCESS.token);
+    expect(url.searchParams.get("sig")).toBe(ACCESS.signature);
+    expect(url.searchParams.get("p")).toMatch(/^\d+$/);
+    expect(url.searchParams.get("p")).not.toBe("1234567");
+  });
+
+  test("token and sig go through encodeURIComponent; the page's other values stay as written", () => {
+    const raw = usherUrl("somechannel", ACCESS, PAGE);
+    expect(raw).toContain(`&token=${encodeURIComponent(ACCESS.token)}&`);
+    expect(raw).toContain(`&sig=${encodeURIComponent(ACCESS.signature)}&`);
+    expect(raw).toContain("?acmb=e30%3D&");
+    expect(raw).toContain("&supported_codecs=av1,h265,h264&");
+  });
+
+  test("a v1 request keeps the v1 path; a request without p gets one", () => {
+    const url = new URL(usherUrl("somechannel", ACCESS, "https://usher.ttvnw.net/api/channel/hls/somechannel.m3u8?token=T&sig=S&allow_source=true"));
+    expect(url.pathname).toBe("/api/channel/hls/somechannel.m3u8");
+    expect([...url.searchParams.keys()]).toEqual(["token", "sig", "allow_source", "p"]);
+  });
+
+  test("without the page's request: Purple's parameters on the v1 path, token and sig encoded", () => {
+    const raw = usherUrl("somechannel", ACCESS);
+    const url = new URL(raw);
+    expect(url.pathname).toBe("/api/channel/hls/somechannel.m3u8");
+    expect(url.searchParams.get("supported_codecs")).toBe("avc1");
+    expect(url.searchParams.get("token")).toBe(ACCESS.token);
+    expect(raw).toContain(`token=${encodeURIComponent(ACCESS.token)}`);
+    expect(raw).toContain(`sig=${encodeURIComponent(ACCESS.signature)}`);
   });
 });

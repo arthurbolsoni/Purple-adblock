@@ -311,7 +311,7 @@ Runs in parallel with phases 1 to 7. Phase 1 to 6 tasks list L2/L3 scenarios tha
 - Tests: TS-403
 
 ### T-404 Usher parameters
-- [ ] Status · F-08
+- [x] Status · F-08 · done 2026-10-08: the stream keeps the page's usher request; without one (a playlist before the usher), Purple's own parameters on the v1 path, token and sig encoded too. In a midroll on L3-02 (`/channel-j`) the 17 backup masters came from `/api/v2/` with the page's parameters, all with status 200, for every F-09 type (B-041); L3-01 (4 runs), L3-07 and L3-08 passed ([server observations](findings/2026-10-08-l3-server-observations.md#backup-masters-on-the-v2-path))
 - Files: `serviceWorker/src/modules/twitch/twitch.service.ts`, `serviceWorker/src/modules/stream/stream.ts`
 - Done when:
   - backups use the parameters of the original usher request (including `supported_codecs`), replacing only `token`, `sig` and `p`;

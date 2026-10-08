@@ -6,6 +6,47 @@ const PLAYBACK_ACCESS_TOKEN_HASH = "ed230aa1e33e07eebb8928504583da78a5173989fadf
 const PLAYBACK_ACCESS_TOKEN_QUERY =
     'query PlaybackAccessToken_Template($login: String!, $isLive: Boolean!, $vodID: ID!, $isVod: Boolean!, $playerType: String!, $platform: String!) { streamPlaybackAccessToken(channelName: $login, params: {platform: $platform, playerBackend: "mediaplayer", playerType: $playerType}) @include(if: $isLive) { value signature __typename } videoPlaybackAccessToken(id: $vodID, params: {platform: $platform, playerBackend: "mediaplayer", playerType: $playerType}) @include(if: $isVod) { value signature __typename }}';
 
+type Access = { token: string; signature: string };
+
+// F-08 (T-404): the usher URL of a backup. With the page's own usher request: its path (v1 or v2) and its parameters,
+// in their order and as written, with token, sig and p replaced (added when missing); token and sig go through
+// encodeURIComponent. Without it, Purple's parameters on the v1 path. Behavior described by Brave's scriptlet, no code
+// copied (docs/research.md).
+export function usherUrl(channelName: string, access: Access, original?: string): string {
+  const replaced: Record<string, string> = {
+    token: encodeURIComponent(access.token),
+    sig: encodeURIComponent(access.signature),
+    p: String(Math.floor(Math.random() * 1e7)),
+  };
+  if (original) {
+    try {
+      const url = new URL(original);
+      const path = url.pathname.startsWith("/api/v2/") ? "/api/v2/channel/hls/" : "/api/channel/hls/";
+      const seen = new Set<string>();
+      const params = url.search
+        .slice(1)
+        .split("&")
+        .filter(Boolean)
+        .map((pair) => {
+          const name = decodeURIComponent(pair.split("=")[0]);
+          if (!(name in replaced)) return pair;
+          seen.add(name);
+          return `${name}=${replaced[name]}`;
+        });
+      for (const name of Object.keys(replaced)) if (!seen.has(name)) params.push(`${name}=${replaced[name]}`);
+      return `https://usher.ttvnw.net${path}${encodeURIComponent(channelName)}.m3u8?${params.join("&")}`;
+    } catch {
+      // not a URL: Purple's parameters below
+    }
+  }
+  return (
+    "https://usher.ttvnw.net/api/channel/hls/" + channelName + ".m3u8?" +
+    "allow_source=true&fast_bread=true&p=" + replaced.p +
+    "&player_backend=mediaplayer&playlist_include_framerate=true&reassignments_supported=false&sig=" + replaced.sig +
+    "&supported_codecs=avc1&token=" + replaced.token
+  );
+}
+
 export class TwitchService {
     constructor(private readonly scope: WorkerContext) { }
 
@@ -39,15 +80,8 @@ export class TwitchService {
         return access?.value && access?.signature ? { token: access.value, signature: access.signature } : null;
     }
 
-    async getM3U8(channelName: string, playbackAccessToken: { token: string; signature: string }): Promise<string> {
-        const params =
-            "allow_source=true&fast_bread=true&p=" +
-            Math.floor(Math.random() * 1e7) +
-            "&player_backend=mediaplayer&playlist_include_framerate=true&reassignments_supported=false&sig=" +
-            playbackAccessToken.signature +
-            "&supported_codecs=avc1&token=" +
-            playbackAccessToken.token;
-
-        return (await this.scope.request("https://usher.ttvnw.net/api/channel/hls/" + channelName + ".m3u8?" + params)).text();
+    // `original`: the page's usher request for the channel (F-08)
+    async getM3U8(channelName: string, playbackAccessToken: Access, original?: string): Promise<string> {
+        return (await this.scope.request(usherUrl(channelName, playbackAccessToken, original))).text();
     }
 }

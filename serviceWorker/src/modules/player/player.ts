@@ -209,6 +209,12 @@ export class Player {
     return { data: data, dump: dump, contaminated, variant };
   }
 
+  // F-08 (T-404): the page's usher request for the current channel, reused by its backups
+  setUsherUrl(url: string) {
+    const stream = this.currentStream();
+    if (stream) stream.usherUrl = url;
+  }
+
   // Variants of a master the player requested: their media playlists are recognized by URL, whatever their path.
   setPlayerMaster(text: string) {
     for (const variant of parseVariants(text)) this.playerVariants.set(withoutQuery(variant.url), { stream: this.currentStream(), variant });

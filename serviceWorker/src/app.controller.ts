@@ -53,6 +53,7 @@ export class AppController {
     const text = await response.text();
 
     await this.appService.setChannel(channelFromUsher(urlOf(input)));
+    this.appService.setUsherUrl(urlOf(input));
     this.appService.setPlayerMaster(text);
     return new Response(text);
   }

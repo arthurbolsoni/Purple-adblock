@@ -10,7 +10,8 @@ All video endpoints are requested from the player worker. In Edge they are visib
 | Path | `/api/channel/hls/<channel>.m3u8` | Purple code (backup requests); the 2026-10-03 session recorded the host only (B-001) |
 | Path, v2 | `/api/v2/channel/hls/<channel>.m3u8`, requested by the Twitch page | Observed (B-002) |
 | Query built by Purple 2.6.7 | `allow_source`, `fast_bread`, `p`, `player_backend=mediaplayer`, `playlist_include_framerate`, `reassignments_supported`, `sig`, `supported_codecs=avc1`, `token` | Purple code |
-| Query sent by the Twitch page | not recorded yet | Q-005 |
+| Query sent by the Twitch page | 22 keys on 2026-10-08: `acmb`, `allow_source`, `browser_family`, `browser_version`, `cdm`, `enable_score`, `fast_bread`, `include_unavailable`, `lang`, `os_name`, `os_version`, `p`, `platform`, `play_session_id`, `player_backend`, `player_version`, `playlist_include_framerate`, `reassignments_supported`, `sig`, `supported_codecs`, `token`, `transcode_mode` (values not recorded) | Observed (soak worker log) |
+| Backup requests since T-404 | the page's request with `token`, `sig` and `p` replaced; the v2 path answers every playerType token | Observed (B-041) |
 | `parent_domains` | present when embedded; Brave's script removes it | Reported (B-013) |
 | Response | master playlist, see [playlists](playlists.md#master) | Observed |
 

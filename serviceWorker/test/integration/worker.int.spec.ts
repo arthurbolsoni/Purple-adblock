@@ -644,3 +644,27 @@ describe("backup variant", () => {
     expect(used).toMatchObject([{ playerType: StreamType.FRONTPAGE, quality: "1080p60" }]);
   });
 });
+
+// T-404 (F-08): backup usher requests reuse the page's usher request: its path and parameters, new token, sig and p
+describe("backup usher request", () => {
+  test("after a v2 usher request, backups use the v2 path with the page's parameters", async () => {
+    const page = "https://usher.ttvnw.net/api/v2/channel/hls/channel.m3u8?supported_codecs=av1,h265,h264&play_session_id=PLAY_SESSION_ID&p=1&token=PAGE_TOKEN&sig=PAGE_SIG";
+    const worker = setup();
+    twoTypes(worker);
+    worker.twitch.master("channel", masterFor("frontpage-"), StreamType.FRONTPAGE);
+    worker.twitch.master("channel", masterFor("picture-"), StreamType.PICTURE);
+    worker.twitch.mediaPlaylist(MAIN, fixture("m3u8/media-ssai-midroll.m3u8"));
+    await worker.text(page);
+    await worker.text(MAIN);
+    await settle(() => worker.twitch.callsOf("usher").length === 3);
+
+    const backups = worker.twitch.callsOf("usher").slice(1).map((c) => new URL(c.url));
+    expect(backups.map((u) => u.pathname)).toEqual(["/api/v2/channel/hls/channel.m3u8", "/api/v2/channel/hls/channel.m3u8"]);
+    expect(backups.map((u) => u.searchParams.get("token"))).toEqual(["TOKEN-frontpage", "TOKEN-picture-by-picture"]);
+    for (const u of backups) {
+      expect(u.searchParams.get("supported_codecs")).toBe("av1,h265,h264");
+      expect(u.searchParams.get("play_session_id")).toBe("PLAY_SESSION_ID");
+      expect(u.searchParams.get("p")).not.toBe("1");
+    }
+  });
+});
