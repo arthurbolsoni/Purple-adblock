@@ -13,4 +13,6 @@ export type Setting = {
   reloadAfterAd?: boolean;
   pausePlayDelayMs?: number;
   prewarmBackups?: boolean;
+  stripAdMarkers?: boolean;
+  pausePlayOnBreaks?: boolean;
 };

@@ -29,7 +29,8 @@ PROFILE = os.path.expanduser('~/nodriver/profile-edge-purple')
 # logged in to Twitch (TR-007), apart from PROFILE so the logged-out runs keep their conditions:
 # python e2e/run.py <scenario> --profile ~/nodriver/profile-edge-purple-login
 LOGIN_PROFILE = os.path.expanduser('~/nodriver/profile-edge-purple-login')
-EXTENSION_BUILD = os.path.join(REPO, 'dist', 'purple-adblock-chromium')
+# PURPLE_EXTENSION_BUILD: another unpacked build, for instance an older commit's (T-806)
+EXTENSION_BUILD = os.environ.get('PURPLE_EXTENSION_BUILD') or os.path.join(REPO, 'dist', 'purple-adblock-chromium')
 # seconds for edge://extensions to list the unpacked build as enabled; a fresh profile took over 20 s twice in about 30 runs
 EXTENSION_WAIT = 45
 USERSCRIPT_BUILD = os.path.join(REPO, 'dist', 'purpleadblocker.user.js')
@@ -81,6 +82,8 @@ def browser_args(mode, extension=EXTENSION_BUILD):
         args.append('--disable-extensions')
     if mode == 'sim':
         args.append(SIM_HOST_RULES)
+    # PURPLE_EDGE_ARGS: more flags, separated by '|' (T-806: a host made unreachable with --host-resolver-rules)
+    args += [a for a in os.environ.get('PURPLE_EDGE_ARGS', '').split('|') if a]
     return args
 
 
@@ -325,7 +328,16 @@ async def set_storage(session, **settings):
 async def _store(session, extension, settings):
     page = await session.browser.get(f'chrome-extension://{extension}/common/html/popup.html', new_tab=True)
     try:
-        await read(page, f'new Promise((resolve) => chrome.storage.local.set({json.dumps(settings)}, () => resolve(true)))')
+        # the popup can be read before it is an extension page (chrome.storage undefined, seen once in L3-13): try again
+        for attempt in range(4):
+            try:
+                await read(page, f'new Promise((resolve) => chrome.storage.local.set({json.dumps(settings)}, () => resolve(true)))')
+                return
+            except RuntimeError:
+                if attempt == 3:
+                    raise
+                await page.sleep(2)
+                await page.get(f'chrome-extension://{extension}/common/html/popup.html')
     finally:
         await page.close()
 

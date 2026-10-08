@@ -17,7 +17,7 @@ Phases run in order. Inside a phase, the "Depends on" column says what must come
 | 5. Playlist assembly | T-501, T-502 | T-101, T-201 |
 | 6. Player control and settings | T-601 to T-604 | T-107, T-201 |
 | 7. Build and release | T-701, T-702 | Phase 0 |
-| 8. Investigations | T-801 to T-810 | - |
+| 8. Investigations | T-801 to T-811 | - |
 
 ## Phase 0: test base
 
@@ -512,7 +512,8 @@ Odd behaviors seen in the runs. Each task ends with its cause in a finding (and 
 - Origin: midrolls later in a load stood still 0 s in soak f, where E6's pause/play went to the picture-by-picture player (C-13), and about 1 s in soaks d and g, where they reached the main player; soak e, with the same C-13 bug, had 2 to 3 s ([backup behind](findings/2026-10-08-backup-behind.md#soaks)).
 - Check: midrolls with E6 on the main player (the C-13 build) and with E6 sent nowhere, on the same channels: still seconds, ad overlay, ad media reaching the player, and the player's position after each edge.
 - Done when: whether E6 is needed at midroll edges is in a finding; E6 stays (rule 2), and a change of when it runs goes behind a setting with its default recorded.
-- Tests: soak, L3-12
+- 2026-10-08: `pausePlayOnBreaks` (F-21, default on) turns E6 at the break edges off, for a soak pair on one channel (B-049: both sessions get the same midrolls).
+- Tests: TS-809, soak, L3-12
 
 ### T-810 The video stands still 7 to 8 s in a break that starts right after the page opens
 - [ ] Status · E6
@@ -520,6 +521,13 @@ Odd behaviors seen in the runs. Each task ends with its cause in a finding (and 
 - Check: the same in record mode (no Purple) and with Purple, at the page load; what the player does in those seconds (first variant, E6 at the load, the break's first polls).
 - Done when: the cause is in a finding; a fix task if Purple causes it.
 - Tests: L3-02, soak
+
+### T-811 The page's ad UI on a break whose ad segments reached the player
+- [ ] Status · F-14 · F-20
+- Origin: in soaks e and f the ad UI (`video-ad-label`, `video-ad-countdown`) showed in 4 of the 5 breaks whose ad segments reached the player (blanked, no ad media from the network): 18 s, 49 s, and on both soak e sessions for the whole 2 hours; it never showed in the 23 breaks whose polls all got a backup. Those 5 breaks came 5 to 12 s after the page opened, before any backup was ready; the exception was a preroll.
+- Check: the same kind of break with the ad's `DATERANGE` lines removed (`stripAdMarkers`, F-20) and kept, for instance by opening a channel while another session sees its midroll start (B-049).
+- Done when: whether removing those lines keeps the ad UI off is in a finding, with `stripAdMarkers`' default decided on it.
+- Tests: TS-811, a join-on-break run
 
 ### T-808 New preroll after a player reload
 - [ ] Status · B-045 · Q-018

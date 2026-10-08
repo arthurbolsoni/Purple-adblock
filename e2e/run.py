@@ -54,6 +54,12 @@ def main():
                 started = time.time()
                 fresh = getattr(scenario, 'FRESH_PROFILE', False) and not args.profile
                 profile = tempfile.mkdtemp(prefix='purple-e2e-fresh-') if fresh else (args.profile or lib.PROFILE)
+                # PURPLE_PROFILE_PREFS: JSON written as a fresh profile's Default/Preferences before Edge starts, for
+                # instance {"enhanced_tracking_prevention": {"user_pref": 3}} for Strict tracking prevention (T-806)
+                if fresh and os.environ.get('PURPLE_PROFILE_PREFS'):
+                    os.makedirs(os.path.join(profile, 'Default'), exist_ok=True)
+                    with open(os.path.join(profile, 'Default', 'Preferences'), 'w', encoding='utf-8') as f:
+                        f.write(os.environ['PURPLE_PROFILE_PREFS'])
                 try:
                     checks, observations = asyncio.run(run_one(scenario, mode, profile, args))
                 finally:

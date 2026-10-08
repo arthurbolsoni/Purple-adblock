@@ -529,6 +529,33 @@ ${variant}
     await worker.text(MAIN);
     expect(worker.posted.filter((m) => m.type === "pause" || m.type === "reload")).toEqual([{ type: "pause" }, { type: "reload" }]);
   });
+
+  // T-809 (F-21): E6 at the break edges behind pausePlayOnBreaks (default on)
+  const breakEdges = async (settings: Record<string, unknown>) => {
+    const worker = setup();
+    worker.player.setSettings({ whitelist: [], toggleProxy: false, proxyUrl: "", backupPlayerTypes: [], lowQualityFallback: false, ...settings });
+    worker.twitch.mediaPlaylist(MAIN, fixture("m3u8/media-ssai-midroll.m3u8"));
+    await worker.text(USHER);
+    await worker.text(MAIN);
+    worker.twitch.mediaPlaylist(MAIN, fixture("m3u8/media-live-ts.m3u8"));
+    await worker.text(MAIN);
+    return worker.posted.filter((m) => m.type === "pause" || m.type === "play").map((m) => m.type);
+  };
+
+  test("pause and play at the start and the end of a break by default", async () => {
+    expect(await breakEdges({})).toEqual(["pause", "play", "play", "pause", "play", "play"]);
+  });
+
+  test("pausePlayOnBreaks off: no pause or play at the break edges", async () => {
+    expect(await breakEdges({ pausePlayOnBreaks: false })).toEqual([]);
+  });
+
+  test("pausePlayOnBreaks off: a failed reload still falls back to pause/play", () => {
+    const worker = setup();
+    worker.player.setSettings({ whitelist: [], toggleProxy: false, proxyUrl: "", pausePlayOnBreaks: false });
+    worker.send("reloadResult", { ok: false });
+    expect(worker.posted.filter((m) => m.type === "pause")).toEqual([{ type: "pause" }]);
+  });
 });
 
 // T-405: the backup chain walks the player types of F-09; autoplay (platform android) only with lowQualityFallback
@@ -774,6 +801,35 @@ describe("blank segments", () => {
     await Bun.sleep(5);
     expect(worker.twitch.callsOf("gql")).toEqual([]);
     expect(worker.posted.filter((m) => m.type === "pause" || m.type === "play")).toEqual([]);
+  });
+
+  // T-811 (F-20): the page's ad UI started on breaks whose ad segments reached the player with their DATERANGE lines
+  const adDateranges = (text: string) => text.split("\n").filter((l) => l.includes('CLASS="twitch-stitched-ad"') || l.includes('CLASS="twitch-ad-quartile"'));
+
+  test("stripAdMarkers: blanked ad segments come without the ad's DATERANGE lines; the other lines stay", async () => {
+    const worker = await prerollEverywhere({ stripAdMarkers: true });
+    const delivered = await worker.text(MAIN);
+    expect(adDateranges(preroll)).toHaveLength(2);
+    expect(adDateranges(delivered)).toEqual([]);
+    expect(delivered.split("\n")).toEqual(preroll.split("\n").filter((l) => !adDateranges(preroll).includes(l)));
+    expect((await (await worker.fetch(AD)).arrayBuffer()).byteLength).toBe(1137);
+  });
+
+  test("stripAdMarkers: an announced break loses its prefetch lines to ad segments and the ad's DATERANGE lines", async () => {
+    const announced = fixture("m3u8/backup-announced-break.m3u8");
+    const worker = setup();
+    worker.twitch.mediaPlaylist(MAIN, announced);
+    worker.send("setSettings", { whitelist: [], toggleProxy: false, proxyUrl: "", stripAdMarkers: true });
+    await worker.text(USHER);
+    const delivered = await worker.text(MAIN);
+    expect(adDateranges(delivered)).toEqual([]);
+    expect(delivered).not.toContain("/ad-3009.ts");
+    expect(delivered).toContain('CLASS="twitch-session"');
+  });
+
+  test("without stripAdMarkers (default) the ad's DATERANGE lines stay", async () => {
+    const worker = await prerollEverywhere();
+    expect(adDateranges(await worker.text(MAIN))).toHaveLength(2);
   });
 
   test("stripFallback off: an announced break comes out identical", async () => {

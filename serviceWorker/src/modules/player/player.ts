@@ -2,7 +2,7 @@ import { Stream } from "../stream/stream";
 import { Setting } from "./setting.interface";
 import { StreamType } from "../stream/interface/stream.enum";
 import { Server, StreamUrl, type VariantTarget } from "../stream/interface/stream.types";
-import { blankAds, mergeWithBackups } from "./m3u8";
+import { blankAds, mergeWithBackups, stripAdDateranges } from "./m3u8";
 import { AdClass, detectAds, isCleanBackup } from "./ad-detector";
 import { AdBreak } from "./ad-break";
 import { parseVariants } from "../stream/master";
@@ -44,7 +44,7 @@ export class Player {
   private lastPrewarm = -Infinity; // F-19: time (ms) of the last prewarm
   // F-15 (T-601): pause/play at the edges of a break (E6); with reloadAfterAd, a reload at its end
   private adBreak = new AdBreak({
-    pauseAndPlay: () => this.pauseAndPlay(),
+    pauseAndPlay: () => this.edgePauseAndPlay(),
     reload: () => this.reload(),
     reloadAfterAd: () => this.setting?.reloadAfterAd === true,
   });
@@ -97,6 +97,12 @@ export class Player {
     this.play();
   };
 
+  // F-21 (T-809): E6 at the break edges, unless pausePlayOnBreaks is off (default on); the reload fallback (F-15) is not one
+  private edgePauseAndPlay = () => {
+    if (this.setting?.pausePlayOnBreaks === false) return;
+    this.pauseAndPlay();
+  };
+
   // F-18 (T-604): a number of ms from 0 up, else the default
   private pausePlayDelay = (): number => {
     const value = this.setting?.pausePlayDelayMs;
@@ -105,11 +111,11 @@ export class Player {
 
   onStartAds = () => {
     this.scope.logger("ads started");
-    this.pauseAndPlay();
+    this.edgePauseAndPlay();
   };
   onEndAds = () => {
     this.scope.logger("ads ended");
-    this.pauseAndPlay();
+    this.edgePauseAndPlay();
   };
 
   isAds = (x: string, allowChange: boolean = false) => {
@@ -126,7 +132,7 @@ export class Player {
   freeStreamChanged(x: boolean) {
     this.scope.logger("freeStreamChanged:", x);
     // call pause and play when changed
-    if (this.freeStream != x) this.pauseAndPlay();
+    if (this.freeStream != x) this.edgePauseAndPlay();
     this.freeStream = x;
   }
 
@@ -157,7 +163,7 @@ export class Player {
       const announced = blankAds(text, [], url);
       if (!announced.uris.length) return text;
       this.listBlank(announced.uris, announced.uris.length);
-      return announced.text;
+      return this.adMarkers(announced.text);
     }
     // is ads and is the principal stream
     if (!this.isAds(text, true)) {
@@ -197,8 +203,12 @@ export class Player {
     if (!merged.remaining.length || this.setting?.stripFallback === false) return merged.text;
     const blanked = blankAds(merged.text, merged.remaining, url);
     this.listBlank(blanked.uris, blanked.segments);
-    return blanked.text;
+    return this.adMarkers(blanked.text);
   }
+
+  // F-20 (T-811): with stripAdMarkers (default off), a playlist Purple delivers with blanked ad segments or an announced
+  // break loses the ad's DATERANGE lines, which the page's ad UI starts from
+  private adMarkers = (text: string) => (this.setting?.stripAdMarkers === true ? stripAdDateranges(text) : text);
 
 
   // F-09: the setting's list (default: DEFAULT_BACKUP_PLAYER_TYPES); autoplay only with lowQualityFallback (default on), last.

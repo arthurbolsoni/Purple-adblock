@@ -189,3 +189,13 @@ export function blankAds(text: string, adSegments: number[], playlistUrl: string
     segments: segmentUris.length,
   };
 }
+
+// T-811 (F-20): the ad's own DATERANGE lines (`twitch-stitched-ad`, `twitch-ad-quartile`). The page's ad UI started on
+// breaks whose ad segments reached the player with them; they are part of the ad (rule 3), the other lines stay.
+const AD_DATERANGE = /^#EXT-X-DATERANGE:.*CLASS="(twitch-stitched-ad|twitch-ad-quartile)"/;
+
+export function stripAdDateranges(text: string): string {
+  const lines = text.split("\n");
+  const kept = lines.filter((line) => !AD_DATERANGE.test(line.trim()));
+  return kept.length === lines.length ? text : kept.join("\n");
+}

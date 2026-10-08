@@ -1,7 +1,7 @@
 // T-101: the merge edits the lines of the main playlist; every line that is not a replaced segment stays as it was.
 import { describe, expect, test } from "bun:test";
 import { fixture } from "../../../test/harness/fixtures";
-import { blankAds, mergeM3u8Contents, mergeWithBackups, readSegments } from "./m3u8";
+import { blankAds, mergeM3u8Contents, mergeWithBackups, readSegments, stripAdDateranges } from "./m3u8";
 import { detectAds } from "./ad-detector";
 
 const sampleM3U8_withDates_1 = `#EXTM3U
@@ -260,6 +260,23 @@ describe("blankAds", () => {
 // T-501 (F-13): a backup segment matches an ad segment when their PROGRAM-DATE-TIME differ by less than half the
 // segment's duration (the nearest one); a segment from another fMP4 source brings its EXT-X-MAP, and the main one
 // comes back after it. MEDIA-SEQUENCE and the segment count do not change.
+// T-811 (F-20): the ad's own DATERANGE lines, which the page's ad UI starts from
+describe("stripAdDateranges", () => {
+  test("removes the twitch-stitched-ad and twitch-ad-quartile DATERANGE lines and nothing else", () => {
+    const preroll = fixture("m3u8/media-ssai-preroll.m3u8");
+    const out = stripAdDateranges(preroll);
+    expect(out.split("\n")).toEqual(preroll.split("\n").filter((l) => !l.includes('CLASS="twitch-stitched-ad"') && !l.includes('CLASS="twitch-ad-quartile"')));
+    expect(out).toContain('CLASS="twitch-session"');
+    expect(out).toContain('CLASS="twitch-trigger"');
+    expect(out).toContain('CLASS="twitch-stream-source"');
+  });
+
+  test("a playlist without them comes back identical", () => {
+    const live = fixture("m3u8/media-live-ts.m3u8");
+    expect(stripAdDateranges(live)).toBe(live);
+  });
+});
+
 describe("merge with time tolerance and EXT-X-MAP (T-501)", () => {
   const midroll = fixture("m3u8/media-ssai-midroll.m3u8");
   const clean = fixture("m3u8/backup-clean.m3u8");
