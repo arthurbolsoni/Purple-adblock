@@ -384,12 +384,12 @@ Runs in parallel with phases 1 to 7. Phase 1 to 6 tasks list L2/L3 scenarios tha
 - Tests: TS-601
 
 ### T-602 Settings without reload
-- [ ] Status · F-16 · E7 · C-10
+- [x] Status · F-16 · E7 · C-10 · done 2026-10-08: the controller passes `value` to the player; the content script listens to `storage.onChanged` and also sends `backupPlayerTypes` and `lowQualityFallback`; L3-07 passed on the T-602 build and failed on the build before it (the control); L3-01, L3-02 (3 runs) and L3-08 passed ([finding](findings/2026-10-08-settings-without-reload.md))
 - Files: `platform/src/content-script.js`, `serviceWorker/src/index.ts`, `serviceWorker/src/app.controller.ts`
 - Done when:
   - `Player.setting` holds the `value` of the `setSettings` message, so `isWhitelist()` sees the list (C-10; starts with a failing test, see `docs/findings/2026-10-03-worker-unit-tests.md`);
   - a `storage` change (`onChanged`) reaches every live worker and the whitelist applies on the next playlist.
-- Tests: TS-602
+- Tests: TS-602, L3-07
 
 ### T-603 Channel in the popup
 - [ ] Status · E7

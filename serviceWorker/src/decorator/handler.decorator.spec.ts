@@ -136,7 +136,7 @@ describe("@Message / bindMessages", () => {
 
     expect(player.token).toBe("INTEGRITY");
     expect(player.quality).toBe("720p60");
-    // 2.6.7 passes the whole message, so `setting.whitelist` is undefined (C-10, fixed by T-602).
-    expect(player.settings).toEqual({ funcName: "setSettings", value: { whitelist: [] } });
+    // T-602: the player gets the message's value (2.6.7 passed the whole message, so `setting.whitelist` was undefined, C-10)
+    expect(player.settings).toEqual({ whitelist: [] });
   });
 });

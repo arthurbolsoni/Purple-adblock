@@ -33,7 +33,24 @@ describe("content script on Chromium (MV3)", () => {
     env.chrome.flushStorage();
     await Bun.sleep(10);
     expect(replies).toEqual([{ type: "setSettings", value: STORED }, { type: "setSettings", value: STORED }]);
-    expect(env.chrome.getCalls).toEqual([["whitelist", "toggleProxy", "proxyUrl", "debug", "blockCsai"]]);
+    expect(env.chrome.getCalls).toEqual([["whitelist", "toggleProxy", "proxyUrl", "debug", "blockCsai", "backupPlayerTypes", "lowQualityFallback"]]);
     expect(document.querySelectorAll("script")).toHaveLength(0);
+  });
+
+  // T-602: a storage change reaches the page, which sends it to every live worker, without a reload
+  test("a change to a stored setting sends the new settings to the page", async () => {
+    replies.length = 0;
+    env.chrome.storage.local.set({ whitelist: ["somechannel", "other"] });
+    env.chrome.flushStorage();
+    await Bun.sleep(10);
+    expect(replies).toEqual([{ type: "setSettings", value: { ...STORED, whitelist: ["somechannel", "other"] } }]);
+  });
+
+  test("a change to a key that is not a setting sends nothing", async () => {
+    replies.length = 0;
+    env.chrome.storage.local.set({ unrelated: 1 });
+    env.chrome.flushStorage();
+    await Bun.sleep(10);
+    expect(replies).toEqual([]);
   });
 });

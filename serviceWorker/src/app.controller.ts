@@ -70,10 +70,11 @@ export class AppController {
     return new Response();
   }
 
+  // T-602: the player keeps the message's value, the stored settings (C-10); every message replaces them whole
   @Message("setSettings")
   async setSettings(data: any) {
     this.scope.debug = data?.value?.debug === true;
-    this.appService.setSettings(data);
+    this.appService.setSettings(data?.value ?? {});
   }
 
   @Message("setQuality")

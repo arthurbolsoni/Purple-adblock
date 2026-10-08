@@ -187,6 +187,32 @@ describe("worker pipeline", () => {
     expect(worker.twitch.callsOf("gql")).toEqual([]);
   });
 
+  // T-602: the worker keeps the value of setSettings (C-10): the setting's backup list and whitelist apply
+  test("settings sent by the page apply: the backup list on this break, the whitelist from the next poll", async () => {
+    const worker = setup();
+    const midroll = fixture("m3u8/media-ssai-midroll.m3u8");
+    const clean = fixture("m3u8/backup-clean.m3u8");
+    worker.twitch.master("channel", masterFor("frontpage-"), StreamType.FRONTPAGE);
+    worker.twitch.master("channel", masterFor("picture-"), StreamType.PICTURE);
+    worker.twitch.mediaPlaylist(MAIN, midroll);
+    worker.twitch.mediaPlaylist(FRONTPAGE, clean);
+    const settings = { whitelist: [], toggleProxy: false, proxyUrl: "", backupPlayerTypes: [StreamType.FRONTPAGE, StreamType.PICTURE], lowQualityFallback: false };
+    worker.send("setSettings", settings);
+    await worker.text(USHER);
+
+    await worker.text(MAIN);
+    await settle(() => worker.player.currentStream().serverList.length === 2);
+    expect(worker.twitch.callsOf("gql").map((c) => c.playerType)).toEqual([StreamType.FRONTPAGE, StreamType.PICTURE]);
+    expect(await worker.text(MAIN)).toBe(clean);
+
+    // the channel is added to the whitelist mid-session: the next poll gets Twitch's playlist, no backup is fetched
+    worker.send("setSettings", { ...settings, whitelist: ["channel"] });
+    expect(worker.player.isWhitelist()).toBe(true);
+    const media = worker.twitch.callsOf("media").length;
+    expect(await worker.text(MAIN)).toBe(midroll);
+    expect(worker.twitch.callsOf("media").length).toBe(media + 1);
+  });
+
   // CLAUDE.md rule 5: a failure in the blocking logic returns Twitch's original playlist
   test("a failure while handling a media playlist returns the original playlist", async () => {
     const worker = setup();

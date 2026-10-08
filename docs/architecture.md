@@ -15,7 +15,7 @@ The userscript has no content script or popup: `bundle.js` is the whole script a
 
 1. `app/bundle.js` runs in the page before Twitch's scripts create the player workers (T-111). On Firefox the content script adds it as a `<script>` without waiting for `storage`.
 2. `index.ts` replaces `window.Worker`. When a worker is created, it downloads the script with a synchronous XHR and builds a blob with `app.worker.js` followed by the original script. If the download fails, the worker starts from the original URL.
-3. The page answers `fetch` and XHR to `edge.ads.twitch.tv` with an empty 200 while `blockCsai` holds (`page/fetch-hook.ts`, `page/xhr-hook.ts`, T-301); on Chromium a static rule (`rules.json`, T-302) blocks what the hooks do not see. The content script sends the settings to the page as soon as storage answers, and again when a worker asks.
+3. The page answers `fetch` and XHR to `edge.ads.twitch.tv` with an empty 200 while `blockCsai` holds (`page/fetch-hook.ts`, `page/xhr-hook.ts`, T-301); on Chromium a static rule (`rules.json`, T-302) blocks what the hooks do not see. The content script sends the settings to the page as soon as storage answers, again when a worker asks, and whenever a stored setting changes (`storage.onChanged`, T-602).
 4. Every worker built this way joins a `WorkerRegistry` (`page/worker-registry.ts`) after the page's first message to it (the player's init), and leaves it on `terminate()` (T-107). Nothing from Purple reaches a worker before that message. On a direct channel load the player creates two workers. The page `fetch` hook (`page/fetch-hook.ts`, T-106) is installed when the bundle loads; it reads only `https://gql.twitch.tv/integrity`, from a clone, and gives every response to the page unchanged.
 5. In the worker, `app.worker.ts` calls `bootstrapWorker(self)`, which keeps the original `fetch` as `self.request`, creates `AppController` and replaces `fetch` with a dispatcher over the `@Fetch` routes (first match in declaration order):
    - `usher.ttvnw.net/api/channel/hls/` and `usher.ttvnw.net/api/v2/channel/hls/` (except `picture-by-picture`) → `onChannel` → `Player.setChannel` with the channel from the URL path (T-103);
@@ -24,7 +24,7 @@ The userscript has no content script or popup: `bundle.js` is the whole script a
 6. `Player.onFetch` (classes from `ad-detector.ts`, T-201; with a stitched-ad marker, segments titled other than `live`, inside a `twitch-stitched-ad` range or under a non-live stream source are ads, T-203):
    - no stream stored for the channel (playlist before the usher) → original text;
    - `MARKED_LIVE` (markers over live segments) → original text, no backup lookup, no pause/play (T-202);
-   - channel on the whitelist → original text (never reached in 2.6.7, C-10);
+   - channel on the whitelist → original text (never reached in 2.6.7, C-10; the worker keeps the `setSettings` value since T-602);
    - no ads → original text (T-101);
    - ads → walks `backupPlayerTypes` (F-09: `site`, `popout`, `frontpage`, `picture-by-picture`, `mobile_web`, `embed`, then `autoplay` as `android` with `lowQualityFallback`; T-405), variants read with `m3u8-parser` (T-104); the first clean backup replaces the whole playlist: no ad segment and no stitched-ad marker, so a backup announcing its own break is skipped (T-204); a type without one gets a new token;
    - none clean → `mergeM3u8Contents` edits the main playlist's lines: each ad segment with a live backup segment in the same second gets that segment's `#EXTINF` and URI lines; every other line stays (T-101); ad segments on both sides come from the detector (T-203).
@@ -34,8 +34,8 @@ The userscript has no content script or popup: `bundle.js` is the whole script a
 
 | From → to | Message | Effect |
 | --- | --- | --- |
-| worker → page | `{ type: "getSettings" }` | page forwards `window.postMessage({ type: "getSettings" })`; the content script answers once `storage` has answered, with `whitelist`, `toggleProxy`, `proxyUrl` and `debug` (logs and events, C-09, F-17) |
-| content script → page | `{ type: "setSettings", value }` | page sends `{ funcName: "setSettings", value }` to every registered worker |
+| worker → page | `{ type: "getSettings" }` | page forwards `window.postMessage({ type: "getSettings" })`; the content script answers once `storage` has answered, with `whitelist`, `toggleProxy`, `proxyUrl`, `debug` (logs and events, C-09, F-17), `blockCsai`, `backupPlayerTypes` and `lowQualityFallback` |
+| content script → page | `{ type: "setSettings", value }`, also on every change to a stored setting (T-602) | page sends `{ funcName: "setSettings", value }` to every registered worker; the worker's player keeps `value` |
 | page → worker | `{ funcName: "setIntegrity", value }` | sent to every registered worker; the worker stores the integrity token |
 | worker → page | `{ type: "pause" }`, `{ type: "play" }` | page sends `{ funcName: "pause" \| "play", id: 1 }` to the worker that asked (player's internal RPC) |
 | player worker → page | `PlayerQualityChanged`, `arg.key === "quality"` | page sends `{ funcName: "setQuality", value }` to every registered worker |

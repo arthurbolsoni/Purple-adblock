@@ -295,12 +295,29 @@ async def set_extension_settings(session, **settings):
     extension = await wait_for(session.tab, EXTENSION_ID, timeout=20)
     if not extension:
         raise RuntimeError('the unpacked Purple build is not enabled')
+    await _store(session, extension, settings)
+    await session.navigate('about:blank')
+
+
+async def set_storage(session, **settings):
+    """set_extension_settings without touching the session's tab: edge://extensions and the popup page open in
+    tabs of their own, so a channel playing in the session's tab keeps playing (L3-07)."""
+    page = await session.browser.get('edge://extensions', new_tab=True)
+    try:
+        extension = await wait_for(page, EXTENSION_ID, timeout=20)
+    finally:
+        await page.close()
+    if not extension:
+        raise RuntimeError('the unpacked Purple build is not enabled')
+    await _store(session, extension, settings)
+
+
+async def _store(session, extension, settings):
     page = await session.browser.get(f'chrome-extension://{extension}/common/html/popup.html', new_tab=True)
     try:
         await read(page, f'new Promise((resolve) => chrome.storage.local.set({json.dumps(settings)}, () => resolve(true)))')
     finally:
         await page.close()
-    await session.navigate('about:blank')
 
 
 def _check_build(mode):
