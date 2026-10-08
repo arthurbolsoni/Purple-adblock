@@ -15,6 +15,7 @@ export type PurpleEvent = {
   channel: string;
   playerType?: string;
   count?: number;
+  quality?: string; // backupUsed: quality of the backup variant (T-407)
 };
 
 export interface WorkerScope extends Partial<WorkerContext> {

@@ -214,7 +214,7 @@ def session_report(directory):
             from_network = requested & {e['url'] for e in fetches if e.get('level') == 'network'}
             console = Counter(e['text'][:120] for e in data['workerLog']
                               if e['load'] == n and e.get('kind') == 'console' and start - 10 <= wall(e) <= end + 30)
-            events = Counter(json.dumps({k: e.get(k) for k in ('type', 'playerType', 'count')}) for e in data['events']
+            events = Counter(json.dumps({k: e.get(k) for k in ('type', 'playerType', 'quality', 'count')}) for e in data['events']
                              if e['load'] == n and start - DRAIN <= wall(e) <= end + 2 * DRAIN)
             tokens = Counter(a.get('playerType') or a.get('operation') for s in data['server']
                              if s['load'] == n and s.get('gql') and start - 10 <= wall(s) <= end + 10 for a in s['gql'])

@@ -1,7 +1,7 @@
 import { Stream } from "../stream/stream";
 import { Setting } from "./setting.interface";
 import { StreamType } from "../stream/interface/stream.enum";
-import { Server } from "../stream/interface/stream.types";
+import { Server, StreamUrl, type VariantTarget } from "../stream/interface/stream.types";
 import { blankAds, mergeWithBackups } from "./m3u8";
 import { AdClass, detectAds, isCleanBackup } from "./ad-detector";
 import { parseVariants } from "../stream/master";
@@ -31,7 +31,7 @@ export class Player {
   setting: Setting | undefined; //the settings
   quality: string = ""; //the quality of the stream
   freeStream: boolean = false; //if the stream is free
-  private playerVariants = new Map<string, Stream>(); //variant URL (without query) of the player's masters -> stream
+  private playerVariants = new Map<string, { stream: Stream; variant: StreamUrl }>(); //variant URL (without query) of the player's masters
   private pinnedType: string | null = null; // F-10: type of the last clean backup delivered
   private contaminatedUntil = new Map<string, number>(); // F-10: type -> time (ms) until which it is skipped
   private blankUris = new Map<string, number>(); // F-14: ad URI -> time (ms) of the last poll that listed it
@@ -127,13 +127,13 @@ export class Player {
     // F-10: a type whose backup had ads is skipped for CONTAMINATED_MS, with no fetch and no token request.
     for (const type of this.backupPlayerTypes()) {
       if ((this.contaminatedUntil.get(type) ?? 0) > Date.now()) continue;
-      const backup = await this.fetchm3u8ByStreamType(type);
+      const backup = await this.fetchm3u8ByStreamType(type, this.variantTarget(url));
       if (!backup.data) this.currentStream().createStreamAccess(type, this.integrityToken, type === StreamType.AUTOPLAY ? "android" : "web");
       if (backup.dump) dump.push(...backup.dump);
       if (backup.contaminated && !backup.data) this.contaminatedUntil.set(type, Date.now() + CONTAMINATED_MS);
       if (backup.data) {
         if (type !== StreamType.AUTOPLAY) this.pinnedType = type;
-        this.emit({ type: "backupUsed", playerType: type });
+        this.emit({ type: "backupUsed", playerType: type, quality: backup.variant?.quality });
         return backup.data;
       }
     }
@@ -163,17 +163,19 @@ export class Player {
     return this.setting?.lowQualityFallback === false ? ordered : [...ordered, StreamType.AUTOPLAY];
   }
 
-  async fetchm3u8ByStreamType(accessType: StreamType | string): Promise<{ data: string | null; dump: string[]; contaminated: boolean }> {
+  async fetchm3u8ByStreamType(accessType: StreamType | string, target: VariantTarget = { quality: this.quality }): Promise<{ data: string | null; dump: string[]; contaminated: boolean; variant?: StreamUrl }> {
     let dump: string[] = [];
     let data: string = "";
     let contaminated = false;
+    let variant: StreamUrl | undefined;
 
     let servers: Server[] = this.currentStream().getStreamByStreamType(accessType);
 
     // do the all request in same time
     for (const server of servers) {
       //filter server url by quality or bestquality
-      const streamUrl = server.findByQuality(this.quality) || server.bestQuality();
+      // T-407 (F-11): same quality and codec family as the player's variant
+      const streamUrl = server.pick(target);
 
       //try get m3u8 content and return if don't have ads.
       // a backup without a URL or that fails to load is dropped; the next one is tried
@@ -197,19 +199,23 @@ export class Player {
         continue;
       } else {
         data = text;
+        variant = streamUrl;
         this.scope.logger("Stream Type: " + accessType + " - Free Stream");
         break;
       }
 
     }
 
-    return { data: data, dump: dump, contaminated };
+    return { data: data, dump: dump, contaminated, variant };
   }
 
   // Variants of a master the player requested: their media playlists are recognized by URL, whatever their path.
   setPlayerMaster(text: string) {
-    for (const variant of parseVariants(text)) this.playerVariants.set(withoutQuery(variant.url), this.currentStream());
+    for (const variant of parseVariants(text)) this.playerVariants.set(withoutQuery(variant.url), { stream: this.currentStream(), variant });
   }
+
+  // T-407: the variant of the player's master a media playlist URL belongs to; else the quality the player reported
+  variantTarget = (url: string): VariantTarget => this.playerVariants.get(withoutQuery(url))?.variant ?? { quality: this.quality };
 
   isPlayerPlaylist = (url: string) => this.playerVariants.has(withoutQuery(url));
 

@@ -91,6 +91,17 @@ A backup with a `twitch-maf-ad` marker over live segments replaces the playlist 
 
 The page `fetch` hook reads the request headers of the page's `gql.twitch.tv/gql` calls: `Client-Integrity`, `X-Device-Id` (or `Device-ID`), `Authorization`, `Client-Version`, `Client-Session-Id`. It never reads their responses. When one of them changes, the page sends the known set to every worker (`setGqlHeaders`, replayed to workers created later). The worker's `PlaybackAccessToken` requests send them with `Client-ID`. A `Client-Integrity` from them and the `/integrity` answer (E9) both set the worker's integrity token; the newest wins.
 
+### F-11: backup variant
+
+The target is the variant of the player's master that the polled media playlist belongs to: its quality name (without `(source)`), resolution and codecs. When the URL is not in the player's master, it is the quality the player reported (`setQuality`). In each backup master, the variant is:
+
+1. the same quality in the same codec family (`avc`, `hevc`, `av1`);
+2. else the same resolution, same family first, highest bandwidth first;
+3. else the best variant of the same family;
+4. else `bestQuality()`.
+
+With a quality name only, the variant with that name comes first, then `bestQuality()`. `backupUsed` (F-17) names the quality of the variant used.
+
 ### F-14: blank segment
 
 As in Brave's script: the ad segments the merge left keep their lines in the playlist, and the worker answers their URIs with `BLANK_MP4`, an fMP4 init segment without samples (1137 bytes, copied with its source and notices in `blank-segment.ts`). Their requests never reach Twitch. The `EXT-X-MAP` only ad segments use is answered the same way. `EXT-X-PART` lines of an ad segment, and `EXT-X-PART`, `EXT-X-PRELOAD-HINT` and `EXT-X-TWITCH-PREFETCH` lines after an ad tail or a break announced after the last segment, are removed, and their URIs answered blank. A break announced past the last segment of a `MARKED_LIVE` playlist (B-034) gets the same treatment for the prefetch, preload and part lines after the announcement, the rest of the playlist untouched. A URI stays answered blank for 120 s after the last poll that listed it. `blankInserted` counts the segments blanked for the first time. With `stripFallback` off, the merged playlist goes to the player as it is.

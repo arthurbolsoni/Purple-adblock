@@ -213,7 +213,7 @@ async def drain(session, recorder, watch, mode, final=False):
         recorder.note('edge.ads answer', path=entry.get('path'), bp=entry.get('bp'), status=entry.get('status'), body=entry.get('body'))
     for entry in data['events']:
         if entry.get('type') not in ('backupUsed',):
-            recorder.note('purple event', **{k: entry.get(k) for k in ('type', 'playerType', 'count')})
+            recorder.note('purple event', **{k: entry.get(k) for k in ('type', 'playerType', 'quality', 'count')})
 
     # failure clock: error overlay, no video, or currentTime not advancing between drains
     video = data['video'] or {}

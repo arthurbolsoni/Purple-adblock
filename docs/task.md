@@ -337,7 +337,7 @@ Runs in parallel with phases 1 to 7. Phase 1 to 6 tasks list L2/L3 scenarios tha
 - Tests: TS-406
 
 ### T-407 Backup with the same codec and quality
-- [ ] Status · F-11 · E8
+- [x] Status · F-11 · E8 · done 2026-10-08: the target is the variant of the player's master the polled playlist belongs to (quality, resolution, codecs), or the quality the player reported when the URL is not in it; after same resolution comes the best variant of the same family, then `bestQuality()`; `backupUsed` names the backup variant's quality. L3-01 (both modes), L3-02 (3 runs), L3-07 and L3-08 passed on the build; they had prerolls on 5 loads and a midroll, handled with backups, and in each preroll the ad segments the player requested were answered blank. Which variant the backups used is not recorded in those runs (L3-01 runs without `debug`); the soak reads it from `backupUsed` ([server observations](findings/2026-10-08-l3-server-observations.md))
 - Files: `serviceWorker/src/modules/stream/interface/stream.types.ts`
 - Done when variant selection goes: same quality and same codec family (`avc`, `hevc`, `av1`) → same resolution with another codec → `bestQuality()`.
 - Tests: TS-407

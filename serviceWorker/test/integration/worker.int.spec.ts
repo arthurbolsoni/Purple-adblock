@@ -618,3 +618,29 @@ describe("blank segments", () => {
     expect(adRequests(worker)).toHaveLength(1);
   });
 });
+
+// T-407 (F-11): the backup variant follows the variant the player polls: same quality and codec family
+describe("backup variant", () => {
+  const EDGE = "https://edge.playlist.ttvnw.net/v1/playlist/";
+  const mixed = (prefix: string) => fixture("m3u8/master-hevc.m3u8").replaceAll(EDGE, EDGE + prefix);
+
+  test("a player on the AVC 1080p60 variant gets the backup's AVC 1080p60, not its HEVC source or its AV1 1080p60", async () => {
+    const worker = createWorkerScope();
+    worker.twitch.master("channel", mixed(""));
+    worker.twitch.master("channel", mixed("frontpage-"), StreamType.FRONTPAGE);
+    worker.twitch.mediaPlaylist(`${EDGE}1080p60.m3u8`, fixture("m3u8/media-ssai-midroll.m3u8"));
+    const clean = fixture("m3u8/backup-clean.m3u8");
+    for (const variant of ["chunked", "1080p60_av1", "1080p60", "720p60"]) worker.twitch.mediaPlaylist(`${EDGE}frontpage-${variant}.m3u8`, clean);
+    await worker.text(USHER);
+    worker.send("setSettings", { whitelist: [], toggleProxy: false, proxyUrl: "", debug: true, backupPlayerTypes: [StreamType.FRONTPAGE], lowQualityFallback: false });
+
+    await worker.text(`${EDGE}1080p60.m3u8`);
+    await settle(() => worker.player.currentStream().serverList.length >= 2);
+    expect(await worker.text(`${EDGE}1080p60.m3u8`)).toBe(clean);
+    const backups = worker.twitch.callsOf("media").map((c) => c.url.replace(EDGE, "")).filter((url) => url.startsWith("frontpage-"));
+    expect(backups).toEqual(["frontpage-1080p60.m3u8"]);
+    // the backupUsed debug event names the variant's quality
+    const used = worker.posted.filter((m) => m.type === "purpleEvent" && m.event.type === "backupUsed").map((m) => m.event);
+    expect(used).toMatchObject([{ playerType: StreamType.FRONTPAGE, quality: "1080p60" }]);
+  });
+});
