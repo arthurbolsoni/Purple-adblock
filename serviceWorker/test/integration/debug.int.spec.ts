@@ -92,10 +92,11 @@ describe("debug on", () => {
   });
 
   test("turning debug off again stops the logs and the events", async () => {
+    const log = spyOn(console, "log").mockImplementation(() => {});
     const worker = adBreak();
     worker.send("setSettings", { whitelist: [], debug: true });
     worker.send("setSettings", { whitelist: [], debug: false });
-    const log = spyOn(console, "log").mockImplementation(() => {});
+    log.mockClear();
 
     await twoPolls(worker);
 
