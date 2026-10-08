@@ -15,7 +15,7 @@ Phases run in order. Inside a phase, the "Depends on" column says what must come
 | 3. CSAI blocking | T-301, T-302 | T-106 |
 | 4. Backup streams | T-401 to T-408 | T-104, T-105, T-106, T-107 |
 | 5. Playlist assembly | T-501, T-502 | T-101, T-201 |
-| 6. Player control and settings | T-601 to T-603 | T-107, T-201 |
+| 6. Player control and settings | T-601 to T-604 | T-107, T-201 |
 | 7. Build and release | T-701, T-702 | Phase 0 |
 
 ## Phase 0: test base
@@ -396,6 +396,16 @@ Runs in parallel with phases 1 to 7. Phase 1 to 6 tasks list L2/L3 scenarios tha
 - Files: `platform/src/common/js/popup.js`
 - Done when the channel is read from `www.twitch.tv/<channel>`, `m.twitch.tv/<channel>` and `www.twitch.tv/popout/<channel>/...`.
 - Tests: TS-603
+
+### T-604 Pause length at the break edges
+- [x] Status · F-18 · E6 · done 2026-10-08: `pausePlayDelayMs` sets the wait (a number from 0 up, else 1500); with 0, `pause` and both `play` go in the same turn. L3-12 (new): 15 of 16 runs passed (the other stopped at launch, before Purple ran); at 0 ms two break ends during playback took 188 and 756 ms from the `<video>` `pause` to `playing`, at 1500 ms two midroll starts took 1687 and 2066 ms. The default stays 1500 until break starts during playback are measured at 0 ms ([finding](findings/2026-10-08-pause-length.md))
+- Origin: in the soaks the video stopped 3 to 4 s per break, the two pause/play pairs of E6 at its edges, 1.6 to 1.7 s each, of which 1.5 s is the wait between `pause` and `play` ([midroll soak](findings/2026-10-08-midroll-soak.md#video-at-the-break-edges)). The wait went from 500 ms to 1500 ms in 2024 (`10128a5`) with no reason recorded; Brave's script calls `play` right after `pause`.
+- Files: `serviceWorker/src/modules/player/player.ts`, `setting.interface.ts`, `platform/src/content-script.js`, `e2e/scenarios/l3_12.py` (new)
+- Done when:
+  - the wait between `pause` and `play` comes from `pausePlayDelayMs` (default 1500, E6 as before); with 0, `play` is posted right after `pause`;
+  - L3-12 measures each break edge (the worker's `pause`, the `<video>` `pause` and `playing`, `currentTime` after it) for the value set in storage;
+  - a finding compares 0 and 1500 on live breaks; the default changes only on that evidence, recorded in `docs/feat.md`.
+- Tests: TS-604, L3-12
 
 ## Phase 7: build and release
 

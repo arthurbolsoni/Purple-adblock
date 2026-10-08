@@ -22,6 +22,8 @@ export const DEFAULT_BACKUP_PLAYER_TYPES: string[] = [
 export const CONTAMINATED_MS = 5000;
 // F-14: how long after the last poll that listed it an ad URI is still answered with the blank segment (as Brave's script)
 export const BLANK_TTL_MS = 120_000;
+// E6, F-18: wait between pause and play at the break edges unless pausePlayDelayMs sets another
+export const PAUSE_PLAY_DELAY_MS = 1500;
 
 export class Player {
   integrityToken = ""; //the integrity token
@@ -70,9 +72,16 @@ export class Player {
 
   pauseAndPlay = async () => {
     this.pause();
-    await new Promise(resolve => setTimeout(resolve, 1500));
+    const delay = this.pausePlayDelay();
+    if (delay > 0) await new Promise((resolve) => setTimeout(resolve, delay));
     this.play();
     this.play();
+  };
+
+  // F-18 (T-604): a number of ms from 0 up, else the default
+  private pausePlayDelay = (): number => {
+    const value = this.setting?.pausePlayDelayMs;
+    return typeof value === "number" && Number.isFinite(value) && value >= 0 ? value : PAUSE_PLAY_DELAY_MS;
   };
 
   onStartAds = () => {

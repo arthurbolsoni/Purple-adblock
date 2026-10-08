@@ -11,4 +11,5 @@ export type Setting = {
   stripFallback?: boolean;
   forcePopoutToken?: boolean;
   reloadAfterAd?: boolean;
+  pausePlayDelayMs?: number;
 };

@@ -56,6 +56,7 @@ Three groups: strategies that already exist (E-xx, none is removed), fixes to ex
 | F-15 | Ad break state machine: pause/play (E6) and reload at most once every 30 s | Brave | `reloadAfterAd = false` | T-601 |
 | F-16 | Settings applied without reloading the page | Purple | - | T-602 |
 | F-17 | Debug event log in the page (`window.__purple.events`), read by the browser tests | Purple | `debug = false` | T-110 |
+| F-18 | Wait between `pause` and `play` at the break edges (E6) from a setting | Purple | `pausePlayDelayMs = 1500` | T-604 |
 
 ### F-02: markers
 
@@ -124,9 +125,13 @@ As in Brave's script: the ad segments the merge left keep their lines in the pla
 
 ### F-15: ad break state machine
 
-`ad-break.ts` follows the main media playlist poll by poll: `idle` → `ad` on the first poll with ad segments, `ad` → `recovering` on the first poll without, `recovering` → `idle` after 10 s of polls without ad segments, `recovering` → `ad` when they come back first. The player gets pause/play (E6) on each change to `ad` and at the end of the break, as before: the worker posts `pause`, then `play` twice 1.5 s later. `MARKED_LIVE` polls are not part of it (T-202).
+`ad-break.ts` follows the main media playlist poll by poll: `idle` → `ad` on the first poll with ad segments, `ad` → `recovering` on the first poll without, `recovering` → `idle` after 10 s of polls without ad segments, `recovering` → `ad` when they come back first. The player gets pause/play (E6) on each change to `ad` and at the end of the break, as before: the worker posts `pause`, then `play` twice 1.5 s later (`pausePlayDelayMs`, F-18). `MARKED_LIVE` polls are not part of it (T-202).
 
 With `reloadAfterAd`, the end of the break asks the page to reload the player instead of pause/play, once per break and at most once every 30 s; a later end in the same break, or one inside the 30 s, gets pause/play. The page looks for Twitch's player state in the React tree under `#root` (the lookup copied from Brave's script, with its notices, in `page/player-reload.ts`), keeps the current quality in `video-quality` and runs a soft `setSrc` (same player instance, same access token), then `play`. When it finds no player state it answers so, and the worker pauses and plays instead. Brave's script also does a hard reload with a new token after breaks it blanked, and skips the reload when the player is healthy; Purple does neither.
+
+### F-18: pause length
+
+The wait between `pause` and `play` at each break edge (F-15) comes from `pausePlayDelayMs`: a number of ms from 0 up, else 1500, the value since `10128a5` (500 before it). With 0, `play` is posted in the same turn as `pause`. The player restarts its timeline at 0 after the pause/play with any wait. Measured in [pause length](findings/2026-10-08-pause-length.md).
 
 ### F-10: pinned and contaminated types
 
@@ -148,8 +153,9 @@ With `reloadAfterAd`, the end of the break asks the page to reload the player in
 | `pinBackupPlayerType` | `boolean` | `true` | F-10 |
 | `stripFallback` | `boolean` | `true` | F-14 |
 | `reloadAfterAd` | `boolean` | `false` | F-15 |
+| `pausePlayDelayMs` | `number` | `1500` | F-18 |
 
-The content script sends the stored `whitelist`, `toggleProxy`, `proxyUrl`, `debug`, `blockCsai`, `backupPlayerTypes`, `lowQualityFallback`, `pinBackupPlayerType`, `stripFallback`, `forcePopoutToken` and `reloadAfterAd` when storage first answers, when a worker asks, and whenever one of them changes (T-602). The worker replaces its settings with each message it gets. The userscript uses the defaults.
+The content script sends the stored `whitelist`, `toggleProxy`, `proxyUrl`, `debug`, `blockCsai`, `backupPlayerTypes`, `lowQualityFallback`, `pinBackupPlayerType`, `stripFallback`, `forcePopoutToken`, `reloadAfterAd` and `pausePlayDelayMs` when storage first answers, when a worker asks, and whenever one of them changes (T-602). The worker replaces its settings with each message it gets. The userscript uses the defaults.
 
 ## Out of scope
 

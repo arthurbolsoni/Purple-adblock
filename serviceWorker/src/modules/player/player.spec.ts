@@ -159,6 +159,35 @@ describe("Player.isAds", () => {
     expect(context.posted).toHaveLength(3);
   });
 
+  // T-604 (F-18): the wait between pause and play
+  const settle = async () => {
+    for (let i = 0; i < 10; i++) await Promise.resolve();
+  };
+  const withDelay = (pausePlayDelayMs?: any) => {
+    const context = makeContext();
+    const player = new Player(context);
+    player.setSettings({ whitelist: [], toggleProxy: false, proxyUrl: "", ...(pausePlayDelayMs === undefined ? {} : { pausePlayDelayMs }) });
+    return { context, player };
+  };
+
+  test.each([[undefined, 1500], [500, 500], [-1, 1500], ["fast", 1500]])("pausePlayDelayMs %p: play after %p ms", async (value, wait) => {
+    jest.useFakeTimers();
+    const { context, player } = withDelay(value);
+    player.pauseAndPlay();
+    jest.advanceTimersByTime(wait - 1);
+    await settle();
+    expect(context.posted).toEqual([{ type: "pause" }]);
+    jest.advanceTimersByTime(1);
+    await settle();
+    expect(context.posted).toEqual([{ type: "pause" }, { type: "play" }, { type: "play" }]);
+  });
+
+  test("pausePlayDelayMs 0: pause and both play in the same turn", () => {
+    const { context, player } = withDelay(0);
+    player.pauseAndPlay();
+    expect(context.posted).toEqual([{ type: "pause" }, { type: "play" }, { type: "play" }]);
+  });
+
   // T-601 (F-15)
   test("with reloadAfterAd, the end of a break posts reload instead of pause/play", async () => {
     jest.useFakeTimers();

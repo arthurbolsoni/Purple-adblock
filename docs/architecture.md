@@ -36,7 +36,7 @@ The userscript has no content script or popup: `bundle.js` is the whole script a
 
 | From → to | Message | Effect |
 | --- | --- | --- |
-| worker → page | `{ type: "getSettings" }` | page forwards `window.postMessage({ type: "getSettings" })`; the content script answers once `storage` has answered, with `whitelist`, `toggleProxy`, `proxyUrl`, `debug` (logs and events, C-09, F-17), `blockCsai`, `backupPlayerTypes`, `lowQualityFallback`, `pinBackupPlayerType`, `stripFallback`, `forcePopoutToken` and `reloadAfterAd` |
+| worker → page | `{ type: "getSettings" }` | page forwards `window.postMessage({ type: "getSettings" })`; the content script answers once `storage` has answered, with `whitelist`, `toggleProxy`, `proxyUrl`, `debug` (logs and events, C-09, F-17), `blockCsai`, `backupPlayerTypes`, `lowQualityFallback`, `pinBackupPlayerType`, `stripFallback`, `forcePopoutToken`, `reloadAfterAd` and `pausePlayDelayMs` |
 | content script → page | `{ type: "setSettings", value }`, also on every change to a stored setting (T-602) | page sends `{ funcName: "setSettings", value }` to every registered worker; the worker's player keeps `value` |
 | page → worker | `{ funcName: "setIntegrity", value }` | sent to every registered worker; the worker stores the integrity token |
 | page → worker | `{ funcName: "setGqlHeaders", value }`, when a page GQL request changes one of the F-05 headers | sent to every registered worker; its token requests send them; a `Client-Integrity` among them becomes the integrity token (T-401) |
