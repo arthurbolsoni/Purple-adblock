@@ -104,6 +104,9 @@ e2e/                               # levels 2 and 3 drivers (Python + nodriver +
   lib.py                           # Edge on a hidden desktop, dedicated profile, modes, JSON reads
   recorder.js                      # page and worker state recorder (window.__e2e)
   worker-logger.js                 # runs first in every worker: fetches, what Twitch answered, what the player got
+  worker-logger.spec.ts            # bun test: the digest's ad segment paths (segment, map and prefetch lines)
+  record.py                        # level 3 recorder, CDP Fetch (T-005)
+  soak.py, soak_report.py          # long runs and their report
   server.py                        # summary of what Twitch's server did during a load (run report, docs/server/)
   twitch_selectors.py              # not selectors.py: that name shadows the standard library module asyncio imports
   scenarios/                       # one module per scenario (l3_01.py, l3_02.py) and common.py

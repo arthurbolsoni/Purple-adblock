@@ -81,15 +81,30 @@
     const adPaths = [];
     // with a stitched-ad marker, a title other than "live" is an ad too (T-203: "FT|...", a 10-digit number)
     const stitched = lines.some((l) => l.startsWith("#EXT-X-DATERANGE:") && /CLASS="twitch-stitched|ID="stitched-ad/.test(l));
+    // adPaths also takes the URIs the player fetches for ad positions (B-046: on fMP4 a prefetch URI is not the URI
+    // of the later segment line): the EXT-X-MAP before an ad segment, and prefetch lines after an ad segment or after
+    // a stitched-ad marker past the last segment (a break announced, B-034)
     let title = "";
+    let maps = [];
+    let lastAd = false;
+    let markerAfterLast = false;
     for (const line of lines) {
       if (line.startsWith("#EXTINF:")) title = line.slice(line.indexOf(",") + 1);
-      else if (line && !line.startsWith("#")) {
+      else if (line.startsWith("#EXT-X-MAP:")) {
+        const uri = attr(line, "URI");
+        if (uri) maps.push(uri);
+      } else if (line.startsWith("#EXT-X-DATERANGE:") && /CLASS="twitch-stitched|ID="stitched-ad/.test(line)) markerAfterLast = true;
+      else if (line.startsWith("#EXT-X-TWITCH-PREFETCH:")) {
+        if (lastAd || markerAfterLast) adPaths.push(short(line.slice("#EXT-X-TWITCH-PREFETCH:".length)));
+      } else if (line && !line.startsWith("#")) {
         titles.push(title);
-        if (isAdTitle(title) || (stitched && title && title !== "live")) {
+        lastAd = isAdTitle(title) || (stitched && !!title && title !== "live");
+        if (lastAd) {
           adHosts.push(hostOf(line));
-          adPaths.push(short(line));
+          adPaths.push(...maps.map(short), short(line));
         }
+        maps = [];
+        markerAfterLast = false;
         title = "";
       }
     }
