@@ -125,6 +125,7 @@ Runs in parallel with phases 1 to 7. Phase 1 to 6 tasks list L2/L3 scenarios tha
 
 ### T-101 Untouched playlist without ads; merge keeps tags
 - [ ] Status · C-01, F-01 · E5
+- Context: on fresh profiles the player often does not start on playlists rewritten by `generateM3u8`, with or without ads ([finding](findings/2026-10-07-backups-and-rewritten-playlists.md)).
 - Files: `serviceWorker/src/modules/player/m3u8.ts`, `serviceWorker/src/modules/player/player.ts`
 - Done when:
   - with no ads, `Player.onFetch` returns exactly the text it received;
@@ -154,16 +155,17 @@ Runs in parallel with phases 1 to 7. Phase 1 to 6 tasks list L2/L3 scenarios tha
 - Tests: TS-103, L3-01
 
 ### T-104 Master variants through the parser
-- [ ] Status · C-04 · E3, E8
-- Files: `serviceWorker/src/modules/stream/stream.ts`, `serviceWorker/src/modules/stream/interface/stream.types.ts`
+- [~] Status · C-04 · E3, E8 · 2026-10-07: implemented and covered by TS-104; on twitch.tv the backups now load, and the rewritten ad playlists they lead to stop the player from starting on fresh profiles, so it waits for T-101 before L3-01 ([finding](findings/2026-10-07-backups-and-rewritten-playlists.md))
+- Files: `serviceWorker/src/modules/stream/stream.ts`, `serviceWorker/src/modules/stream/master.ts` (new), `serviceWorker/src/modules/stream/interface/stream.types.ts`, `serviceWorker/src/modules/player/player.ts`, `serviceWorker/src/app.controller.ts`, `serviceWorker/src/decorator/handler.decorator.ts`
 - Done when:
   - `setStreamAccess` reads `EXT-X-STREAM-INF` and `EXT-X-MEDIA` with `m3u8-parser` and stores quality (`NAME`/`VIDEO`), resolution, codecs and URL;
   - the current regex becomes a fallback, used only when the parser finds no variants;
   - a `variant URL → stream` map identifies media playlists by URL (the current `v1/playlist` route stays as fallback);
   - a master without variants creates no `Server`; `request(undefined)` never happens;
   - variant URLs on `<edge>.playlist.ttvnw.net` (B-003) are read, not only `https://video…` (Q-013);
-  - a network error on one backup drops only that backup.
-- Tests: TS-104
+  - a network error on one backup drops only that backup;
+  - `bestQuality()` is the variant with the highest bandwidth (masters are not sorted by quality).
+- Tests: TS-104, L3-01
 
 ### T-105 Token requests without duplicates
 - [ ] Status · C-05 · E3

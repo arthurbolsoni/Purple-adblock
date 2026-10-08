@@ -40,9 +40,10 @@ const setup = () => {
 describe("worker pipeline", () => {
   test("bootstrapping registers the routes and asks the page for settings", () => {
     const worker = setup();
-    expect(worker.router.routes.map((r) => r.match)).toEqual([
+    expect(worker.router.routes.map((r) => (typeof r.match === "string" ? r.match : "variant of the player's master"))).toEqual([
       "usher.ttvnw.net/api/v2/channel/hls/",
       "usher.ttvnw.net/api/channel/hls/",
+      "variant of the player's master",
       "ttvnw.net/v1/playlist/",
       "picture-by-picture",
     ]);
@@ -185,6 +186,49 @@ describe("worker pipeline", () => {
 
     expect(response.status).toBe(200);
     expect(await response.text()).toBe(midroll);
+  });
+
+  // T-104: current masters list their variants on <edge>.playlist.ttvnw.net (Q-013)
+  test("ad break with backup masters on *.playlist.ttvnw.net: the clean frontpage backup replaces the playlist", async () => {
+    const EDGE = "https://edge.playlist.ttvnw.net/v1/playlist/";
+    const avcFor = (prefix: string) => fixture("m3u8/master-avc.m3u8").replaceAll(EDGE, EDGE + prefix);
+    const worker = createWorkerScope();
+    const midroll = fixture("m3u8/media-ssai-midroll.m3u8");
+    const clean = fixture("m3u8/backup-clean.m3u8");
+    worker.twitch.master("channel", avcFor(""));
+    worker.twitch.master("channel", avcFor("frontpage-"), StreamType.FRONTPAGE);
+    worker.twitch.master("channel", avcFor("picture-"), StreamType.PICTURE);
+    worker.twitch.mediaPlaylist(`${EDGE}chunked.m3u8`, midroll);
+    worker.twitch.mediaPlaylist(`${EDGE}frontpage-chunked.m3u8`, clean);
+    await worker.text("https://usher.ttvnw.net/api/v2/channel/hls/channel.m3u8?token=PAGE_TOKEN&sig=PAGE_SIG");
+
+    await worker.text(`${EDGE}chunked.m3u8`);
+    await settle(() => worker.player.currentStream().serverList.length === 2);
+
+    expect(await worker.text(`${EDGE}chunked.m3u8`)).toBe(clean);
+    expect(worker.twitch.calls.map((c) => c.url)).not.toContain("undefined");
+  });
+
+  test("a media playlist listed in the player's master is handled even without the v1/playlist path", async () => {
+    const worker = createWorkerScope();
+    const variant = "https://edge.playlist.ttvnw.net/v2/hls/opaque-1.m3u8";
+    worker.twitch.master("channel", `#EXTM3U
+#EXT-X-STREAM-INF:BANDWIDTH=1000000,RESOLUTION=1280x720,IVS-NAME="720p60"
+${variant}
+`);
+    worker.twitch.mediaPlaylist(variant, fixture("m3u8/media-ssai-preroll.m3u8"));
+    worker.twitch.mediaPlaylist("https://edge.playlist.ttvnw.net/v2/hls/other.m3u8", fixture("m3u8/media-ssai-preroll.m3u8"));
+    await worker.text("https://usher.ttvnw.net/api/v2/channel/hls/channel.m3u8?token=PAGE_TOKEN&sig=PAGE_SIG");
+
+    // a URL that is not in the master and does not match v1/playlist is not handled: no backup token request
+    await worker.text("https://edge.playlist.ttvnw.net/v2/hls/other.m3u8");
+    await Bun.sleep(5);
+    expect(worker.twitch.callsOf("gql")).toEqual([]);
+
+    // the variant of the player's master is handled: its ad playlist starts the backup token requests
+    await worker.text(`${variant}?player_backend=mediaplayer`);
+    await settle(() => worker.twitch.callsOf("gql").length === 2);
+    expect(worker.twitch.callsOf("gql").map((c) => c.playerType)).toEqual([StreamType.FRONTPAGE, StreamType.PICTURE]);
   });
 
   test("quality and integrity messages reach the player", () => {

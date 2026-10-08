@@ -56,6 +56,37 @@ describe("sanitize (text)", () => {
     expect(sanitize("Authorization: OAuth abc123def456")).toBe("Authorization: OAuth OAUTH");
   });
 
+  // masters captured on 2026-10-07: SESSION-DATA in the page's v2 master, #EXT-X-TWITCH-INFO in v1 masters
+  test("replaces session, serving and broadcast ids, the viewer's country and the C and E values of a master", () => {
+    const sessionData = [
+      '#EXT-X-SESSION-DATA:DATA-ID="SERVING-ID",VALUE="3afe1db791ac"',
+      '#EXT-X-SESSION-DATA:DATA-ID="VIDEO-SESSION-ID",VALUE="4016829007"',
+      '#EXT-X-SESSION-DATA:DATA-ID="BROADCAST-ID",VALUE="319158047"',
+      '#EXT-X-SESSION-DATA:DATA-ID="USER-COUNTRY",VALUE="BR"',
+      '#EXT-X-SESSION-DATA:DATA-ID="C",VALUE="aHR0cHM6Ly9leGFtcGxl"',
+      '#EXT-X-SESSION-DATA:DATA-ID="E",VALUE="aHR0cHM6Ly9leGFtcGxl"',
+      '#EXT-X-SESSION-DATA:DATA-ID="B",VALUE="false"',
+      '#EXT-X-SESSION-DATA:DATA-ID="CLUSTER",VALUE="cloudfront_prod_sae12_twitch"',
+    ].join("\n");
+    expect(sanitize(sessionData)).toBe(
+      [
+        '#EXT-X-SESSION-DATA:DATA-ID="SERVING-ID",VALUE="SERVING_ID"',
+        '#EXT-X-SESSION-DATA:DATA-ID="VIDEO-SESSION-ID",VALUE="VIDEO_SESSION_ID"',
+        '#EXT-X-SESSION-DATA:DATA-ID="BROADCAST-ID",VALUE="BROADCAST_ID"',
+        '#EXT-X-SESSION-DATA:DATA-ID="USER-COUNTRY",VALUE="XX"',
+        '#EXT-X-SESSION-DATA:DATA-ID="C",VALUE="C"',
+        '#EXT-X-SESSION-DATA:DATA-ID="E",VALUE="E"',
+        '#EXT-X-SESSION-DATA:DATA-ID="B",VALUE="false"',
+        '#EXT-X-SESSION-DATA:DATA-ID="CLUSTER",VALUE="cloudfront_prod_sae12_twitch"',
+      ].join("\n"),
+    );
+
+    const info = '#EXT-X-TWITCH-INFO:NODE="n.example",SERVING-ID="ef04a97",VIDEO-SESSION-ID="868990",BROADCAST-ID="319158",B="false",USER-COUNTRY="BR",C="aHR0cHM6",D="false",E="aHR0cHM6",CHANNEL-METADATA="enhanced_broadcast"';
+    expect(sanitize(info)).toBe(
+      '#EXT-X-TWITCH-INFO:NODE="n.example",SERVING-ID="SERVING_ID",VIDEO-SESSION-ID="VIDEO_SESSION_ID",BROADCAST-ID="BROADCAST_ID",B="false",USER-COUNTRY="XX",C="C",D="false",E="E",CHANNEL-METADATA="enhanced_broadcast"',
+    );
+  });
+
   test("leaves codecs, versions and timestamps alone", () => {
     const text = 'CODECS="avc1.64002A,mp4a.40.2",VALUE="1791028800.00",hvc1.2.4.L153.B0,FRAME-RATE=60.000';
     expect(sanitize(text)).toBe(text);

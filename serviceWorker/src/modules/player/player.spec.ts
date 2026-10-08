@@ -223,6 +223,35 @@ describe("Player.onFetch", () => {
     expect(context.posted).toEqual([]);
   });
 
+  // T-104: one failing backup is dropped, the next one is tried
+  test.each([
+    ["a network error", () => Promise.reject(new TypeError("Failed to fetch"))],
+    ["an error status", () => Promise.resolve(new Response("forbidden", { status: 403 }))],
+  ])("a backup that fails with %s is dropped and the next type is tried", async (_, fail) => {
+    jest.useFakeTimers();
+    const frontpageUrl = "https://video-weaver.example.hls.ttvnw.net/v1/playlist/frontpage-chunked.m3u8";
+    const pictureUrl = "https://video-weaver.example.hls.ttvnw.net/v1/playlist/picture-chunked.m3u8";
+    const requests: string[] = [];
+    const context = {
+      ...makeContext(),
+      request: async (url: any) => {
+        requests.push(url);
+        return url === frontpageUrl ? fail() : new Response(LIVE);
+      },
+    };
+    const player = new Player(context);
+    player.setChannel("channel");
+    const stream = player.currentStream();
+    stream.setStreamAccess(master("frontpage"), StreamType.FRONTPAGE);
+    stream.setStreamAccess(master("picture"), StreamType.PICTURE);
+    stream.createStreamAccess = async () => {};
+
+    expect(await player.onFetch(ADS)).toBe(LIVE);
+    expect(requests).toEqual([frontpageUrl, pictureUrl]);
+    expect(stream.getStreamByStreamType(StreamType.FRONTPAGE)).toEqual([]);
+    expect(stream.getStreamByStreamType(StreamType.PICTURE)).toHaveLength(1);
+  });
+
   test("with ads and no backup yet, it requests backup tokens and keeps the ad playlist", async () => {
     jest.useFakeTimers();
     const player = new Player(makeContext());

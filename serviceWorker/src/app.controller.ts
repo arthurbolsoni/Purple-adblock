@@ -35,10 +35,14 @@ export class AppController {
     const text = await response.text();
 
     await this.appService.setChannel(channelFromUsher(url));
+    this.appService.setPlayerMaster(text);
     return new Response(text);
   }
 
   @Fetch("ttvnw.net/v1/playlist/")
+  @Fetch(function (this: AppController, url: string) {
+    return this.appService.isPlayerPlaylist(url);
+  })
   async onFetch(url: string, options: any): Promise<Response> {
     const body: string = await (await this.scope.request(url, options)).text();
     try {

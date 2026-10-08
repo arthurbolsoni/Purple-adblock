@@ -3,6 +3,7 @@ import { Setting } from "./setting.interface";
 import { StreamType } from "../stream/interface/stream.enum";
 import { Server } from "../stream/interface/stream.types";
 import { mergeM3u8Contents } from "./m3u8";
+import { parseVariants } from "../stream/master";
 import type { WorkerContext } from "../../scope";
 
 export class Player {
@@ -14,6 +15,7 @@ export class Player {
   setting: Setting | undefined; //the settings
   quality: string = ""; //the quality of the stream
   freeStream: boolean = false; //if the stream is free
+  private playerVariants = new Map<string, Stream>(); //variant URL (without query) of the player's masters -> stream
 
   constructor(private readonly scope: WorkerContext) {}
 
@@ -118,7 +120,18 @@ export class Player {
       const streamUrl = server.findByQuality(this.quality) || server.bestQuality();
 
       //try get m3u8 content and return if don't have ads.
-      const text: string = await (await this.scope.request(streamUrl?.url)).text();
+      // a backup without a URL or that fails to load is dropped; the next one is tried
+      let text: string;
+      try {
+        if (!streamUrl) throw new Error("Stream Type: " + accessType + " - no variant");
+        const response: Response = await this.scope.request(streamUrl.url);
+        if (!response.ok) throw new Error("Stream Type: " + accessType + " - status " + response.status);
+        text = await response.text();
+      } catch (e) {
+        this.scope.logger(e);
+        this.currentStream().removeServer(server);
+        continue;
+      }
       dump.push(text);
       if (this.isAds(text)) {
         this.scope.logger("Stream Type: " + accessType + " - Ads found");
@@ -135,6 +148,13 @@ export class Player {
     return { data: data, dump: dump };
   }
 
+  // Variants of a master the player requested: their media playlists are recognized by URL, whatever their path.
+  setPlayerMaster(text: string) {
+    for (const variant of parseVariants(text)) this.playerVariants.set(withoutQuery(variant.url), this.currentStream());
+  }
+
+  isPlayerPlaylist = (url: string) => this.playerVariants.has(withoutQuery(url));
+
   setChannel(channelName: string) {
     this.scope.logger(`Loading channel ${channelName}`);
     this.actualChannel = channelName;
@@ -146,3 +166,5 @@ export class Player {
     }
   }
 }
+
+const withoutQuery = (url: string) => url.split(/[?#]/)[0];

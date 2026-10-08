@@ -43,6 +43,18 @@ const JSON_PLACEHOLDERS: Record<string, string> = {
 
 const placeholderFor = (name: string) => name.replace(/-/g, "_");
 
+// Master session data (SESSION-DATA in the page's v2 master, #EXT-X-TWITCH-INFO in v1 masters) that identifies the
+// session, the broadcast or the viewer. C and E carry a base64 URL with an opaque path.
+const MASTER_PLACEHOLDERS: Record<string, string> = {
+  "SERVING-ID": "SERVING_ID",
+  "VIDEO-SESSION-ID": "VIDEO_SESSION_ID",
+  "BROADCAST-ID": "BROADCAST_ID",
+  "USER-COUNTRY": "XX",
+  C: "C",
+  E: "E",
+};
+const MASTER_KEYS = Object.keys(MASTER_PLACEHOLDERS).join("|");
+
 export function sanitize(text: string): string {
   const opaque = new Map<string, string>();
 
@@ -56,6 +68,11 @@ export function sanitize(text: string): string {
       )
       // other Twitch ids in playlist attributes
       .replace(/(X-TV-TWITCH-(?!AD-)[A-Z0-9-]*ID)="[^"]*"/g, (_, name) => `${name}="${placeholderFor(name.replace("X-TV-TWITCH-", ""))}"`)
+      // master session data
+      .replace(new RegExp(`(DATA-ID="(${MASTER_KEYS})",VALUE=)"[^"]*"`, "g"), (_, prefix, key) => `${prefix}"${MASTER_PLACEHOLDERS[key]}"`)
+      .replace(/#EXT-X-TWITCH-INFO:[^\n]*/g, (line) =>
+        line.replace(new RegExp(`([:,])(${MASTER_KEYS})="[^"]*"`, "g"), (_, sep, key) => `${sep}${key}="${MASTER_PLACEHOLDERS[key]}"`),
+      )
       // ad id in the segment title
       .replace(/(#EXTINF:[^,\n]*,Amazon\|)[^\n\r]*/g, "$1AD_ID")
       // edge hosts and addresses

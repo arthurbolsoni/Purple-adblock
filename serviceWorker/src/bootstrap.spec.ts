@@ -50,7 +50,7 @@ describe("bootstrapWorker", () => {
     expect(scope.fetch).not.toBe(original);
     expect(scope.appController).toBe(controller);
     expect(controller).toBeInstanceOf(AppController);
-    expect(router.routes.map((r) => r.propertyKey)).toEqual(["onChannel", "onChannel", "onFetch", "onChannelPicture"]);
+    expect(router.routes.map((r) => r.propertyKey)).toEqual(["onChannel", "onChannel", "onFetch", "onFetch", "onChannelPicture"]);
     expect(scope.posted).toEqual([{ type: "getSettings" }]);
   });
 

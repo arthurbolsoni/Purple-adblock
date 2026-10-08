@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, jest, spyOn, test } from "bun:
 import { Stream } from "./stream";
 import { StreamType } from "./interface/stream.enum";
 import { Server } from "./interface/stream.types";
+import { fixture } from "../../../test/harness/fixtures";
 
 // Legacy variant host: the 2.6.7 regex only reads URLs starting with `https://video` (see T-104).
 const MASTER = `#EXTM3U
@@ -50,14 +51,33 @@ describe("Stream server list", () => {
     const server = stream.serverList[0];
     expect(server.type).toBe(StreamType.FRONTPAGE);
     expect(server.sig).toBe(true);
-    expect(server.urlList).toEqual([
-      { quality: "1080p60 (source)", url: "https://video-weaver.example.hls.ttvnw.net/v1/playlist/chunked.m3u8" },
-      { quality: "720p60", url: "https://video-weaver.example.hls.ttvnw.net/v1/playlist/720p60.m3u8" },
-      { quality: "160p", url: "https://video-weaver.example.hls.ttvnw.net/v1/playlist/160p30.m3u8" },
+    expect(server.urlList.map((v) => ({ ...v }))).toEqual([
+      { quality: "1080p60 (source)", resolution: "1920x1080", codecs: "avc1.64002A,mp4a.40.2", bandwidth: 6000000, url: "https://video-weaver.example.hls.ttvnw.net/v1/playlist/chunked.m3u8" },
+      { quality: "720p60", resolution: "1280x720", codecs: "avc1.4D401F,mp4a.40.2", bandwidth: 3000000, url: "https://video-weaver.example.hls.ttvnw.net/v1/playlist/720p60.m3u8" },
+      { quality: "160p", resolution: "284x160", codecs: "avc1.4D400C,mp4a.40.2", bandwidth: 230000, url: "https://video-weaver.example.hls.ttvnw.net/v1/playlist/160p30.m3u8" },
     ]);
-    expect(server.bestQuality().quality).toBe("1080p60 (source)");
+    expect(server.bestQuality()?.quality).toBe("1080p60 (source)");
     expect(server.findByQuality("720p60")?.url).toContain("720p60.m3u8");
     expect(server.findByQuality("480p30")).toBeUndefined();
+  });
+
+  // T-104
+  test("setStreamAccess reads variants on *.playlist.ttvnw.net, and bestQuality is the highest bandwidth, not the first line", () => {
+    const stream = new Stream("channel", noNetwork());
+    stream.setStreamAccess(fixture("m3u8/master-frontpage-v1.m3u8"), StreamType.FRONTPAGE);
+
+    const [server] = stream.serverList;
+    expect(server.urlList).toHaveLength(5);
+    expect(server.urlList[0].quality).toBe("360p30");
+    expect(server.bestQuality()?.quality).toBe("1080p60");
+    expect(server.findByQuality("720p60")?.url).toStartWith("https://sae12.playlist.ttvnw.net/v1/playlist/");
+  });
+
+  test("a master without variants creates no server", () => {
+    const stream = new Stream("channel", noNetwork());
+    stream.setStreamAccess(fixture("m3u8/master-empty.m3u8"), StreamType.FRONTPAGE);
+    stream.setStreamAccess("", StreamType.PICTURE);
+    expect(stream.serverList).toEqual([]);
   });
 
   test("setStreamAccess defaults to type local", () => {

@@ -116,6 +116,8 @@ Scripts under `platform/src` load as classic scripts in the browser. To test the
 
 | File | Content |
 | --- | --- |
+| `master-site-v2.m3u8` | captured: the page's v2 master, no `EXT-X-MEDIA`, `IVS-NAME` and `STABLE-VARIANT-ID` per variant, 24 `SESSION-DATA` lines |
+| `master-frontpage-v1.m3u8` | captured: a v1 backup master with `#EXT-X-TWITCH-INFO` and `EXT-X-MEDIA` |
 | `master-avc.m3u8` | master with `EXT-X-MEDIA` (`NAME`) and chunked, 720p60, 480p30, 360p30, 160p30 variants, `avc1` codecs, URLs on `edge.playlist.ttvnw.net` (B-003) |
 | `master-video-weaver.m3u8` | same variants on `video-weaver.example.hls.ttvnw.net`, the host Purple 2.6.7's variant regex reads |
 | `master-hevc.m3u8` | master with HEVC and AV1 variants besides AVC |
@@ -151,6 +153,7 @@ Fixtures captured from Twitch go through `harness/sanitize.ts` before commit (`s
 - query `token`, `sig`, `user_id`, `device_id`, `play_session_id` → `TOKEN`, `SIG`, `USER_ID`, `DEVICE_ID`, `PLAY_SESSION_ID`;
 - `X-TV-TWITCH-AD-*` attributes that identify the ad or the viewer → the attribute name (`AD_SESSION_ID`, `CREATIVE_ID`, ...); break descriptors (`ROLL-TYPE`, `POD-*`, `QUARTILE`, ...) stay;
 - other `X-TV-TWITCH-*ID` attributes → the attribute name; `Amazon|<id>` titles → `Amazon|AD_ID`;
+- master session data (`SESSION-DATA` and `#EXT-X-TWITCH-INFO`): `SERVING-ID`, `VIDEO-SESSION-ID`, `BROADCAST-ID` → the key name, `USER-COUNTRY` → `XX`, `C` and `E` (base64 URLs) → `C`, `E`;
 - `video-edge-*` hosts → `video-edge.example`; IPv4 → `203.0.113.1`; `OAuth <token>` → `OAuth OAUTH`; path components of 32 or more opaque characters → `opaque-<n>`;
 - JSON by key: token `value`, `signature`, ids and the F-05 headers (`Client-Integrity`, `X-Device-Id`, `Authorization`, `Client-Version`, `Client-Session-Id`); the public `Client-ID` stays.
 
@@ -204,7 +207,7 @@ Builds a fake worker scope and boots the worker code on it, the way it runs insi
 | TS-101 | T-101 | unit + int | `media-live-ts`, `media-live-fmp4` and `media-ll-hls` without ads come out byte-identical through the worker; with ads, output keeps `EXT-X-VERSION`, `EXT-X-MAP`, `PROGRAM-DATE-TIME`, `TWITCH-PREFETCH`, `PRELOAD-HINT`, `PART`, `DATERANGE`, `DISCONTINUITY` and an unknown tag; `#EXTINF` has the comma |
 | TS-102 | T-102 | unit | channel `nullbyte` goes through the usher hook; `fetch(new Request(url))` and `fetch(new URL(url))` are routed; an unrouted URL calls `global.request` with the same arguments |
 | TS-103 | T-103 | unit + int | usher v1 and v2 store the channel; channel with a query string; a media playlist before the usher comes back unchanged and does not throw; an error while handling a media playlist returns the original playlist |
-| TS-104 | T-104 | unit + int | `master-avc` yields variants with quality, resolution, codecs and URL; `master-hevc` with codecs; `master-empty` creates no `Server`; variant URLs on `*.playlist.ttvnw.net` are read; regex used only when the parser finds no variants; a network failure on one backup moves on to the next; media playlist recognized by its master URL without the `v1/playlist` pattern |
+| TS-104 | T-104 | unit + int | `master-avc` yields variants with quality, resolution, codecs and URL; `master-hevc` with codecs; `master-empty` creates no `Server`; the captured `master-frontpage-v1` and `master-site-v2` (quality from `NAME` and from `IVS-NAME`) on `*.playlist.ttvnw.net` are read; regex used only when the parser finds no variants; `bestQuality()` is the highest bandwidth; a network failure or an error status on one backup moves on to the next; media playlist recognized by its master URL without the `v1/playlist` pattern |
 | TS-105 | T-105 | int | two concurrent polls make one GQL request per playerType; no duplicate `Server`; a rejected GQL request does not throw and reaches the logger |
 | TS-106 | T-106 | unit (happy-dom) | a non-target URL returns the same `Response` with `bodyUsed === false`; 204 passes through; binary body intact; integrity captured and the page can still read the body; URL inside a `Request` recognized |
 | TS-107 | T-107 | unit (happy-dom) | two workers get `setSettings`; `terminate` removes from the registry; a worker created later gets the current settings, integrity and quality; pause, play and state from worker B are answered to B; quality reaches every worker; worker options reach the native `Worker`; an XHR that fails or answers 404 creates the worker with the original URL, unregistered |
@@ -268,6 +271,7 @@ Each run prints one line per check and exits with 0 when every check passed. `--
 
 - Page state is read as JSON through `tab.evaluate(..., return_by_value=True)` around `JSON.stringify(...)`.
 - `Worker.toString().includes("[Purple]")`: page hook installed.
+- `window.__e2e.media`: `<video>` events and the outcome of every `play()` call; `window.__e2e.playlists`: the last 60 media playlists the player got from Purple's hook (the only bodies the recorder reads, from a clone).
 - `window.__e2e` (`e2e/recorder.js`, added before any page script): per worker, creation time, whether it came through Purple's injector, whether its script holds Purple's code, the end of its script (a player worker imports `amazon-ivs-wasmworker`) and Purple's boot message; `workerLog`: from inside each worker, the fetches it made on the network, what the player got from Purple's hook, Purple's console lines, errors and rejections (URLs without the query string).
 - `document.querySelector("video")`: `readyState`, `currentTime` advancing between two reads, `paused`.
 - `window.__purple.events` (T-110): what the worker did.

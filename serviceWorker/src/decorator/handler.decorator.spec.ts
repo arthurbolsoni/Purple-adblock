@@ -82,13 +82,17 @@ describe("@Fetch / createRouter", () => {
     expect(createRouter(new Sample()).resolve("no-slash-here")).toBeUndefined();
   });
 
-  test("AppController routes: usher v1 and v2, media playlist, picture-by-picture", () => {
-    const controller = new AppController({} as any, { postMessage() {}, request: fetch, logger() {} });
+  test("AppController routes: usher v1 and v2, media playlist by URL or path, picture-by-picture", () => {
+    // the player's master listed one variant outside the v1/playlist path (T-104)
+    const appService = { isPlayerPlaylist: (url: string) => url === "https://edge.playlist.ttvnw.net/v2/hls/a.m3u8" };
+    const controller = new AppController(appService as any, { postMessage() {}, request: fetch, logger() {} });
     const router = createRouter(controller);
 
-    expect(router.routes.map((r) => r.propertyKey)).toEqual(["onChannel", "onChannel", "onFetch", "onChannelPicture"]);
+    expect(router.routes.map((r) => r.propertyKey)).toEqual(["onChannel", "onChannel", "onFetch", "onFetch", "onChannelPicture"]);
 
-    const routeOf = (url: string) => router.routes.find((r) => url.includes(r.match) && !url.includes(r.ignore!))?.propertyKey;
+    const routeOf = (url: string) => router.routeFor(url)?.propertyKey;
+    expect(routeOf("https://edge.playlist.ttvnw.net/v2/hls/a.m3u8")).toBe("onFetch");
+    expect(routeOf("https://edge.playlist.ttvnw.net/v2/hls/b.m3u8")).toBeUndefined();
     expect(routeOf("https://usher.ttvnw.net/api/channel/hls/somechannel.m3u8?token=x")).toBe("onChannel");
     expect(routeOf("https://usher.ttvnw.net/api/v2/channel/hls/somechannel.m3u8?token=x")).toBe("onChannel");
     expect(routeOf("https://usher.ttvnw.net/api/channel/hls/somechannel.m3u8?player_type=picture-by-picture")).toBe("onChannelPicture");

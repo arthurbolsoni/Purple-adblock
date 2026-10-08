@@ -1,6 +1,7 @@
 import { TwitchService } from "../twitch/twitch.service";
 import { StreamType } from "./interface/stream.enum";
-import { Server, StreamUrl } from "./interface/stream.types";
+import { Server } from "./interface/stream.types";
+import { parseVariants } from "./master";
 import type { WorkerContext } from "../../scope";
 
 export class Stream {
@@ -21,19 +22,13 @@ export class Stream {
     if (index > -1) this.serverList.splice(index, 1);
   }
 
-  //add m3u8 links with quality to the list of servers
+  //add the variants of a master to the list of servers
   setStreamAccess(text: string, type = "local", sig = true): void {
-    const qualityUrlSplit: StreamUrl[] = [];
-    let captureArray: RegExpExecArray | null;
+    const urlList = parseVariants(text);
+    // a master without variants (error page, empty body) adds nothing to request later
+    if (!urlList.length) return;
 
-    const REGEX = /NAME="((?:\S+\s+\S+|\S+))",AUTO(?:^|\S+\s+)(?:^|\S+\s+)(https:\/\/video(\S+).m3u8)/g;
-
-    while ((captureArray = REGEX.exec(text)) !== null) {
-      qualityUrlSplit.push({ quality: captureArray[1], url: captureArray[2] });
-    }
-
-    const streamList: Server = new Server({ type: type, urlList: qualityUrlSplit, sig: sig });
-    this.serverList.push(streamList);
+    this.serverList.push(new Server({ type: type, urlList: urlList, sig: sig }));
   }
 
   //create a new stream access

@@ -1,6 +1,6 @@
 # Fixtures
 
-Hand-written on 2026-10-03 from `docs/server/` (tags and markers observed in the [live traffic finding](../../../docs/findings/2026-10-03-twitch-live-traffic.md), plus what Brave's script reports). No recording existed yet. When the recorder (T-005) produces sanitized captures, they replace or join these files and this table says which ones are captured.
+Hand-written on 2026-10-03 from `docs/server/` (tags and markers observed in the [live traffic finding](../../../docs/findings/2026-10-03-twitch-live-traffic.md), plus what Brave's script reports), except the files whose source says "captured": those come from twitch.tv through a probe and `harness/sanitize.ts`. When the recorder (T-005) produces sanitized captures, they replace or join these files and this table says which ones are captured.
 
 Every file is already in sanitized form: `sanitize(file) === file` is checked by `fixtures.spec.ts`. Load them with `fixture("m3u8/<name>")` or `fixtureJson("gql/<name>")` from `../harness/fixtures.ts`.
 
@@ -10,6 +10,8 @@ All media playlists start at `2026-10-03T12:00:00.000Z` (preroll, live, fMP4, LL
 
 | File | Content | Source |
 | --- | --- | --- |
+| `master-site-v2.m3u8` | the page's own master from `/api/v2/channel/hls/` (`site`): 24 `SESSION-DATA` lines, no `EXT-X-MEDIA`; `STREAM-INF` with `IVS-NAME`, `STABLE-VARIANT-ID`, `SCORE`, `IVS-VARIANT-SOURCE`; 5 AVC variants on `sae12.playlist.ttvnw.net`, not sorted by quality | captured 2026-10-07 (`docs/findings/probes/master_capture_probe.py`), sanitized |
+| `master-frontpage-v1.m3u8` | backup master Purple requested from `/api/channel/hls/` (`frontpage`): `#EXT-X-TWITCH-INFO`, `EXT-X-MEDIA` with `NAME`, 5 AVC variants on `sae12.playlist.ttvnw.net`, first one 360p30 | captured 2026-10-07, sanitized |
 | `master-avc.m3u8` | 5 AVC variants (`chunked` 1080p60 source, 720p60, 480p30, 360p30, 160p30), `EXT-X-MEDIA` with `NAME`, variant URLs on `edge.playlist.ttvnw.net` | host observed (B-003); `EXT-X-MEDIA` and `STREAM-INF` attributes not recorded yet, written in the layout Purple 2.6.7 parses |
 | `master-video-weaver.m3u8` | same variants on `video-weaver.example.hls.ttvnw.net`, the host the 2.6.7 variant regex reads | Purple 2.6.7 code |
 | `master-hevc.m3u8` | HEVC source, AV1 and AVC variants | synthetic (Q-007) |
