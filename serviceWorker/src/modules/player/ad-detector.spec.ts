@@ -19,7 +19,8 @@ describe("detectAds", () => {
   });
 
   test.each([
-    ["twitch-stitched-ad class", '#EXT-X-DATERANGE:ID="stitched-ad-1-6",CLASS="twitch-stitched-ad",START-DATE="2026-10-03T12:00:00.000Z",DURATION=6.000'],
+    // a break announced after the last segment (B-034); a range over the segments makes them ads (T-203)
+    ["twitch-stitched-ad class", '#EXT-X-DATERANGE:ID="stitched-ad-1-6",CLASS="twitch-stitched-ad",START-DATE="2026-10-03T12:00:12.000Z",DURATION=6.000'],
     ["stitched-ad id", '#EXT-X-DATERANGE:ID="stitched-ad-1-6",CLASS="other",START-DATE="2026-10-03T12:00:00.000Z"'],
     ["twitch-maf-ad class", '#EXT-X-DATERANGE:ID="maf-1",CLASS="twitch-maf-ad",START-DATE="2026-10-03T12:00:00.000Z"'],
     ["EXT-X-CUE-OUT", "#EXT-X-CUE-OUT:30"],
@@ -63,5 +64,53 @@ describe("detectAds", () => {
 
   test("media-marked-live: MARKED_LIVE", () => {
     expect(detectAds(fixture("m3u8/media-marked-live.m3u8"))).toEqual({ class: AdClass.MARKED_LIVE, adSegments: [] });
+  });
+});
+
+// T-203: in a playlist with a stitched-ad marker, a segment is also an ad by its title (not "live"), by a
+// twitch-stitched-ad START-DATE + DURATION covering more than half of it, or by a twitch-stream-source value other
+// than "live" (B-035; docs/findings/2026-10-08-ad-segment-coverage.md)
+describe("detectAds: stitched breaks without the title and URI markers (T-203)", () => {
+  const AHEAD = '#EXT-X-DATERANGE:ID="stitched-ad-1",CLASS="twitch-stitched-ad",START-DATE="2026-10-03T12:00:30.000Z",DURATION=20.234';
+  const source = (time: string, value: string) =>
+    `#EXT-X-DATERANGE:ID="source-${time}",CLASS="twitch-stream-source",START-DATE="2026-10-03T12:00:${time}.000Z",END-ON-NEXT=YES,X-TV-TWITCH-STREAM-SOURCE="${value}"`;
+  const withTags = (text: string, ...tags: string[]) => text.replace("#EXT-X-PROGRAM-DATE-TIME", `${tags.join("\n")}\n#EXT-X-PROGRAM-DATE-TIME`);
+
+  test("media-midroll-numeric: SSAI, segments 3 to 5 (10-digit titles, plain URIs)", () => {
+    expect(detectAds(fixture("m3u8/media-midroll-numeric.m3u8"))).toEqual({ class: AdClass.SSAI, adSegments: [3, 4, 5] });
+  });
+
+  test("media-preroll-ft: every segment is an ad (FT| titles)", () => {
+    expect(detectAds(fixture("m3u8/media-preroll-ft.m3u8"))).toEqual({ class: AdClass.SSAI, adSegments: [0, 1, 2, 3, 4, 5] });
+  });
+
+  test.each([
+    ["a title other than live", withTags(withSecondSegment(/,live$/, ",1234567890"), AHEAD)],
+    ["a twitch-stitched-ad range", withTag('#EXT-X-DATERANGE:ID="stitched-ad-2",CLASS="twitch-stitched-ad",START-DATE="2026-10-03T12:00:02.000Z",DURATION=2.000')],
+    ["a twitch-stream-source other than live", withTags(LIVE, AHEAD, source("02", "1234567890"), source("04", "live"))],
+  ])("%s alone makes the segment an ad", (_, text) => {
+    expect(detectAds(text)).toEqual({ class: AdClass.SSAI, adSegments: [1] });
+  });
+
+  test("a range covers a segment only for more than half of it: DURATION=2.234 from 12:00:02 takes segment 1, not 2", () => {
+    const text = withTag('#EXT-X-DATERANGE:ID="stitched-ad-2",CLASS="twitch-stitched-ad",START-DATE="2026-10-03T12:00:02.000Z",DURATION=2.234');
+    expect(detectAds(text).adSegments).toEqual([1]);
+  });
+
+  test("without a stitched-ad marker, a title other than live is not an ad", () => {
+    expect(detectAds(withSecondSegment(/,live$/, ",1234567890"))).toEqual({ class: AdClass.NONE, adSegments: [] });
+  });
+
+  test("twitch-maf-ad is not a stitched-ad marker: titles and sources under it stay as they are", () => {
+    const maf = '#EXT-X-DATERANGE:ID="maf-ad-1",CLASS="twitch-maf-ad",START-DATE="2026-10-03T12:00:00.000Z",PLANNED-DURATION=60.000,END-ON-NEXT=YES';
+    expect(detectAds(withTags(withSecondSegment(/,live$/, ",1234567890"), maf, source("02", "1234567890")))).toEqual({ class: AdClass.MARKED_LIVE, adSegments: [] });
+  });
+
+  test("an empty title is not an ad", () => {
+    expect(detectAds(withTags(withSecondSegment(/,live$/, ","), AHEAD)).class).toBe(AdClass.MARKED_LIVE);
+  });
+
+  test("backup-announced-break: MARKED_LIVE, the break starts after the last segment", () => {
+    expect(detectAds(fixture("m3u8/backup-announced-break.m3u8"))).toEqual({ class: AdClass.MARKED_LIVE, adSegments: [] });
   });
 });

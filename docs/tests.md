@@ -129,10 +129,13 @@ Scripts under `platform/src` load as classic scripts in the browser. To test the
 | `media-ll-hls.m3u8` | media playlist with `EXT-X-PART` and `EXT-X-PRELOAD-HINT` |
 | `media-ssai-preroll.m3u8` | every segment is an ad: `DATERANGE` `twitch-stitched-ad`, `twitch-trigger`, `twitch-ad-quartile` with `X-TV-TWITCH-AD-*`, `Amazon\|AD_ID` titles, `/adsquared/` URIs |
 | `media-ssai-midroll.m3u8` | live and ad segments mixed |
-| `media-marked-live.m3u8` | `DATERANGE` `twitch-stitched-ad` with no ad segment |
+| `media-marked-live.m3u8` | `DATERANGE` `twitch-maf-ad` over live segments (`MARKED_LIVE`) |
+| `media-midroll-numeric.m3u8` | midroll whose ad segments are titled with a 10-digit number, on plain URIs (B-035) |
+| `media-preroll-ft.m3u8` | fMP4 preroll titled `FT\|1-2-3` (B-035, B-039) |
 | `media-false-positive.m3u8` | `stitched` outside the segment title, `twitch-session`, `twitch-stream-source` |
 | `backup-clean.m3u8` | backup without ads, aligned by `PROGRAM-DATE-TIME` with `media-ssai-midroll.m3u8` |
 | `backup-ads.m3u8` | backup with ads |
+| `backup-announced-break.m3u8` | backup with live segments and its own break announced after them (B-034, B-036) |
 | `backup-fmp4-other-map.m3u8` | fMP4 backup with a different `EXT-X-MAP` than the main playlist |
 
 ### `fixtures/gql`
@@ -219,6 +222,7 @@ Builds a fake worker scope and boots the worker code on it, the way it runs insi
 | TS-111 | T-111 | unit | the Chromium manifest declares `app/bundle.js` as a `MAIN` world content script at `document_start` and no longer exposes it to web pages; on Chromium the isolated content script no longer appends a `<script src>`; on Firefox it appends it before `storage` answers; on both, a `getSettings` sent before `storage` answers gets the settings once it does |
 | TS-201 | T-201 | unit | each F-02 marker detected; non-ad markers give `NONE`, including `twitch-trigger` with only a trigger URL (B-021); `stitched` outside the title gives `NONE`; `stitched`, `Amazon` and `DCM,` in the title give `SSAI`; URI patterns give `SSAI`; correct indexes on `media-ssai-midroll` and `media-ssai-preroll`; `media-marked-live` gives `MARKED_LIVE`; `Player.hasAds` is `SSAI` only |
 | TS-202 | T-202 | int | `media-marked-live` comes out identical, zero GQL calls, no pause/play messages; during an ad break, a `MARKED_LIVE` backup replaces the playlist |
+| TS-203 | T-203 | unit + int | with a stitched-ad marker, each signal alone makes a segment an ad (title not `live`, range covering more than half of it, stream source not `live`); a range 0.234 s longer than its segment takes no extra segment; without a stitched-ad marker a numeric title is not an ad; `twitch-maf-ad` keeps `MARKED_LIVE`; `media-midroll-numeric` gives segments 3 to 5 and `media-preroll-ft` all 6; the merge replaces the numeric-title segments and skips a backup's own numeric-title segments; both fixtures go through the backup chain in the worker |
 | TS-301 | T-301 | unit (happy-dom) | `fetch` to `edge.ads.twitch.tv` never reaches the real `fetch` and gets an empty 200; XHR ends with `readyState 4`, status 200 and `onload` without network; with `blockCsai` off it passes; counters for `preroll` and `midroll` |
 | TS-302 | T-302 | unit | `rules.json` is valid, with a `block` action and `urlFilter` `\|\|edge.ads.twitch.tv^`; the manifest declares `declarativeNetRequestWithHostAccess` (not `declarativeNetRequest`) and the file |
 | TS-401 | T-401 | unit (happy-dom) + int | a page GQL request with headers sends update messages to the worker; `Device-ID` as alternate name; `/integrity` capture still works; the worker's token request carries the headers (checked in `FakeTwitch.calls`) |

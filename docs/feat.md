@@ -63,6 +63,7 @@ Three groups: strategies that already exist (E-xx, none is removed), fixes to ex
 - Ad confirmation: `X-TV-TWITCH-AD-AD-SESSION-ID`, `X-TV-TWITCH-AD-RADS-TOKEN` on any `DATERANGE`.
 - `CLASS="twitch-trigger"` counts only with an ad attribute: alone (with `X-TV-TWITCH-TRIGGER-URL`) it is in every playlist, with or without ads (B-021).
 - Segment level: `#EXTINF` title containing `stitched`, `Amazon` or `DCM,` (Purple's current markers), and URIs containing `/adsquared/`, `/_404/` or `/processing`.
+- Segment level, in a playlist with a stitched-ad marker (`CLASS` starting `twitch-stitched` or `ID` starting `stitched-ad`; T-203): a title other than `live` (ads titled `FT|…` or with a number, B-035), a segment more than half inside a `twitch-stitched-ad` `START-DATE` + `DURATION` (B-040), or a segment under a `twitch-stream-source` value other than `live`. `twitch-maf-ad` is not a stitched-ad marker.
 - Not ads: `twitch-session`, `twitch-stream-source`, `twitch-ad-quartile`, `twitch-assignment`.
 - Bare `stitched` keeps counting in the segment title and no longer counts across the whole playlist text. Brave's script dropped it from its playlist-level list because it matched non-ad content (comment above `AdSignifiers`).
 

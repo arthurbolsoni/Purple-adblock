@@ -11,7 +11,7 @@ Phases run in order. Inside a phase, the "Depends on" column says what must come
 | 0. Test base (level 1) | T-001 to T-003 | - |
 | 0b. Levels 2 and 3 | T-004 to T-009 | - (parallel with phases 1 to 7) |
 | 1. Fixes to existing code | T-101 to T-111 | Phase 0 |
-| 2. Detection | T-201, T-202 | T-101 |
+| 2. Detection | T-201 to T-203 | T-101 |
 | 3. CSAI blocking | T-301, T-302 | T-106 |
 | 4. Backup streams | T-401 to T-408 | T-104, T-105, T-106, T-107 |
 | 5. Playlist assembly | T-501, T-502 | T-101, T-201 |
@@ -246,6 +246,16 @@ Runs in parallel with phases 1 to 7. Phase 1 to 6 tasks list L2/L3 scenarios tha
 - Files: `serviceWorker/src/modules/player/player.ts`
 - Done when a `MARKED_LIVE` playlist comes back untouched, with no backup lookup and no pause/play.
 - Tests: TS-202, L3-01
+
+### T-203 Ad segments by `DATERANGE` range and non-live titles
+- [x] Status · F-02, F-03 · B-035 · done 2026-10-08: in the soak recordings the three signals agree on every segment of 814 playlists; a range covers a segment when more than half of it lies inside (B-040); L3-01, L3-02 (3 runs) and L3-08 passed on the build, with no break in them ([finding](findings/2026-10-08-ad-segment-coverage.md))
+- Files: `serviceWorker/src/modules/player/ad-detector.ts`, `m3u8.ts`
+- Done when:
+  - in a playlist with a stitched-ad marker, a segment is an ad when its title is not `live`, when a `twitch-stitched-ad` `START-DATE` + `DURATION` covers it, or when it sits under a `twitch-stream-source` value other than `live`;
+  - a `twitch-maf-ad` marker over live segments stays `MARKED_LIVE`;
+  - the merge takes the ad segments of the main playlist and of each backup from the detector;
+  - a preroll titled `FT|…` and a midroll titled with a number go through the backup chain.
+- Tests: TS-203, L3-03 (soak)
 
 ## Phase 3: CSAI blocking
 

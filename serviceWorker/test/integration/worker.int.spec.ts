@@ -279,7 +279,7 @@ ${variant}
     expect(worker.posted.filter((m) => m.type === "pause" || m.type === "play")).toEqual([]);
   });
 
-  // T-201: a backup with markers but only live segments is usable (seen during a midroll, B-028)
+  // T-201: a backup with a twitch-maf-ad marker over live segments is usable (B-032)
   test("ad break: a MARKED_LIVE backup replaces the playlist", async () => {
     const worker = setup();
     const midroll = fixture("m3u8/media-ssai-midroll.m3u8");
@@ -306,10 +306,10 @@ ${variant}
 describe("backup player types", () => {
   const DEFAULT_ORDER = ["site", "popout", "frontpage", "picture-by-picture", "mobile_web", "embed", "autoplay"];
 
-  const breakWith = (backups: Record<string, string | null>) => {
+  const breakWith = (backups: Record<string, string | null>, main = fixture("m3u8/media-ssai-midroll.m3u8")) => {
     const worker = createWorkerScope();
     worker.twitch.master("channel", masterFor(""));
-    worker.twitch.mediaPlaylist(MAIN, fixture("m3u8/media-ssai-midroll.m3u8"));
+    worker.twitch.mediaPlaylist(MAIN, main);
     for (const [type, playlist] of Object.entries(backups)) {
       if (type === "site") continue; // the page's master: its variant is MAIN, which has the ad
       worker.twitch.master("channel", masterFor(`${type}-`), type);
@@ -340,6 +340,17 @@ describe("backup player types", () => {
     expect(await worker.text(MAIN)).toBe(clean);
     const media = worker.twitch.callsOf("media").map((c) => c.url.replace(HOST, ""));
     expect(media.slice(2)).toEqual(["chunked.m3u8", "popout-chunked.m3u8"]);
+  });
+
+  // T-203: breaks whose segments carry no title or URI marker (B-035)
+  test.each(["media-midroll-numeric.m3u8", "media-preroll-ft.m3u8"])("%s: the popout backup replaces the main playlist", async (name) => {
+    const clean = fixture("m3u8/backup-clean.m3u8");
+    const worker = breakWith({ site: null, popout: clean }, fixture(`m3u8/${name}`));
+    await worker.text(USHER);
+    await worker.text(MAIN);
+    await settle(() => worker.player.currentStream().serverList.length >= 2);
+
+    expect(await worker.text(MAIN)).toBe(clean);
   });
 
   test("without lowQualityFallback, autoplay is not requested", async () => {

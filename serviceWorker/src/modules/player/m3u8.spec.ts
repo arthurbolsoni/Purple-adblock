@@ -101,6 +101,26 @@ describe("mergeM3u8Contents", () => {
     }
   });
 
+  // T-203: ad segments come from the detector, also without the title and URI markers
+  test("numeric-title midroll: the three ad segments get the backup's live segments", () => {
+    const midroll = fixture("m3u8/media-midroll-numeric.m3u8");
+    const segments = readSegments(midroll.split("\n"));
+    const merged = mergeM3u8Contents([midroll, fixture("m3u8/backup-clean.m3u8")]);
+
+    expect(changed(midroll, merged)).toEqual(
+      [3, 4, 5].flatMap((i) => [
+        [segments[i].extinf, "#EXTINF:2.000,live"],
+        [segments[i].uri, `https://edge.j.cloudfront.hls.ttvnw.net/v1/segment/backup-300${i}.ts`],
+      ]),
+    );
+  });
+
+  test("a backup segment under the backup's own numeric-title break is not used", () => {
+    const midroll = fixture("m3u8/media-midroll-numeric.m3u8");
+    const backup = midroll.replaceAll("/v1/segment/", "/v1/segment/backup-");
+    expect(mergeM3u8Contents([midroll, backup])).toBe(midroll);
+  });
+
   test.each(["media-live-ts.m3u8", "media-live-fmp4.m3u8", "media-ll-hls.m3u8"])(
     "%s with one ad segment: only that segment's #EXTINF and URI lines change; MAP, PREFETCH, PART, PRELOAD-HINT stay",
     (name) => {

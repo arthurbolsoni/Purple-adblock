@@ -25,6 +25,15 @@ describe("sanitize (text)", () => {
     expect(out).not.toContain("ads.twitch.tv/click");
   });
 
+  test("replaces the ids of a twitch-maf-ad slot and keeps its description", () => {
+    const slot = sanitize(
+      '#EXT-X-DATERANGE:ID="maf-ad-1",CLASS="twitch-maf-ad",START-DATE="2026-10-03T12:00:00.000Z",PLANNED-DURATION=60.000,END-ON-NEXT=YES,X-TTV-MAF-AD-COMMERCIAL-ID="c0ffee12",X-TTV-MAF-AD-RADS-TOKEN="eyJhbGciOi",X-TTV-MAF-AD-DECISION="eyJkZWNpc2lvbiI6MX0",X-TTV-MAF-AD-PRIMARY-POD="6",X-TTV-MAF-AD-FALLBACK-FORMATS="5,3,4",X-TTV-MAF-AD-AD-SESSION-ID="9f8e7d6c",X-TTV-MAF-AD-SDA-SEQUENCE-LENGTH="4"',
+    );
+    expect(slot).toBe(
+      '#EXT-X-DATERANGE:ID="maf-ad-1",CLASS="twitch-maf-ad",START-DATE="2026-10-03T12:00:00.000Z",PLANNED-DURATION=60.000,END-ON-NEXT=YES,X-TTV-MAF-AD-COMMERCIAL-ID="COMMERCIAL_ID",X-TTV-MAF-AD-RADS-TOKEN="RADS_TOKEN",X-TTV-MAF-AD-DECISION="DECISION",X-TTV-MAF-AD-PRIMARY-POD="6",X-TTV-MAF-AD-FALLBACK-FORMATS="5,3,4",X-TTV-MAF-AD-AD-SESSION-ID="AD_SESSION_ID",X-TTV-MAF-AD-SDA-SEQUENCE-LENGTH="4"',
+    );
+  });
+
   test("replaces the session id and the ad id in the segment title", () => {
     expect(out).toContain('X-TV-TWITCH-SESSIONID="SESSIONID"');
     expect(out).toContain("#EXTINF:2.000,Amazon|AD_ID");

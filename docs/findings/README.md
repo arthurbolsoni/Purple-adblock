@@ -19,4 +19,5 @@ New discoveries are added here as they happen. A later finding that contradicts 
 | [2026-10-07-backups-and-rewritten-playlists.md](2026-10-07-backups-and-rewritten-playlists.md) | Captured masters, backups with ads during a preroll, the player stall on playlists rewritten by `generateM3u8` | open |
 | [2026-10-07-e2e-harness.md](2026-10-07-e2e-harness.md) | Level 3 harness: hidden desktop, page selectors, worker log; first L3-01 runs break on usher v2 | open |
 | [2026-10-07-midroll-soak.md](2026-10-07-midroll-soak.md) | Soak sessions (`e2e/soak.py`) with and without Purple: `twitch-maf-ad` client-side slots, stitched midrolls poll by poll, new ad titles, the player paused after breaks Purple rewrote | open |
+| [2026-10-08-ad-segment-coverage.md](2026-10-08-ad-segment-coverage.md) | Ad segments by title, `twitch-stitched-ad` range and stream source in the soak recordings; backups announcing their own break (T-203, T-204) | open |
 | [../research.md](../research.md) | Brave's Twitch scriptlet | closed |

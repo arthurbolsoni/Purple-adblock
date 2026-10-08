@@ -1,5 +1,5 @@
-// Ad detection (F-02, F-03, T-201): the only place that knows the ad markers.
-import { readSegments } from "./segments";
+// Ad detection (F-02, F-03, T-201, T-203): the only place that knows the ad markers.
+import { readSegments, type SegmentLines } from "./segments";
 
 export enum AdClass {
   NONE = "NONE", // no marker
@@ -27,6 +27,11 @@ const attr = (line: string, name: string) => {
 export const isAdSegment = (title: string, uri: string) =>
   TITLE_MARKERS.some((marker) => title.includes(marker)) || URI_MARKERS.some((marker) => uri.includes(marker));
 
+const numberAttr = (line: string, name: string) => parseFloat(new RegExp(`[:,]${name}=([0-9.]+)`).exec(line)?.[1] ?? "");
+
+const isStitchedMarker = (line: string) =>
+  line.startsWith("#EXT-X-DATERANGE:") && (attr(line, "CLASS").startsWith("twitch-stitched") || attr(line, "ID").startsWith("stitched-ad"));
+
 const isPlaylistMarker = (line: string) => {
   if (line.startsWith("#EXT-X-CUE-OUT")) return true;
   if (!line.startsWith("#EXT-X-DATERANGE:")) return false;
@@ -39,10 +44,42 @@ const isPlaylistMarker = (line: string) => {
   );
 };
 
+// T-203: in a playlist with a stitched-ad marker, a segment is also an ad when its title is not "live", when a
+// twitch-stitched-ad START-DATE + DURATION covers more than half of it, or when the twitch-stream-source in force at
+// its time is not "live" (B-035). Ad segments titled with a number or "FT|..." carry no other marker. In the soak
+// recordings the three signals agree on every segment; a range runs a little past its last segment (20.234 s over ten
+// 2 s segments), hence the half-segment rule (docs/findings/2026-10-08-ad-segment-coverage.md).
+function stitchedBreak(lines: string[]): ((segment: SegmentLines) => boolean) | null {
+  if (!lines.some(isStitchedMarker)) return null;
+  const ranges: { start: number; end: number }[] = [];
+  const sources: { start: number; value: string }[] = [];
+  for (const line of lines) {
+    if (!line.startsWith("#EXT-X-DATERANGE:")) continue;
+    const start = Date.parse(attr(line, "START-DATE"));
+    if (Number.isNaN(start)) continue;
+    const duration = numberAttr(line, "DURATION");
+    if (isStitchedMarker(line) && duration > 0) ranges.push({ start, end: start + duration * 1000 });
+    if (attr(line, "CLASS") === "twitch-stream-source") sources.push({ start, value: attr(line, "X-TV-TWITCH-STREAM-SOURCE") });
+  }
+  sources.sort((a, b) => a.start - b.start);
+
+  return ({ title, time, duration }) => {
+    if (title && title !== "live") return true;
+    if (time == null) return false;
+    const end = time + duration * 1000;
+    if (ranges.some((range) => Math.min(end, range.end) - Math.max(time, range.start) > (duration * 1000) / 2)) return true;
+    const source = sources.filter((s) => s.start <= time).pop();
+    return source != null && source.value !== "live";
+  };
+}
+
 // Class of a media playlist and the indexes (in segment order) of its ad segments.
 export function detectAds(text: string): { class: AdClass; adSegments: number[] } {
   const lines = text.split("\n").map((line) => line.trim());
-  const adSegments = readSegments(lines).flatMap((segment, index) => (isAdSegment(segment.title, lines[segment.uri]) ? [index] : []));
+  const inStitchedBreak = stitchedBreak(lines);
+  const adSegments = readSegments(lines).flatMap((segment, index) =>
+    isAdSegment(segment.title, lines[segment.uri]) || inStitchedBreak?.(segment) ? [index] : [],
+  );
   if (adSegments.length) return { class: AdClass.SSAI, adSegments };
   return { class: lines.some(isPlaylistMarker) ? AdClass.MARKED_LIVE : AdClass.NONE, adSegments };
 }

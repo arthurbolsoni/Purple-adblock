@@ -23,6 +23,9 @@ const AD_ATTRIBUTES_KEPT = new Set([
   "TRACKING-START",
 ]);
 
+// X-TTV-MAF-AD-* attributes of a twitch-maf-ad slot (B-032) that describe it and carry no identifier.
+const MAF_ATTRIBUTES_KEPT = new Set(["PRIMARY-POD", "FALLBACK-FORMATS", "SDA-SEQUENCE-LENGTH"]);
+
 const JSON_PLACEHOLDERS: Record<string, string> = {
   signature: "SIG",
   sig: "SIG",
@@ -65,6 +68,9 @@ export function sanitize(text: string): string {
       // ad attributes that identify the ad, the campaign or the viewer
       .replace(/(X-TV-TWITCH-AD-)([A-Z0-9-]+)="[^"]*"/g, (match, prefix, name) =>
         AD_ATTRIBUTES_KEPT.has(name) ? match : `${prefix}${name}="${placeholderFor(name)}"`,
+      )
+      .replace(/(X-TTV-MAF-AD-)([A-Z0-9-]+)="[^"]*"/g, (match, prefix, name) =>
+        MAF_ATTRIBUTES_KEPT.has(name) ? match : `${prefix}${name}="${placeholderFor(name)}"`,
       )
       // other Twitch ids in playlist attributes
       .replace(/(X-TV-TWITCH-(?!AD-)[A-Z0-9-]*ID)="[^"]*"/g, (_, name) => `${name}="${placeholderFor(name.replace("X-TV-TWITCH-", ""))}"`)

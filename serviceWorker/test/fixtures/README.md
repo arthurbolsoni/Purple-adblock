@@ -4,7 +4,9 @@ Hand-written on 2026-10-03 from `docs/server/` (tags and markers observed in the
 
 Every file is already in sanitized form: `sanitize(file) === file` is checked by `fixtures.spec.ts`. Load them with `fixture("m3u8/<name>")` or `fixtureJson("gql/<name>")` from `../harness/fixtures.ts`.
 
-All media playlists start at `2026-10-03T12:00:00.000Z` (preroll, live, fMP4, LL-HLS) or `12:10:00.000Z` (midroll and its backups), with 2 s segments.
+All media playlists start at `2026-10-03T12:00:00.000Z` (prerolls, live, fMP4, LL-HLS) or `12:10:00.000Z` (midrolls, the MAF slot and the backups), with 2 s segments (2.002 s in `media-preroll-ft.m3u8`).
+
+The files added on 2026-10-08 follow the shapes of the playlists recorded in the [midroll soak](../../../docs/findings/2026-10-07-midroll-soak.md) (tag order, attributes, title and source values), with placeholder values: `FT|1-2-3` and `1234567890` stand for the observed `FT|<n>-<n>-<n>` and 10-digit titles.
 
 ## `m3u8/`
 
@@ -21,10 +23,13 @@ All media playlists start at `2026-10-03T12:00:00.000Z` (preroll, live, fMP4, LL
 | `media-ll-hls.m3u8` | `EXT-X-PART`, `EXT-X-PRELOAD-HINT`, `EXT-X-SERVER-CONTROL` | synthetic (Q-003) |
 | `media-ssai-preroll.m3u8` | 6 ad segments: `twitch-stitched-ad`, `twitch-trigger` and `twitch-ad-quartile` `DATERANGE`s with `X-TV-TWITCH-AD-*`, `Amazon\|AD_ID` titles, `/adsquared/` URIs, `DISCONTINUITY` | markers and titles observed; `/adsquared/` reported by Brave (Q-012) |
 | `media-ssai-midroll.m3u8` | 3 live, 3 ad (12:10:06 to 12:10:10), 2 live | markers observed; layout synthetic |
-| `media-marked-live.m3u8` | ad `DATERANGE`s, every segment `live` | Brave-reported case (F-03 `MARKED_LIVE`) |
+| `media-marked-live.m3u8` | a `twitch-maf-ad` `DATERANGE` (`PLANNED-DURATION=60.000`, `X-TTV-MAF-AD-*`) over 8 live segments (F-03 `MARKED_LIVE`) | shape observed (B-032), values synthetic |
+| `media-midroll-numeric.m3u8` | 3 live, 3 ad segments titled `1234567890` with plain URIs (12:10:06 to 12:10:10), 2 live; `twitch-stitched-ad` with `DURATION=6.234`, `twitch-stream-source` `1234567890` then `live` | shape observed (B-035), values synthetic |
+| `media-preroll-ft.m3u8` | fMP4 preroll at `MEDIA-SEQUENCE` 0: 6 segments titled `FT\|1-2-3`, `EXT-X-START`, `EXT-X-MAP` after the `DISCONTINUITY` | shape observed (B-035, B-039), values synthetic |
 | `media-false-positive.m3u8` | `stitched` only inside a `twitch-stream-source` attribute | synthetic |
 | `backup-clean.m3u8` | 8 live segments aligned by `PROGRAM-DATE-TIME` with `media-ssai-midroll.m3u8`, other `MEDIA-SEQUENCE` and URIs | synthetic |
 | `backup-ads.m3u8` | the same window with the same ad break | synthetic |
+| `backup-announced-break.m3u8` | the same 8 live segments, then its own break announced after the last one: prefetch, `twitch-stitched-ad` starting at 12:10:18, `twitch-stream-source` `1234567890`, quartile, `DISCONTINUITY`, two prefetch lines to ad segments | shape observed (B-034, B-036), values synthetic |
 | `backup-fmp4-other-map.m3u8` | fMP4 backup with `init-backup.mp4`, aligned with `media-live-fmp4.m3u8` | synthetic |
 
 ## `gql/`

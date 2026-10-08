@@ -113,7 +113,10 @@ describe("Player.hasAds", () => {
   test.each([
     ["media-ssai-midroll.m3u8", true],
     ["media-ssai-preroll.m3u8", true],
+    ["media-midroll-numeric.m3u8", true],
+    ["media-preroll-ft.m3u8", true],
     ["media-marked-live.m3u8", false],
+    ["backup-announced-break.m3u8", false],
     ["media-false-positive.m3u8", false],
     ["media-live-ts.m3u8", false],
   ])("%s -> %p", (name, expected) => {

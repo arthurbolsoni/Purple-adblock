@@ -21,6 +21,7 @@ describe("m3u8 fixtures", () => {
   test("the set is complete", () => {
     expect(files).toEqual([
       "backup-ads.m3u8",
+      "backup-announced-break.m3u8",
       "backup-clean.m3u8",
       "backup-fmp4-other-map.m3u8",
       "master-avc.m3u8",
@@ -34,6 +35,8 @@ describe("m3u8 fixtures", () => {
       "media-live-ts.m3u8",
       "media-ll-hls.m3u8",
       "media-marked-live.m3u8",
+      "media-midroll-numeric.m3u8",
+      "media-preroll-ft.m3u8",
       "media-ssai-midroll.m3u8",
       "media-ssai-preroll.m3u8",
     ]);
@@ -63,6 +66,14 @@ describe("m3u8 fixtures", () => {
     expect(main.map((s: any) => s.programDateTime)).toEqual(backup.map((s: any) => s.programDateTime));
     expect(main.filter((s: any) => s.title.startsWith("Amazon|")).map((s: any) => s.uri.split("/").pop())).toEqual(["ad-2003.ts", "ad-2004.ts", "ad-2005.ts"]);
     expect(backup.some((s: any) => s.title !== "live")).toBe(false);
+  });
+
+  test("the numeric-title midroll, the announced break and the MAF slot are aligned with backup-clean", () => {
+    const times = (name: string) => parse(fixture(`m3u8/${name}`)).manifest.segments.map((s: any) => s.programDateTime);
+    const clean = times("backup-clean.m3u8");
+    expect(times("media-midroll-numeric.m3u8")).toEqual(clean);
+    expect(times("backup-announced-break.m3u8")).toEqual(clean);
+    expect(times("media-marked-live.m3u8")).toEqual(clean);
   });
 
   test("fMP4 fixtures carry their own EXT-X-MAP", () => {
