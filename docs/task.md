@@ -487,7 +487,7 @@ Odd behaviors seen in the runs. Each task ends with its cause in a finding (and 
 - Tests: L2 scenario
 
 ### T-805 Player at readyState 0 with Purple in the worker
-- [ ] Status · Q-014
+- [x] Status · Q-014 · done 2026-10-08: not reproduced. The 58 soak loads of 2026-10-07 and 08 (54 with Purple) all reached `readyState` 4 ([`readystate_probe.py`](findings/probes/readystate_probe.py)); the cause found on 2026-10-07, an ad playlist throwing because usher v2 was not routed, was fixed by T-103
 - Origin: 1 of 3 loads on 2.6.7 and on the T-001 build stayed at `readyState` 0 ([worker injection race](findings/2026-10-04-worker-injection-race.md)).
 - Check: the level 3 and soak runs since 2026-10-07 for a load whose `<video>` never left `readyState` 0, with the worker console and the playlists of such a run.
 - Done when: seen again with a cause, or not seen in the runs since and Q-014 closed as not reproduced.

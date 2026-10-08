@@ -48,5 +48,5 @@ Note 2026-10-07: two more direct loads with the extension had the hook at 1426 m
 
 ## Open
 
-- Q-014: why the player stays at `readyState 0` in some runs with Purple in the worker (needs the worker's console and the playlists it returned; recorder T-005 and debug events T-110) (T-805).
+- Q-014: why the player stays at `readyState 0` in some runs with Purple in the worker (needs the worker's console and the playlists it returned; recorder T-005 and debug events T-110) (T-805). 2026-10-08: not seen again in 58 soak loads, 54 with Purple; the 2026-10-07 cause (usher v2 not routed, T-103) is fixed ([`readystate_probe.py`](probes/readystate_probe.py)).
 - Whether a `"world": "MAIN"` content script at `document_start` (Chromium) runs before the player creates its workers on a direct load (T-111). Firefox MV2 and the userscript need their own check. · 2026-10-07: yes on Chromium, 8 of 8 direct loads; the userscript was in time in 5 of 5; Firefox not checked ([e2e harness](2026-10-07-e2e-harness.md))
