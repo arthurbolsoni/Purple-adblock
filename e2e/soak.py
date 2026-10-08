@@ -214,6 +214,11 @@ async def drain(session, recorder, watch, mode, final=False):
                 watch.stitched += marks['kind'] in ('SSAI', 'MARKED_LIVE')
                 watch.in_stitched = marks['kind'] in ('SSAI', 'MARKED_LIVE')
                 recorder.note('break start', channel=watch.channel, at=stamp(entry.get('wall')), **marks)
+            elif main and marks['kind'] in ('SSAI', 'MARKED_LIVE') and not watch.in_stitched:
+                # a stitched midroll that starts inside a twitch-maf-ad slot: the same break, now a stitched one
+                watch.stitched += 1
+                watch.in_stitched = True
+                recorder.note('stitched break start', channel=watch.channel, at=stamp(entry.get('wall')), **marks)
             recorder.write('marks', {**base, 'wall': stamp(entry.get('wall')), 'role': role, 'url': entry['url'], **marks})
         elif main and (entry.get('playlist') or {}).get('type') == 'media':
             watch.last_live = time.time()
