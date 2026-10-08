@@ -40,6 +40,8 @@ The userscript has no content script or popup: `bundle.js` is the whole script a
 | content script → page | `{ type: "setSettings", value }`, also on every change to a stored setting (T-602) | page sends `{ funcName: "setSettings", value }` to every registered worker; the worker's player keeps `value` |
 | page → worker | `{ funcName: "setIntegrity", value }` | sent to every registered worker; the worker stores the integrity token |
 | page → worker | `{ funcName: "setGqlHeaders", value }`, when a page GQL request changes one of the F-05 headers | sent to every registered worker; its token requests send them; a `Client-Integrity` among them becomes the integrity token (T-401) |
+| page → worker | `{ funcName: "setGqlBridge", value: true }`, when the bundle loads | sent to every registered worker (replayed to later ones); its GQL requests go through the page from then on (T-402) |
+| worker → page | `{ type: "gqlRequest", id, body, headers }` | the page runs it with its fetch from before Purple's hook and answers `{ funcName: "gqlResponse", value: { id, status, body } }` (or `status: 0, error`) to that worker; the worker sends the request itself after 5 s without an answer (T-402) |
 | worker → page | `{ type: "pause" }`, `{ type: "play" }` | page sends `{ funcName: "pause" \| "play", id: 1 }` to the worker that asked (player's internal RPC) |
 | player worker → page | `PlayerQualityChanged`, `arg.key === "quality"` | page sends `{ funcName: "setQuality", value }` to every registered worker |
 | player worker → page | `arg.key === "state"` | page sends `{ funcName: <state> }` to the worker that sent it |

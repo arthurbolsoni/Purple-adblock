@@ -34,6 +34,17 @@ export class AppController {
     this.appService.setIntegrityToken(JSON.parse(data.value).token);
   }
 
+  // T-402 (F-06): the page executes GQL requests for this worker from now on
+  @Message("setGqlBridge")
+  async setGqlBridge() {
+    this.scope.pageGql?.enable();
+  }
+
+  @Message("gqlResponse")
+  async gqlResponse(data: any) {
+    this.scope.pageGql?.answer(data?.value);
+  }
+
   // T-401 (F-05): headers of the page's GQL requests; a Client-Integrity among them is the newest integrity token
   @Message("setGqlHeaders")
   async setGqlHeaders(data: any) {

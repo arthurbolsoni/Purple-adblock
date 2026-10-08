@@ -1,3 +1,5 @@
+import type { PageGql } from "./modules/twitch/page-gql";
+
 // What the worker code needs from the scope it runs in. In the browser it is the player worker's `self`;
 // in tests it is a fake built by `test/harness/worker-scope.ts`.
 export interface WorkerContext {
@@ -7,6 +9,7 @@ export interface WorkerContext {
   debug?: boolean; // the `debug` setting
   emit?: (event: PurpleEvent) => void; // debug event for window.__purple.events, posted only with `debug` on (F-17)
   gqlHeaders?: Record<string, string>; // headers of the page's GQL requests, for backup token requests (F-05, T-401)
+  pageGql?: PageGql; // GQL requests executed by the page (F-06, T-402)
 }
 
 // F-17. csaiBlocked (T-301) is recorded by the page, the others come from the worker.

@@ -1,6 +1,6 @@
 # Server behavior in the level 3 runs of 2026-10-08
 
-Date: 2026-10-08, 03:10 to 04:52. Logged out. Builds: one per task (T-203 to T-408), each checked with L3-01, L3-02 (3 or 4 runs), L3-07 and L3-08.
+Date: 2026-10-08, 03:10 to 05:04. Logged out. Builds: one per task (T-203 to T-402), each checked with L3-01, L3-02 (3 or 4 runs), L3-07 and L3-08.
 
 ## Probe
 
@@ -51,6 +51,16 @@ With T-408 (04:42 to 04:52), the page's own `PlaybackAccessToken` asked for `pop
 | directory | 2 | - |
 
 In the two `/channel-c` prerolls, the player requested 2 ad segments each time and both were answered in the worker; in the `/channel-d` one it requested none of the 3 listed.
+
+## GQL through the page
+
+With T-402 (04:55 to 05:04), the worker's token requests ran in the page. The recorder reads them from the bridge messages (`gqlRequest`, `gqlResponse`): player type, header names, status and token flags.
+
+A midroll came during L3-07 on the dedicated profile (`/channel-c`, about 05:00): announced in two polls, then ad segments growing from 3 to 16. Purple sent 13 token requests through the page (`site` 3, `popout` 3, `frontpage` 2, `picture-by-picture` 2, `embed`, `mobile_web`, `autoplay` 1 each). Each came back with status 200, no error, and a token whose `player_type` was the one asked: the popout rewrite (F-12) did not touch them. Their header names were `authorization`, `client-id`, `client-integrity`, `client-session-id`, `client-version`, `host` and `x-device-id`.
+
+The break overlapped the whitelist window of L3-07. Purple's events: `backupUsed` on every ad poll before the channel was added (`site`, `popout`), `whitelisted` on every poll while it was listed (1.8 to 10.3 s), and `backupUsed` on every ad poll after it was removed (`site`, `frontpage`, `popout`, `picture-by-picture`). The player fetched 7 ad segments from the network, all listed while the channel was whitelisted, as the whitelist means.
+
+In the same window, both loads of one L3-01 run on `/channel-c` saw only the announcement of a `MIDROLL` (0 ad segments in 4 and 7 polls).
 
 ## Midrolls
 

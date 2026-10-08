@@ -1,4 +1,5 @@
 import type { WorkerContext } from "../../scope";
+import { GQL_URL } from "./page-gql";
 
 // Hash and platform variable as used by Brave's scriptlet (https://github.com/brave/adblock-resources/blob/master/resources/vaft-ublock-origin.js);
 // behavior reimplemented, no code copied (docs/research.md). The query is Purple 2.6.7's template with $platform.
@@ -69,12 +70,12 @@ export class TwitchService {
     // the token from either answer shape: { data: { streamPlaybackAccessToken } } or { streamPlaybackAccessToken } (embed).
     // T-401 (F-05): with the headers of the page's GQL requests (device id, Authorization, client version and session)
     private async gql(body: object, integrityToken: string): Promise<{ token: string; signature: string } | null> {
+        // T-402 (F-06): executed by the page when it offers its bridge, else by the worker
         const page = this.scope.gqlHeaders ?? {};
-        const response = await this.scope.request("https://gql.twitch.tv/gql#origin=twilight", {
-            method: "POST",
-            headers: { ...page, "Host": "gql.twitch.tv", "Client-ID": "kimne78kx3ncx6brgo4mv6wki5h1ko", "Client-Integrity": integrityToken || page["Client-Integrity"] || "" },
-            body: JSON.stringify(body),
-        });
+        const headers = { ...page, "Host": "gql.twitch.tv", "Client-ID": "kimne78kx3ncx6brgo4mv6wki5h1ko", "Client-Integrity": integrityToken || page["Client-Integrity"] || "" };
+        const response = this.scope.pageGql
+            ? await this.scope.pageGql.request(JSON.stringify(body), headers)
+            : await this.scope.request(GQL_URL, { method: "POST", headers, body: JSON.stringify(body) });
         const answer = await response.json();
         const access = answer?.data?.streamPlaybackAccessToken ?? answer?.streamPlaybackAccessToken;
         return access?.value && access?.signature ? { token: access.value, signature: access.signature } : null;

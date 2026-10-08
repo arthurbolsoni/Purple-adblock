@@ -2,6 +2,7 @@
 //@ts-expect-error
 import txt from "../dist/app.worker.js?raw";
 import { createFetchHook } from "./page/fetch-hook";
+import { runGqlRequest } from "./page/gql-bridge";
 import { installXhrHook } from "./page/xhr-hook";
 import { WorkerRegistry } from "./page/worker-registry";
 
@@ -87,6 +88,8 @@ const csaiBlocked: Record<string, number> = {};
 
   function integrity() {
     global.request = fetch;
+    // T-402: every worker may send its GQL requests through the page (replayed to workers created later)
+    registry.broadcast({ funcName: "setGqlBridge", value: true });
     global.fetch = createFetchHook(global.request, {
       onIntegrity: (body) => registry.broadcast({ funcName: "setIntegrity", value: body }),
       onGqlHeaders: (headers) => registry.broadcast({ funcName: "setGqlHeaders", value: headers }),
@@ -117,6 +120,11 @@ const csaiBlocked: Record<string, number> = {};
       }
       case "getSettings": {
         window.postMessage({ type: "getSettings", value: null });
+        break;
+      }
+      // T-402 (F-06): a GQL request run with the page's fetch from before Purple's hook, answered to that worker
+      case "gqlRequest": {
+        runGqlRequest(global.request, event.data).then((answer) => worker.sendFromPurple({ funcName: "gqlResponse", value: answer }));
         break;
       }
       case "PlayerQualityChanged": {

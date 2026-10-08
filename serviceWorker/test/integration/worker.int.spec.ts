@@ -6,6 +6,7 @@ import { Parser } from "m3u8-parser";
 import { silenceConsole } from "../harness/console";
 import { fixture } from "../harness/fixtures";
 import { createWorkerScope, type WorkerHarness } from "../harness/worker-scope";
+import { sigFor, tokenFor } from "../harness/fake-twitch";
 import { StreamType } from "../../src/modules/stream/interface/stream.enum";
 
 silenceConsole();
@@ -347,6 +348,34 @@ ${variant}
       });
     }
     expect(worker.player.integrityToken).toBe("PAGE_INTEGRITY");
+  });
+
+  // T-402 (F-06): once the page offers its GQL bridge, backup token requests go through the page
+  test("with the page's GQL bridge, backup token requests go to the page and its answers give the tokens", async () => {
+    const worker = setup();
+    twoTypes(worker);
+    const clean = fixture("m3u8/backup-clean.m3u8");
+    worker.twitch.master("channel", masterFor("frontpage-"), StreamType.FRONTPAGE);
+    worker.twitch.master("channel", masterFor("picture-"), StreamType.PICTURE);
+    worker.twitch.mediaPlaylist(MAIN, fixture("m3u8/media-ssai-midroll.m3u8"));
+    worker.twitch.mediaPlaylist(FRONTPAGE, clean);
+    worker.send("setGqlBridge", true);
+    await worker.text(USHER);
+    await worker.text(MAIN);
+    const gqlRequests = () => worker.posted.filter((m) => m.type === "gqlRequest");
+    await settle(() => gqlRequests().length === 2);
+
+    expect(gqlRequests().map((r) => JSON.parse(r.body).variables.playerType)).toEqual([StreamType.FRONTPAGE, StreamType.PICTURE]);
+    expect(gqlRequests()[0].headers).toMatchObject({ "Client-ID": "kimne78kx3ncx6brgo4mv6wki5h1ko" });
+    expect(worker.twitch.callsOf("gql")).toEqual([]);
+    for (const request of gqlRequests()) {
+      const type = JSON.parse(request.body).variables.playerType;
+      const token = { data: { streamPlaybackAccessToken: { value: tokenFor(type), signature: sigFor(type), __typename: "PlaybackAccessToken" } } };
+      worker.send("gqlResponse", { id: request.id, status: 200, body: JSON.stringify(token) });
+    }
+    await settle(() => worker.player.currentStream().serverList.length === 3);
+    expect(await worker.text(MAIN)).toBe(clean);
+    expect(worker.twitch.callsOf("usher").map((c) => new URL(c.url).searchParams.get("token"))).toEqual(["PAGE_TOKEN", tokenFor(StreamType.FRONTPAGE), tokenFor(StreamType.PICTURE)]);
   });
 
   // T-408 (F-12): with forcePopoutToken, parent_domains leaves the page's usher request, and so the backups' requests

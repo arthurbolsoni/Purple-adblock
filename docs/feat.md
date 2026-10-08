@@ -91,6 +91,10 @@ A backup with a `twitch-maf-ad` marker over live segments replaces the playlist 
 
 The page `fetch` hook reads the request headers of the page's `gql.twitch.tv/gql` calls: `Client-Integrity`, `X-Device-Id` (or `Device-ID`), `Authorization`, `Client-Version`, `Client-Session-Id`. It never reads their responses. When one of them changes, the page sends the known set to every worker (`setGqlHeaders`, replayed to workers created later). The worker's `PlaybackAccessToken` requests send them with `Client-ID`. A `Client-Integrity` from them and the `/integrity` answer (E9) both set the worker's integrity token; the newest wins.
 
+### F-06: GQL executed in the page
+
+Once the page offers its bridge (`setGqlBridge`, sent to every worker after the player's first message), the worker's `PlaybackAccessToken` requests go to the page as `{ type: "gqlRequest", id, body, headers }`. The page runs them with its own `fetch` from before Purple's hook, so the popout rewrite (F-12) leaves them alone, and answers `{ funcName: "gqlResponse", value: { id, status, body } }` to that worker. Answers are matched by `id`. With no answer within 5 s, or an answer with status 0 (the request failed in the page), the worker sends the request itself.
+
 ### F-08: backup usher request
 
 A backup master comes from the page's own usher request for the channel: its path (`/api/channel/hls/` or `/api/v2/channel/hls/`) and its parameters, in their order and as written (`supported_codecs`, `play_session_id`, `acmb` and the rest), with `token`, `sig` and `p` replaced; `token` and `sig` go through `encodeURIComponent`. Before the page's usher request is seen, Purple's own parameters on the v1 path are used.

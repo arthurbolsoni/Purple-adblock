@@ -75,6 +75,21 @@ describe("messages", () => {
     expect(main.posted).toContainEqual({ funcName: "setGqlHeaders", value: { "X-Device-Id": "DEVICE_ID", "Client-Version": "CLIENT_VERSION" } });
   });
 
+  // T-402 (F-06): a worker's GQL request runs in the page, with the page's fetch from before Purple's hook
+  test("the page offers the GQL bridge to the worker", () => {
+    expect(main.posted).toContainEqual({ funcName: "setGqlBridge", value: true });
+  });
+
+  test("a worker's gqlRequest runs with the page's original fetch, unchanged, and the answer goes back to that worker", async () => {
+    const body = JSON.stringify({ operationName: "PlaybackAccessToken", variables: { login: "channel", playerType: "frontpage" } });
+    main.emit({ type: "gqlRequest", id: 5, body, headers: { "Client-ID": "CLIENT_ID" } });
+    await Bun.sleep(5);
+    const call = env.pageFetch.calls.at(-1)!;
+    expect(call.url).toBe("https://gql.twitch.tv/gql#origin=twilight");
+    expect(call.init).toEqual({ method: "POST", headers: { "Client-ID": "CLIENT_ID" }, body });
+    expect(main.posted).toContainEqual({ funcName: "gqlResponse", value: { id: 5, status: 200, body: "" } });
+  });
+
   // T-408 (F-12): the page's token request asks for popout until a setSettings turns forcePopoutToken off
   test("the page's PlaybackAccessToken goes as popout, and as the page made it with forcePopoutToken off", async () => {
     const body = JSON.stringify({ operationName: "PlaybackAccessToken", variables: { login: "channel", playerType: "site" } });
@@ -170,6 +185,8 @@ describe("worker registry", () => {
     later.postMessage(PLAYER_INIT);
     expect(later.posted).toEqual([
       PLAYER_INIT,
+      // T-402: offered when the bundle loads
+      { funcName: "setGqlBridge", value: true },
       { funcName: "setIntegrity", value: INTEGRITY_BODY },
       { funcName: "setSettings", value: settings },
       // T-401: sent by the "page GQL request headers reach the worker" test above
@@ -214,7 +231,8 @@ describe("worker registry", () => {
 
 describe("integrity capture", () => {
   test("an /integrity response from before the first worker reaches it right after the player's first message", () => {
-    expect(main.posted.slice(0, 2)).toEqual([PLAYER_INIT, { funcName: "setIntegrity", value: INTEGRITY_BODY }]);
+    // the GQL bridge offer (T-402) is broadcast when the bundle loads, before the /integrity response
+    expect(main.posted.slice(0, 3)).toEqual([PLAYER_INIT, { funcName: "setGqlBridge", value: true }, { funcName: "setIntegrity", value: INTEGRITY_BODY }]);
   });
 
   // T-106: the page gets the original response; the token is read from a clone

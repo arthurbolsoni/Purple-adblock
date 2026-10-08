@@ -131,6 +131,46 @@
   // Purple's messages to a worker: logged on the native prototype, so calls through super.postMessage
   // (Purple's own sends) are seen too (the player's RPC also uses funcName, so pause and play may come from it)
   const entries = new WeakMap();
+  // T-402: Purple's GQL requests run by the page for a worker (gqlRequest from the worker, gqlResponse back), recorded
+  // like the worker's own GQL requests ("server" entries with gql answers): playerType, header names, status, errors
+  // and token flags, never header values, ids or tokens
+  const bridged = new Map();
+  const tokenFlags = (value) => {
+    try {
+      const flags = {};
+      for (const [key, v] of Object.entries(JSON.parse(value))) {
+        if (typeof v === "boolean" || key === "player_type" || key === "platform" || key === "version") flags[key] = v;
+      }
+      return flags;
+    } catch (e) {
+      return null;
+    }
+  };
+  const recordBridged = (answer) => {
+    const request = answer && bridged.get(answer.id);
+    if (!request) return;
+    bridged.delete(answer.id);
+    let json = null;
+    try {
+      json = JSON.parse(answer.body || "null");
+    } catch (e) {}
+    const answers = Array.isArray(json) ? json : [json];
+    state.server.length < 3000 &&
+      state.server.push({
+        kind: "server",
+        url: "gql.twitch.tv/gql (page bridge)",
+        status: answer.status,
+        bridged: true,
+        headerNames: request.headerNames,
+        gql: request.ops.map((op, i) => ({
+          operation: op.operationName || null,
+          playerType: (op.variables && op.variables.playerType) || null,
+          errors: (((answers[i] || {}).errors) || []).map((e) => String(e.message).slice(0, 120)),
+          tokenFlags: tokenFlags((((answers[i] || {}).data || {}).streamPlaybackAccessToken || {}).value),
+        })),
+        wall: Date.now(),
+      });
+  };
   const nativePost = NativeWorker.prototype.postMessage;
   NativeWorker.prototype.postMessage = function (message, ...rest) {
     const entry = entries.get(this);
@@ -138,6 +178,7 @@
     if (entry && ["pause", "play", "setSettings", "setQuality", "setIntegrity"].includes(name) && entry.messages.length < 200) {
       entry.messages.push({ at: Math.round(performance.now()), to: "worker", funcName: name });
     }
+    if (name === "gqlResponse") recordBridged(message.value);
     return nativePost.call(this, message, ...rest);
   };
   const proxy = new Proxy(NativeWorker, {
@@ -176,6 +217,14 @@
         const type = e.data && e.data.type;
         if (type === "getSettings") entry.purpleBoot = true;
         if (type === "getSettings" || type === "pause" || type === "play") log({ from: "worker", type });
+        if (type === "gqlRequest") {
+          let ops = [];
+          try {
+            const body = JSON.parse(e.data.body);
+            ops = (Array.isArray(body) ? body : [body]).filter(Boolean);
+          } catch (err) {}
+          bridged.set(e.data.id, { ops, headerNames: Object.keys(e.data.headers || {}).map((n) => n.toLowerCase()).sort() });
+        }
       });
       worker.addEventListener("error", (e) => entry.errors.push(String(e.message || e.type).slice(0, 200)));
       return worker;

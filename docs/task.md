@@ -294,7 +294,7 @@ Runs in parallel with phases 1 to 7. Phase 1 to 6 tasks list L2/L3 scenarios tha
 - Tests: TS-401, L3-02 (header names on the token requests of a break)
 
 ### T-402 GQL executed in the page
-- [ ] Status · F-06
+- [x] Status · F-06 · done 2026-10-08: messages follow the existing convention (worker → page `{ type: "gqlRequest", id, body, headers }`, page → worker `{ funcName: "gqlResponse", value: { id, status, body } }`); the worker uses the bridge only after the page offers it (`setGqlBridge`), so a worker without Purple's page side keeps sending its own requests; the page runs them with its fetch from before Purple's hook, so the popout rewrite (F-12) does not touch backup tokens. In a midroll on L3-07 (`/channel-c`), all 13 backup token requests ran in the page (recorded from the bridge messages, header names only), each came back with a token of its own playerType, and every ad poll outside the whitelist window got a backup; L3-01 (5 runs), L3-02 (4 runs) and L3-08 passed ([server observations](findings/2026-10-08-l3-server-observations.md#gql-through-the-page))
 - Files: `serviceWorker/src/page/gql-bridge.ts` (new), `serviceWorker/src/modules/twitch/twitch.service.ts`
 - Done when:
   - the worker sends `{ funcName: "gqlRequest", id, body }` and gets `{ id, status, body }` back;

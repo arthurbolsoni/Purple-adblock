@@ -1,6 +1,7 @@
 import { AppController } from "./app.controller";
 import { bindMessages, createRouter } from "./decorator/handler.decorator";
 import { Player } from "./modules/player/player";
+import { PageGql } from "./modules/twitch/page-gql";
 import type { WorkerContext, WorkerScope } from "./scope";
 import { urlOf } from "./url";
 
@@ -11,6 +12,7 @@ export function bootstrapWorker(scope: WorkerScope) {
   const context = scope as WorkerScope & WorkerContext;
   context.debug = false;
   context.logger = (...args: any[]) => context.debug && console.log("[Purple]:", ...args);
+  context.pageGql = new PageGql(context);
   context.emit = (event) => {
     if (context.debug) scope.postMessage({ type: "purpleEvent", event: { ...event, at: Date.now() } });
   };
