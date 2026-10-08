@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, jest, spyOn, test } from "bun:
 import { Player } from "./player";
 import { Stream } from "../stream/stream";
 import { StreamType } from "../stream/interface/stream.enum";
+import { fixture } from "../../../test/harness/fixtures";
 
 const LIVE = `#EXTM3U
 #EXT-X-VERSION:3
@@ -107,14 +108,23 @@ describe("Player.isWhitelist", () => {
   });
 });
 
+// T-201: a playlist has ads when the detector finds ad segments (SSAI); markers over live segments are MARKED_LIVE
 describe("Player.hasAds", () => {
   test.each([
-    ["#EXTINF:2.000,Amazon|AD-1", true],
-    ["#EXT-X-DATERANGE:ID=\"stitched-ad-1\",CLASS=\"twitch-stitched-ad\"", true],
-    ["#EXTINF:2.000,DCM,123", true],
-    ["#EXTINF:2.000,live", false],
+    ["media-ssai-midroll.m3u8", true],
+    ["media-ssai-preroll.m3u8", true],
+    ["media-marked-live.m3u8", false],
+    ["media-false-positive.m3u8", false],
+    ["media-live-ts.m3u8", false],
+  ])("%s -> %p", (name, expected) => {
+    expect(new Player(makeContext()).hasAds(fixture(`m3u8/${name}`))).toBe(expected);
+  });
+
+  test.each([
+    [ADS, true],
+    [LIVE, false],
     ["", false],
-  ])("%p -> %p", (text, expected) => {
+  ])("inline playlist %# -> %p", (text, expected) => {
     expect(new Player(makeContext()).hasAds(text)).toBe(expected);
   });
 });

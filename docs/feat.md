@@ -59,8 +59,9 @@ Three groups: strategies that already exist (E-xx, none is removed), fixes to ex
 
 ### F-02: markers
 
-- Playlist level: `stitched-ad`, `twitch-stitched`, `EXT-X-CUE-OUT`, `EXT-X-DATERANGE:CLASS="twitch-maf-ad"`, `EXT-X-DATERANGE:CLASS="twitch-trigger"`.
-- Ad confirmation: `X-TV-TWITCH-AD-AD-SESSION-ID`, `X-TV-TWITCH-AD-RADS-TOKEN`.
+- Playlist level, read from `DATERANGE` attributes and tag names, not from the whole text: `ID` starting with `stitched-ad`, `CLASS` starting with `twitch-stitched`, `EXT-X-CUE-OUT`, `CLASS="twitch-maf-ad"`.
+- Ad confirmation: `X-TV-TWITCH-AD-AD-SESSION-ID`, `X-TV-TWITCH-AD-RADS-TOKEN` on any `DATERANGE`.
+- `CLASS="twitch-trigger"` counts only with an ad attribute: alone (with `X-TV-TWITCH-TRIGGER-URL`) it is in every playlist, with or without ads (B-021).
 - Segment level: `#EXTINF` title containing `stitched`, `Amazon` or `DCM,` (Purple's current markers), and URIs containing `/adsquared/`, `/_404/` or `/processing`.
 - Not ads: `twitch-session`, `twitch-stream-source`, `twitch-ad-quartile`, `twitch-assignment`.
 - Bare `stitched` keeps counting in the segment title and no longer counts across the whole playlist text. Brave's script dropped it from its playlist-level list because it matched non-ad content (comment above `AdSignifiers`).
@@ -72,6 +73,8 @@ Three groups: strategies that already exist (E-xx, none is removed), fixes to ex
 | `NONE` | no marker | original text |
 | `MARKED_LIVE` | playlist marker, no ad segment | original text; the ad arrives through CSAI and is handled by F-04 |
 | `SSAI` | at least one ad segment | backup chain (E3, E4), merge (E5), blank segment (F-14) |
+
+A backup is usable when it is not `SSAI`: a `MARKED_LIVE` backup (markers over live segments, seen during a midroll, B-028) replaces the playlist like a clean one.
 
 ### F-09: default `backupPlayerTypes` order
 

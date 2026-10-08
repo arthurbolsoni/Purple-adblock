@@ -70,11 +70,27 @@ L3-02 at 22:30, fresh profile, logged out, extension mode with `debug` on: the c
 - Unlike the preroll at 22:22, where 5 of 8 backup polls had ad segments, no backup poll had any during this midroll.
 - The summary kept only the union of `DATERANGE` classes over the polls; per-poll timelines of the main stream and the backups are recorded from this run on.
 
+### Backups during a preroll, poll by poll
+
+L3-01 at 22:36, dedicated profile, userscript mode, client-side navigation into a channel with a preroll; the first run with per-poll timelines.
+
+| Time (ms) | Main playlist | Backup playlist |
+| --- | --- | --- |
+| 1305 to 10177 | 6 polls, `MEDIA-SEQUENCE` 0, 3 then 4, 5, 6, 7, 8 segments, every one an ad (`PREROLL`) | |
+| 3517, 4339, 6491, 8303 | | `MEDIA-SEQUENCE` 0, 3 segments, all ads (`PREROLL`) |
+| 8334 | | `MEDIA-SEQUENCE` 0, 4 segments, all ads |
+| 6998, 8333, 8365 | | `MEDIA-SEQUENCE` 1713 to 1714, 14 live segments, no ad marker besides `twitch-trigger` |
+
+- The main stream's preroll is a playlist of its own: `MEDIA-SEQUENCE` stays at 0 and it grows by one ad segment per poll.
+- Each backup token Purple requested got either its own preroll from the start (`MEDIA-SEQUENCE` 0, 3 ad segments) or the live playlist with no preroll; 3 of 8 backup polls were live, and those went to the player (2 of 5 polls that reached the player still had ad segments).
+- Inferred: a backup token is a new viewer session for the server, with its own preroll decision.
+
 ## Consequences
 
 - `twitch-trigger` alone is not an ad marker; the detector (T-201) must not treat it as one.
 - `EXT-X-TWITCH-PREFETCH` comes to logged-out viewers; T-101's line edits keep it, and T-502 must drop prefetch lines that point to ads.
 - fMP4 with `EXT-X-MAP` is not limited to HEVC/AV1: an enhanced-broadcast channel served its AVC variants that way.
+- Backups get their own prerolls: a backup token that came back live is worth keeping for the rest of the break (T-406), and a new token is a new chance of a preroll.
 
 ## Open
 

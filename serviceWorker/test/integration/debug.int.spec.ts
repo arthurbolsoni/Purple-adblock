@@ -72,10 +72,10 @@ describe("debug on", () => {
     const worker = createWorkerScope();
     worker.twitch.master("channel", masterFor(""));
     worker.twitch.mediaPlaylist(MAIN, fixture("m3u8/media-ssai-midroll.m3u8"));
-    // the frontpage backup has ad markers too, so its live segments replace the main ad segments by time
+    // the frontpage backup has an ad segment too (at 12:10:00), so its live segments replace the main ad segments by time
     const markedBackup = fixture("m3u8/backup-clean.m3u8").replace(
-      "#EXT-X-PROGRAM-DATE-TIME",
-      '#EXT-X-DATERANGE:ID="stitched-ad-x",CLASS="twitch-stitched-ad",START-DATE="2026-10-03T12:10:06.000Z",DURATION=6.000\n#EXT-X-PROGRAM-DATE-TIME',
+      "#EXTINF:2.000,live\nhttps://edge.j.cloudfront.hls.ttvnw.net/v1/segment/backup-3000.ts",
+      "#EXTINF:2.000,Amazon|AD_ID\nhttps://edge.j.cloudfront.hls.ttvnw.net/v1/segment/backup-3000.ts",
     );
     worker.twitch.mediaPlaylist(`${HOST}frontpage-chunked.m3u8`, markedBackup);
     worker.send("setSettings", { whitelist: [], debug: true });

@@ -33,7 +33,7 @@ Observed on 2026-10-07 (B-025): the `/directory/all` page, logged out, requested
 
 ## Backup player types
 
-Reported (B-012): since March 2026, requesting a token with another `playerType` during a break often returns a playlist with ads too. Observed on 2026-10-07: during prerolls, `frontpage` and `picture-by-picture` backups often had ad segments (B-012); during one midroll, none of 12 backup polls did, while some carried the break's `DATERANGE` over live segments (B-028). Brave's script tries `site`, `popout`, `mobile_web`, `embed`, then `autoplay` (360p). Purple 2.6.7 tries `frontpage`, `picture-by-picture`. Measured behavior per type: unknown (Q-004).
+Reported (B-012): since March 2026, requesting a token with another `playerType` during a break often returns a playlist with ads too. Observed on 2026-10-07: during prerolls, `frontpage` and `picture-by-picture` backups often had ad segments (B-012); during one midroll, none of 12 backup polls did, while some carried the break's `DATERANGE` over live segments (B-028). Poll by poll during a preroll, each new backup token came back either inside its own preroll (`MEDIA-SEQUENCE` 0) or live (B-029). Brave's script tries `site`, `popout`, `mobile_web`, `embed`, then `autoplay` (360p). Purple 2.6.7 tries `frontpage`, `picture-by-picture`. Measured behavior per type: unknown (Q-004).
 
 ## `parent_domains`
 

@@ -233,7 +233,7 @@ Runs in parallel with phases 1 to 7. Phase 1 to 6 tasks list L2/L3 scenarios tha
 ## Phase 2: detection
 
 ### T-201 Marker-based and per-segment detector
-- [ ] Status · F-02, F-03
+- [x] Status · F-02, F-03 · done 2026-10-07: `ad-detector.ts`; playlist markers read from `DATERANGE` attributes; `twitch-trigger` alone is not a marker (B-021); a `MARKED_LIVE` backup is usable; L3-01 passed in both modes
 - Files: `serviceWorker/src/modules/player/ad-detector.ts` (new), `player.ts`, `m3u8.ts`
 - Done when:
   - one module holds the markers from `docs/feat.md` (F-02), replacing both copies of `hasAds`;
@@ -242,10 +242,10 @@ Runs in parallel with phases 1 to 7. Phase 1 to 6 tasks list L2/L3 scenarios tha
 - Tests: TS-201
 
 ### T-202 `MARKED_LIVE` path
-- [ ] Status · F-03
+- [x] Status · F-03 · done 2026-10-07
 - Files: `serviceWorker/src/modules/player/player.ts`
 - Done when a `MARKED_LIVE` playlist comes back untouched, with no backup lookup and no pause/play.
-- Tests: TS-202
+- Tests: TS-202, L3-01
 
 ## Phase 3: CSAI blocking
 

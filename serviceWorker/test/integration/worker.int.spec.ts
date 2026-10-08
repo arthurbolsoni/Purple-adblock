@@ -115,13 +115,13 @@ describe("worker pipeline", () => {
     expect(worker.twitch.callsOf("media").map((c) => c.url)).toEqual([MAIN, MAIN, FRONTPAGE]);
   });
 
-  test("ad break: a backup with ad markers is dropped and its live segments replace the ads by PROGRAM-DATE-TIME", async () => {
+  test("ad break: a backup with ad segments is dropped and its live segments replace the ads by PROGRAM-DATE-TIME", async () => {
     const worker = setup();
     const midroll = fixture("m3u8/media-ssai-midroll.m3u8");
-    // live segments under an ad DATERANGE: 2.6.7 treats the whole playlist as ads
+    // an ad segment at 12:10:00, not where the main stream has its ads: the backup is SSAI and dropped
     const markedBackup = fixture("m3u8/backup-clean.m3u8").replace(
-      "#EXT-X-PROGRAM-DATE-TIME",
-      '#EXT-X-DATERANGE:ID="stitched-ad-x",CLASS="twitch-stitched-ad",START-DATE="2026-10-03T12:10:06.000Z",DURATION=6.000\n#EXT-X-PROGRAM-DATE-TIME',
+      "#EXTINF:2.000,live\nhttps://edge.j.cloudfront.hls.ttvnw.net/v1/segment/backup-3000.ts",
+      "#EXTINF:2.000,Amazon|AD_ID\nhttps://edge.j.cloudfront.hls.ttvnw.net/v1/segment/backup-3000.ts",
     );
     const stream = () => worker.player.currentStream();
     worker.twitch.mediaPlaylist(MAIN, midroll);
@@ -255,6 +255,35 @@ ${variant}
 
     expect(worker.twitch.callsOf("gql").map((c) => c.playerType)).toEqual([StreamType.FRONTPAGE, StreamType.PICTURE]);
     expect(worker.player.currentStream().serverList.map((s) => s.type)).toEqual([StreamType.FRONTPAGE, StreamType.PICTURE]);
+  });
+
+  // T-202: markers over live segments (the ad comes client-side): untouched, no backup lookup, no pause/play
+  test("a MARKED_LIVE playlist comes out identical, with no token request and no pause/play", async () => {
+    const worker = setup();
+    const marked = fixture("m3u8/media-marked-live.m3u8");
+    worker.twitch.mediaPlaylist(MAIN, marked);
+    await worker.text(USHER);
+
+    expect(await worker.text(MAIN)).toBe(marked);
+    expect(await worker.text(MAIN)).toBe(marked);
+    await Bun.sleep(5);
+
+    expect(worker.twitch.callsOf("gql")).toEqual([]);
+    expect(worker.posted.filter((m) => m.type === "pause" || m.type === "play")).toEqual([]);
+  });
+
+  // T-201: a backup with markers but only live segments is usable (seen during a midroll, B-028)
+  test("ad break: a MARKED_LIVE backup replaces the playlist", async () => {
+    const worker = setup();
+    const midroll = fixture("m3u8/media-ssai-midroll.m3u8");
+    const markedBackup = fixture("m3u8/media-marked-live.m3u8").replaceAll("/live-", "/backup-");
+    worker.twitch.mediaPlaylist(MAIN, midroll);
+    worker.twitch.mediaPlaylist(`${HOST}frontpage-chunked.m3u8`, markedBackup);
+    await worker.text(USHER);
+    worker.player.currentStream().setStreamAccess(masterFor("frontpage-"), StreamType.FRONTPAGE);
+    worker.player.currentStream().createStreamAccess = async () => {};
+
+    expect(await worker.text(MAIN)).toBe(markedBackup);
   });
 
   test("quality and integrity messages reach the player", () => {

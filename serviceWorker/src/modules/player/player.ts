@@ -3,6 +3,7 @@ import { Setting } from "./setting.interface";
 import { StreamType } from "../stream/interface/stream.enum";
 import { Server } from "../stream/interface/stream.types";
 import { mergeWithBackups } from "./m3u8";
+import { AdClass, detectAds } from "./ad-detector";
 import { parseVariants } from "../stream/master";
 import type { PurpleEvent, WorkerContext } from "../../scope";
 
@@ -65,7 +66,8 @@ export class Player {
     this.freeStream = x;
   }
 
-  hasAds = (x: string) => x?.toString().includes("stitched") || x?.toString().includes("Amazon") || x?.toString().includes("DCM,");
+  // ad segments in the playlist (F-02, F-03); markers over live segments alone (MARKED_LIVE) are not ads here
+  hasAds = (x: string) => detectAds(x ?? "").class === AdClass.SSAI;
 
   currentStream = (channel: string = this.actualChannel): Stream => {
     return this.streamList?.find((x: Stream) => x.channelName === channel)!;
@@ -82,6 +84,8 @@ export class Player {
       this.emit({ type: "whitelisted" });
       return text;
     }
+    // T-202: markers over live segments: the ad comes client-side (F-04); no backup, no pause/play
+    if (detectAds(text).class === AdClass.MARKED_LIVE) return text;
     // is ads and is the principal stream
     if (!this.isAds(text, true)) {
       this.scope.logger("Stream is free");

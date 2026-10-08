@@ -20,8 +20,9 @@ The userscript has no content script or popup: `bundle.js` is the whole script a
    - `usher.ttvnw.net/api/channel/hls/` and `usher.ttvnw.net/api/v2/channel/hls/` (except `picture-by-picture`) → `onChannel` → `Player.setChannel` with the channel from the URL path (T-103);
    - `ttvnw.net/v1/playlist/` → `onFetch` → `Player.onFetch`; an exception returns Twitch's playlist;
    - `picture-by-picture` → `onChannelPicture` → stores the PbP stream and returns an empty response.
-5. `Player.onFetch`:
+5. `Player.onFetch` (classes from `ad-detector.ts`, T-201):
    - no stream stored for the channel (playlist before the usher) → original text;
+   - `MARKED_LIVE` (markers over live segments) → original text, no backup lookup, no pause/play (T-202);
    - channel on the whitelist → original text (never reached in 2.6.7, C-10);
    - no ads → original text (T-101);
    - ads → tries the `frontpage` backups, then `picture-by-picture` (variants read with `m3u8-parser`, T-104); the first one without ads replaces the whole playlist;
