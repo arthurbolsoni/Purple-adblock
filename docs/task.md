@@ -392,7 +392,7 @@ Runs in parallel with phases 1 to 7. Phase 1 to 6 tasks list L2/L3 scenarios tha
 - Tests: TS-602, L3-07
 
 ### T-603 Channel in the popup
-- [ ] Status · E7
+- [x] Status · E7 · done 2026-10-08: `channelFromUrl` in `popup.js` reads the channel from `www.twitch.tv/<channel>`, `m.twitch.tv/<channel>` and `www.twitch.tv/popout/<channel>/...`, query strings and later path parts left out, in lower case as the worker reads it from the usher path (a channel opened as `/SomeChannel` was stored as `SomeChannel` and never matched); any other URL leaves the button off ("Waiting for channel"). TS-603 covers it (the popup has no level 3 scenario of its own); L3-07, which runs `popup.js` in the popup page it opens to change the storage (no channel there), and L3-01 (both modes) passed on the build
 - Files: `platform/src/common/js/popup.js`
 - Done when the channel is read from `www.twitch.tv/<channel>`, `m.twitch.tv/<channel>` and `www.twitch.tv/popout/<channel>/...`.
 - Tests: TS-603

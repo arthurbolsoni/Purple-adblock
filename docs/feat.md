@@ -12,7 +12,7 @@ Three groups: strategies that already exist (E-xx, none is removed), fixes to ex
 | E4 | Replace the whole playlist with the first backup without ads | `player.ts` | kept | T-405 |
 | E5 | Replace ad segments with backup segments that have the same `PROGRAM-DATE-TIME` | `m3u8.ts` | drops tags; compares at whole-second precision | T-101, T-501 |
 | E6 | Pause and play when entering and leaving an ad (player's internal RPC) | `player.ts`, `index.ts` | kept | T-601 |
-| E7 | Per-channel whitelist (popup + storage) | `popup.js`, `content-script.js` | never applies: the worker stores the whole `setSettings` message (C-10); would apply only after a page reload (both fixed by T-602) | T-602, T-603 |
+| E7 | Per-channel whitelist (popup + storage) | `popup.js`, `content-script.js` | never applied: the worker stored the whole `setSettings` message (C-10) and it would apply only after a page reload (both fixed by T-602); the popup read the channel from `www.twitch.tv/<channel>` only, with its case (fixed by T-603) | T-602, T-603 |
 | E8 | Backup in the quality selected in the player | `stream.types.ts`, `index.ts` | kept | T-407 |
 | E9 | Integrity token capture from the `/integrity` call | `index.ts`, `page/fetch-hook.ts` | the hook reads every page response and rebuilds it (a 204/304 body throws in browsers); installed with the first worker, so a token from before it is lost | T-106, T-401 |
 | E10 | Capture of the mini player's picture-by-picture stream | `app.controller.ts` (`onChannelPicture`) | kept | T-408 |
