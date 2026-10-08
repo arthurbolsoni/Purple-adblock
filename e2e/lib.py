@@ -292,6 +292,8 @@ STATE = """(() => {
     workers: e2e.workers,
     messages: e2e.messages,
     workerLog: e2e.workerLog || [],
+    media: e2e.media || [],
+    playlists: e2e.playlists || [],
     video: v ? { readyState: v.readyState, currentTime: Math.round(v.currentTime * 10) / 10, paused: v.paused, error: v.error && v.error.code } : null,
     adOverlay: !!document.querySelector(S.AD_OVERLAY),
     playerError: text(S.PLAYER_ERROR),

@@ -3,8 +3,26 @@
 // Same worker checks as docs/findings/probes/worker_boot_probe.py, plus a log from inside each worker.
 (() => {
   if (window.__e2e) return;
-  const state = (window.__e2e = { workers: [], messages: [], hookAt: null, workerLog: [] });
+  const state = (window.__e2e = { workers: [], messages: [], hookAt: null, workerLog: [], media: [], playlists: [] });
   const LOG_LIMIT = 2000;
+  const now = () => Math.round(performance.now());
+
+  // <video> events (they do not bubble; a capturing listener on the document sees them) and the outcome of
+  // every play() call, to tell a blocked play() from a player that never gets media
+  const MEDIA_EVENTS = ["loadstart", "loadedmetadata", "loadeddata", "canplay", "play", "playing", "pause", "waiting", "stalled", "emptied", "error", "abort"];
+  const media = (entry, el) =>
+    state.media.length < 400 &&
+    state.media.push(Object.assign({ at: now(), readyState: el.readyState, currentTime: Math.round(el.currentTime * 10) / 10, paused: el.paused, muted: el.muted }, entry));
+  for (const type of MEDIA_EVENTS) document.addEventListener(type, (e) => e.target instanceof HTMLMediaElement && media({ event: type }, e.target), true);
+  const nativePlay = HTMLMediaElement.prototype.play;
+  HTMLMediaElement.prototype.play = function (...args) {
+    const result = nativePlay.apply(this, args);
+    Promise.resolve(result).then(
+      () => media({ play: "resolved" }, this),
+      (err) => media({ play: "rejected", error: String((err && err.name) || err) }, this),
+    );
+    return result;
+  };
 
   // page <-> content script messages
   window.addEventListener("message", (e) => {
@@ -15,7 +33,8 @@
   // Runs first in every worker. Logs, through a BroadcastChannel (separate from the player's
   // postMessage protocol): fetches the worker makes on the network ("network"), what the player gets
   // back once Purple has replaced self.fetch ("player"), Purple's console lines, console errors,
-  // uncaught errors and unhandled rejections. URLs without the query string; bodies are not read.
+  // uncaught errors and unhandled rejections. URLs without the query string. The only bodies read are the
+  // media playlists the player gets from Purple's hook, from a clone of the response.
   const WORKER_PREFIX = `(() => {
   const channel = new BroadcastChannel("purple-e2e");
   const id = Math.random().toString(36).slice(2, 8);
@@ -25,7 +44,11 @@
   const wrap = (fn, level) => function (input, init) {
     const url = short(input);
     return Promise.resolve(fn.apply(this, arguments)).then(
-      (r) => { post({ kind: "fetch", level, url, status: r && r.status }); return r; },
+      (r) => {
+        post({ kind: "fetch", level, url, status: r && r.status });
+        if (level === "player" && /\\.m3u8$/.test(url) && r && r.ok) r.clone().text().then((body) => post({ kind: "playlist", url, text: body.slice(0, 20000) }), () => {});
+        return r;
+      },
       (err) => { post({ kind: "fetch", level, url, error: text(err) }); throw err; });
   };
   const network = wrap(self.fetch, "network");
@@ -44,7 +67,11 @@
 })();
 `;
   new BroadcastChannel("purple-e2e").onmessage = (e) => {
-    if (state.workerLog.length < LOG_LIMIT) state.workerLog.push(e.data);
+    // playlists: the last 60 only
+    if (e.data && e.data.kind === "playlist") {
+      state.playlists.push(e.data);
+      if (state.playlists.length > 60) state.playlists.shift();
+    } else if (state.workerLog.length < LOG_LIMIT) state.workerLog.push(e.data);
   };
 
   // Wraps the native Worker. Per worker: creation time, whether it came through Purple's injector
