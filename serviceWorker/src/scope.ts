@@ -14,7 +14,7 @@ export interface WorkerContext {
 
 // F-17. csaiBlocked (T-301) is recorded by the page, the others come from the worker.
 export type PurpleEvent = {
-  type: "adDetected" | "backupUsed" | "segmentsReplaced" | "blankInserted" | "csaiBlocked" | "whitelisted" | "reloadRequested" | "playerReloaded";
+  type: "adDetected" | "backupUsed" | "segmentsReplaced" | "blankInserted" | "csaiBlocked" | "whitelisted" | "reloadRequested" | "playerReloaded" | "backupsPrewarmed";
   channel: string;
   playerType?: string;
   count?: number;

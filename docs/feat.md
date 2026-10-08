@@ -58,6 +58,7 @@ Three groups: strategies that already exist (E-xx, none is removed), fixes to ex
 | F-16 | Settings applied without reloading the page | Purple | - | T-602 |
 | F-17 | Debug event log in the page (`window.__purple.events`), read by the browser tests | Purple | `debug = false` | T-110 |
 | F-18 | Wait between `pause` and `play` at the break edges (E6) from a setting | Purple | `pausePlayDelayMs = 0` | T-604 |
+| F-19 | Backup tokens requested when the page asks for a `picture-by-picture` master, a few seconds before a possible midroll (B-044) | Purple | `prewarmBackups = false` | T-409 |
 
 ### F-02: markers
 
@@ -155,8 +156,9 @@ The wait between `pause` and `play` at each break edge (F-15) comes from `pauseP
 | `stripFallback` | `boolean` | `true` | F-14 |
 | `reloadAfterAd` | `boolean` | `false` | F-15 |
 | `pausePlayDelayMs` | `number` | `0` | F-18 |
+| `prewarmBackups` | `boolean` | `false` | F-19 |
 
-The content script sends the stored `whitelist`, `toggleProxy`, `proxyUrl`, `debug`, `blockCsai`, `backupPlayerTypes`, `lowQualityFallback`, `pinBackupPlayerType`, `stripFallback`, `forcePopoutToken`, `reloadAfterAd` and `pausePlayDelayMs` when storage first answers, when a worker asks, and whenever one of them changes (T-602). The worker replaces its settings with each message it gets. The userscript uses the defaults.
+The content script sends the stored `whitelist`, `toggleProxy`, `proxyUrl`, `debug`, `blockCsai`, `backupPlayerTypes`, `lowQualityFallback`, `pinBackupPlayerType`, `stripFallback`, `forcePopoutToken`, `reloadAfterAd`, `pausePlayDelayMs` and `prewarmBackups` when storage first answers, when a worker asks, and whenever one of them changes (T-602). The worker replaces its settings with each message it gets. The userscript uses the defaults.
 
 ## Out of scope
 

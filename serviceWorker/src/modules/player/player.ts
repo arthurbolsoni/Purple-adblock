@@ -25,6 +25,8 @@ export const BLANK_TTL_MS = 120_000;
 // E6, F-18: wait between pause and play at the break edges unless pausePlayDelayMs sets another; 1500 until soak d
 // measured 0 against it (docs/findings/2026-10-08-pause-length.md)
 export const PAUSE_PLAY_DELAY_MS = 0;
+// F-19: at most one prewarm per this many ms (the page asks for a picture-by-picture master every 8 to 14 min, B-037)
+export const PREWARM_MS = 60_000;
 
 export class Player {
   integrityToken = ""; //the integrity token
@@ -39,6 +41,7 @@ export class Player {
   private pinnedType: string | null = null; // F-10: type of the last clean backup delivered
   private contaminatedUntil = new Map<string, number>(); // F-10: type -> time (ms) until which it is skipped
   private blankUris = new Map<string, number>(); // F-14: ad URI -> time (ms) of the last poll that listed it
+  private lastPrewarm = -Infinity; // F-19: time (ms) of the last prewarm
   // F-15 (T-601): pause/play at the edges of a break (E6); with reloadAfterAd, a reload at its end
   private adBreak = new AdBreak({
     pauseAndPlay: () => this.pauseAndPlay(),
@@ -56,6 +59,19 @@ export class Player {
   reload = () => {
     this.emit({ type: "reloadRequested" });
     this.scope.postMessage({ type: "reload" });
+  };
+
+  // F-19 (T-409): with prewarmBackups (default off), the page's picture-by-picture request, 3 to 11 s before each
+  // stitched midroll (B-044), brings a new token and master for every backup type, at most once every PREWARM_MS
+  prewarmBackups = () => {
+    const stream = this.currentStream();
+    if (this.setting?.prewarmBackups !== true || !stream) return;
+    const now = Date.now();
+    if (now - this.lastPrewarm < PREWARM_MS) return;
+    this.lastPrewarm = now;
+    const types = this.backupPlayerTypes();
+    for (const type of types) stream.createStreamAccess(type, this.integrityToken, type === StreamType.AUTOPLAY ? "android" : "web");
+    this.emit({ type: "backupsPrewarmed", count: types.length });
   };
 
   // F-15: a reload the page could not do (no player found) falls back to pause/play (E6)

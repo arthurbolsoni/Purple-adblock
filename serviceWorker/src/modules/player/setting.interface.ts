@@ -12,4 +12,5 @@ export type Setting = {
   forcePopoutToken?: boolean;
   reloadAfterAd?: boolean;
   pausePlayDelayMs?: number;
+  prewarmBackups?: boolean;
 };

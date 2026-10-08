@@ -159,6 +159,65 @@ describe("worker pipeline", () => {
     expect(worker.player.actualChannel).toBe("channel");
   });
 
+  // F-19 (T-409): the page asks for a picture-by-picture master 3 to 11 s before each stitched midroll (B-044)
+  describe("prewarmed backups", () => {
+    const PBYP = "https://usher.ttvnw.net/api/channel/hls/channel.m3u8?token=TOKEN-picture-by-picture&player_type=picture-by-picture";
+    // through the setSettings message, with debug on so the events are posted
+    const prewarm = (worker: WorkerHarness, on?: boolean) =>
+      worker.send("setSettings", {
+        debug: true,
+        whitelist: [],
+        toggleProxy: false,
+        proxyUrl: "",
+        backupPlayerTypes: [StreamType.SITE, StreamType.FRONTPAGE],
+        lowQualityFallback: false,
+        ...(on === undefined ? {} : { prewarmBackups: on }),
+      });
+
+    afterEach(() => setSystemTime());
+
+    test("with prewarmBackups, the page's picture-by-picture request brings a token for every backup type", async () => {
+      const worker = setup();
+      prewarm(worker, true);
+      worker.twitch.master("channel", masterFor("picture-"), StreamType.PICTURE).master("channel", masterFor("frontpage-"), StreamType.FRONTPAGE);
+      await worker.text(USHER);
+      expect(await (await worker.fetch(PBYP)).text()).toBe("");
+      await settle(() => worker.twitch.callsOf("gql").length === 2);
+      expect(worker.twitch.callsOf("gql").map((c) => c.playerType)).toEqual([StreamType.SITE, StreamType.FRONTPAGE]);
+      await settle(() => worker.player.currentStream().getStreamByStreamType(StreamType.FRONTPAGE).length === 1);
+      expect(worker.player.currentStream().getStreamByStreamType(StreamType.FRONTPAGE)[0].urlList[0].url).toBe(FRONTPAGE);
+      const events = worker.posted.filter((m) => m.type === "purpleEvent" && m.event.type === "backupsPrewarmed").map((m) => m.event);
+      expect(events).toEqual([expect.objectContaining({ type: "backupsPrewarmed", count: 2 })]);
+    });
+
+    test.each([[undefined], [false]])("prewarmBackups %p: no token request", async (on) => {
+      const worker = setup();
+      prewarm(worker, on);
+      worker.twitch.master("channel", masterFor("picture-"), StreamType.PICTURE);
+      await worker.text(USHER);
+      await worker.fetch(PBYP);
+      await Bun.sleep(5);
+      expect(worker.twitch.callsOf("gql")).toEqual([]);
+    });
+
+    test("at most once a minute", async () => {
+      const worker = setup();
+      prewarm(worker, true);
+      worker.twitch.master("channel", masterFor("picture-"), StreamType.PICTURE);
+      setSystemTime(new Date("2026-10-08T12:00:00Z"));
+      await worker.text(USHER);
+      await worker.fetch(PBYP);
+      await worker.fetch(PBYP);
+      await settle(() => worker.twitch.callsOf("gql").length === 2);
+      await Bun.sleep(5);
+      expect(worker.twitch.callsOf("gql")).toHaveLength(2);
+      setSystemTime(new Date("2026-10-08T12:01:01Z"));
+      await worker.fetch(PBYP);
+      await settle(() => worker.twitch.callsOf("gql").length === 4);
+      expect(worker.twitch.callsOf("gql")).toHaveLength(4);
+    });
+  });
+
   // T-103: the Twitch page requests usher v2 (docs/findings/2026-10-07-e2e-harness.md)
   test.each([
     ["v1", "https://usher.ttvnw.net/api/channel/hls/channel.m3u8?token=PAGE_TOKEN&sig=PAGE_SIG"],

@@ -109,6 +109,8 @@ export class AppController {
 
     await this.appService.currentStream().setStreamAccess(text, StreamType.PICTURE);
     this.scope.logger("picture-by-picture master stored");
+    // F-19: a midroll may follow in a few seconds (B-044)
+    this.appService.prewarmBackups();
     return new Response();
   }
 

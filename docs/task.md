@@ -13,7 +13,7 @@ Phases run in order. Inside a phase, the "Depends on" column says what must come
 | 1. Fixes to existing code | T-101 to T-111 | Phase 0 |
 | 2. Detection | T-201 to T-204 | T-101 |
 | 3. CSAI blocking | T-301, T-302 | T-106 |
-| 4. Backup streams | T-401 to T-408 | T-104, T-105, T-106, T-107 |
+| 4. Backup streams | T-401 to T-409 | T-104, T-105, T-106, T-107 |
 | 5. Playlist assembly | T-501, T-502 | T-101, T-201 |
 | 6. Player control and settings | T-601 to T-604 | T-107, T-201 |
 | 7. Build and release | T-701, T-702 | Phase 0 |
@@ -350,6 +350,16 @@ Runs in parallel with phases 1 to 7. Phase 1 to 6 tasks list L2/L3 scenarios tha
   - requests with `picture-by-picture` are left alone, to keep E10;
   - `parent_domains` is removed from the usher URL in the worker.
 - Tests: TS-408
+
+### T-409 Backup tokens at the page's picture-by-picture request
+- [ ] Status · F-19
+- Origin: every stitched midroll in the soaks came 3 to 11 s after the page asked for a `picture-by-picture` master (B-044); Purple asks for backup tokens only at the first poll with ads, so that poll gets blank segments.
+- Files: `serviceWorker/src/modules/player/player.ts`, `app.controller.ts`, `setting.interface.ts`, `platform/src/content-script.js`
+- Done when:
+  - with `prewarmBackups` (default off), the picture-by-picture route asks a new token and master for every backup type, at most once a minute;
+  - a soak with it on and off on the same channel compares, at each midroll start: whether a clean backup was there at the first poll with ads, blank segments, token requests during the break, and whether tokens asked before the break got their own pod;
+  - the default changes only on that evidence, recorded in `docs/feat.md`.
+- Tests: TS-409, soak
 
 ## Phase 5: playlist assembly
 
