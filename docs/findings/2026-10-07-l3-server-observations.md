@@ -54,6 +54,22 @@ L3-01 at 22:22, dedicated profile, extension mode, one channel: both loads (dire
 - The `picture-by-picture` master had 2 variants (360p, 160p); variant order in the `frontpage` masters changed between requests.
 - Purple's result: in the polls where a backup was live, its playlist went to the player; in the others the ad segments stayed (no live backup segment for the same second).
 
+### A midroll on a fresh profile
+
+L3-02 at 22:30, fresh profile, logged out, extension mode with `debug` on: the channel opened inside a midroll.
+
+| | Polls | With ad segments | Notes |
+| --- | --- | --- | --- |
+| Main playlist | 12 | 8 | `ROLL-TYPE` `MIDROLL`; 7 to 16 segments per poll, up to 16 ad segments; up to 3 `EXT-X-DISCONTINUITY`; `EXT-X-TWITCH-PREFETCH` present (up to 3) |
+| Backup playlists (`frontpage` 4 tokens, `picture-by-picture` 1) | 12 | 0 | 7 live segments each; at least one poll carried a `twitch-stitched-ad` `DATERANGE` with `MIDROLL` while every segment was live |
+| Playlists the player got | 12 | 0 | |
+
+- No ad overlay in any of the 40 seconds sampled; the video played.
+- Purple's events: `adDetected` 10, `backupUsed` with `frontpage` 6 and with `picture-by-picture` 3.
+- The backup tokens had the same flags as the page token (`server_ads: true`, `show_ads: true`, `hide_ads: false`).
+- Unlike the preroll at 22:22, where 5 of 8 backup polls had ad segments, no backup poll had any during this midroll.
+- The summary kept only the union of `DATERANGE` classes over the polls; per-poll timelines of the main stream and the backups are recorded from this run on.
+
 ## Consequences
 
 - `twitch-trigger` alone is not an ad marker; the detector (T-201) must not treat it as one.

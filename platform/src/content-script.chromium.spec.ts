@@ -4,7 +4,8 @@ import { beforeAll, describe, expect, test } from "bun:test";
 import { join } from "path";
 import { usePageEnv } from "../../serviceWorker/test/harness/page-env";
 
-const STORED = { whitelist: ["somechannel"], toggleProxy: false, proxyUrl: "" };
+// `debug` (T-109, T-110) is read from storage with the other settings
+const STORED = { whitelist: ["somechannel"], toggleProxy: false, proxyUrl: "", debug: true };
 const MANIFEST = await Bun.file(join(import.meta.dir, "..", "chromium", "manifest.json")).json();
 
 // storage answers only when the test calls flushStorage()
@@ -32,7 +33,7 @@ describe("content script on Chromium (MV3)", () => {
     env.chrome.flushStorage();
     await Bun.sleep(10);
     expect(replies).toEqual([{ type: "setSettings", value: STORED }]);
-    expect(env.chrome.getCalls).toEqual([["whitelist", "toggleProxy", "proxyUrl"]]);
+    expect(env.chrome.getCalls).toEqual([["whitelist", "toggleProxy", "proxyUrl", "debug"]]);
     expect(document.querySelectorAll("script")).toHaveLength(0);
   });
 });

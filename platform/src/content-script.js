@@ -15,7 +15,7 @@ function injectBundle() {
   (document.head || document.documentElement).appendChild(s);
 }
 
-const settings = new Promise((resolve) => storage().get(["whitelist", "toggleProxy", "proxyUrl"], resolve));
+const settings = new Promise((resolve) => storage().get(["whitelist", "toggleProxy", "proxyUrl", "debug"], resolve));
 
 // The worker asks for the settings when it boots, which can happen before storage answers.
 window.addEventListener("message", (event) => {

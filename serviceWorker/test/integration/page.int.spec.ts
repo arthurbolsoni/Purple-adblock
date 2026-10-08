@@ -209,3 +209,26 @@ describe("integrity capture", () => {
     expect(main.posted).toHaveLength(before);
   });
 });
+
+// T-110: the page keeps the worker's debug events in window.__purple.events, only with `debug` on
+describe("debug events", () => {
+  const event = (n: number) => ({ type: "purpleEvent", event: { type: "adDetected", channel: "channel", at: n } });
+
+  test("with debug off, events are dropped and window.__purple is not created", () => {
+    main.emit(event(1));
+    expect((window as any).__purple).toBeUndefined();
+  });
+
+  test("with debug on, events reach window.__purple.events, the last 500 only", async () => {
+    window.postMessage({ type: "setSettings", value: { whitelist: [], debug: true } }, "*");
+    await Bun.sleep(5);
+    expect((window as any).__purple).toEqual({ events: [] });
+
+    for (let n = 0; n < 510; n++) main.emit(event(n));
+
+    const events = (window as any).__purple.events;
+    expect(events).toHaveLength(500);
+    expect(events[0]).toEqual({ type: "adDetected", channel: "channel", at: 10 });
+    expect(events.at(-1).at).toBe(509);
+  });
+});

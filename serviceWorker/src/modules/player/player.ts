@@ -2,9 +2,9 @@ import { Stream } from "../stream/stream";
 import { Setting } from "./setting.interface";
 import { StreamType } from "../stream/interface/stream.enum";
 import { Server } from "../stream/interface/stream.types";
-import { mergeM3u8Contents } from "./m3u8";
+import { mergeWithBackups } from "./m3u8";
 import { parseVariants } from "../stream/master";
-import type { WorkerContext } from "../../scope";
+import type { PurpleEvent, WorkerContext } from "../../scope";
 
 export class Player {
   integrityToken = ""; //the integrity token
@@ -39,11 +39,11 @@ export class Player {
   };
 
   onStartAds = () => {
-    console.log("ads started");
+    this.scope.logger("ads started");
     this.pauseAndPlay();
   };
   onEndAds = () => {
-    console.log("ads ended");
+    this.scope.logger("ads ended");
     this.pauseAndPlay();
   };
 
@@ -59,7 +59,7 @@ export class Player {
 
   // some ads are not in the principal stream
   freeStreamChanged(x: boolean) {
-    console.log("freeStreamChanged:", x);
+    this.scope.logger("freeStreamChanged:", x);
     // call pause and play when changed
     if (this.freeStream != x) this.pauseAndPlay();
     this.freeStream = x;
@@ -78,25 +78,35 @@ export class Player {
   async onFetch(text: string): Promise<string> {
     // no stream stored for the channel yet (media playlist before the usher)
     if (!this.currentStream()) return text;
-    if (this.isWhitelist()) return text;
+    if (this.isWhitelist()) {
+      this.emit({ type: "whitelisted" });
+      return text;
+    }
     // is ads and is the principal stream
     if (!this.isAds(text, true)) {
-      console.log("Stream is free");
+      this.scope.logger("Stream is free");
       this.freeStream = false;
       return text;
     }
+    this.emit({ type: "adDetected" });
 
     const dump: string[] = [];
 
     const frontpage = await this.fetchm3u8ByStreamType(StreamType.FRONTPAGE);
     if (!frontpage.data) this.currentStream().createStreamAccess(StreamType.FRONTPAGE, this.integrityToken);
     if (frontpage.dump) dump.push(...frontpage.dump);
-    if (frontpage.data) return frontpage.data;
+    if (frontpage.data) {
+      this.emit({ type: "backupUsed", playerType: StreamType.FRONTPAGE });
+      return frontpage.data;
+    }
 
     const picture = await this.fetchm3u8ByStreamType(StreamType.PICTURE);
     if (!picture.data) this.currentStream().createStreamAccess(StreamType.PICTURE, this.integrityToken);
     if (picture.dump) dump.push(...picture.dump);
-    if (picture.data) return picture.data;
+    if (picture.data) {
+      this.emit({ type: "backupUsed", playerType: StreamType.PICTURE });
+      return picture.data;
+    }
 
     if (dump?.length) {
       this.freeStreamChanged(true);
@@ -104,7 +114,9 @@ export class Player {
       this.freeStreamChanged(false);
     }
     
-    return mergeM3u8Contents([text, ...dump]);
+    const merged = mergeWithBackups([text, ...dump]);
+    if (merged.replaced) this.emit({ type: "segmentsReplaced", count: merged.replaced });
+    return merged.text;
   }
 
 
@@ -154,6 +166,11 @@ export class Player {
   }
 
   isPlayerPlaylist = (url: string) => this.playerVariants.has(withoutQuery(url));
+
+  // debug event (F-17) for the current channel
+  private emit(event: Omit<PurpleEvent, "channel">) {
+    this.scope.emit?.({ ...event, channel: this.actualChannel });
+  }
 
   setChannel(channelName: string) {
     this.scope.logger(`Loading channel ${channelName}`);

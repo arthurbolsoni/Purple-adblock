@@ -29,7 +29,7 @@ export class AppController {
   async onChannel(input: any, options: any): Promise<Response> {
     const response: Response = await this.scope.request(input, options);
     if (!response.ok) {
-      console.log("Error on channel load");
+      this.scope.logger("Error on channel load", response.status);
       return response;
     }
 
@@ -59,19 +59,20 @@ export class AppController {
   async onChannelPicture(input: any, options: any): Promise<Response> {
     const response: Response = await this.scope.request(input, options);
     if (!response.ok) {
-      console.log("Error on channel load");
+      this.scope.logger("Error on picture-by-picture load", response.status);
       return response;
     }
 
     const text = await response.text();
 
     await this.appService.currentStream().setStreamAccess(text, StreamType.PICTURE);
-    console.log("picture-by-picture", text);
+    this.scope.logger("picture-by-picture master stored");
     return new Response();
   }
 
   @Message("setSettings")
   async setSettings(data: any) {
+    this.scope.debug = data?.value?.debug === true;
     this.appService.setSettings(data);
   }
 

@@ -32,12 +32,13 @@ The userscript has no content script or popup: `bundle.js` is the whole script a
 
 | From → to | Message | Effect |
 | --- | --- | --- |
-| worker → page | `{ type: "getSettings" }` | page forwards `window.postMessage({ type: "getSettings" })`; the content script answers once `storage` has answered |
+| worker → page | `{ type: "getSettings" }` | page forwards `window.postMessage({ type: "getSettings" })`; the content script answers once `storage` has answered, with `whitelist`, `toggleProxy`, `proxyUrl` and `debug` (logs and events, C-09, F-17) |
 | content script → page | `{ type: "setSettings", value }` | page sends `{ funcName: "setSettings", value }` to every registered worker |
 | page → worker | `{ funcName: "setIntegrity", value }` | sent to every registered worker; the worker stores the integrity token |
 | worker → page | `{ type: "pause" }`, `{ type: "play" }` | page sends `{ funcName: "pause" \| "play", id: 1 }` to the worker that asked (player's internal RPC) |
 | player worker → page | `PlayerQualityChanged`, `arg.key === "quality"` | page sends `{ funcName: "setQuality", value }` to every registered worker |
 | player worker → page | `arg.key === "state"` | page sends `{ funcName: <state> }` to the worker that sent it |
+| worker → page | `{ type: "purpleEvent", event }`, only with `debug` on | page keeps the last 500 in `window.__purple.events`, created only with `debug` on (F-17) |
 
 The last `setSettings`, `setIntegrity` and `setQuality` are replayed to a worker created later.
 

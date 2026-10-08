@@ -233,8 +233,9 @@ def _process(pid):
         return None
 
 
-async def launch(mode, profile=PROFILE, visible=False, warm_up=True):
-    """Starts Edge on the dedicated profile in `mode` and returns a prepared Session."""
+async def launch(mode, profile=PROFILE, visible=False, warm_up=True, debug=False):
+    """Starts Edge on the dedicated profile in `mode` and returns a prepared Session. In extension mode the build's
+    `debug` setting is set to `debug` (the profile keeps it between runs); the userscript always runs with defaults."""
     profile = os.path.abspath(profile)
     _check_build(mode)
     stop_leftovers(profile)
@@ -272,7 +273,34 @@ async def launch(mode, profile=PROFILE, visible=False, warm_up=True):
         raise
     session = Session(browser, mode, profile, pid, desktop)
     await session.prepare(session.tab)
+    if mode == 'extension' and warm_up:
+        await set_extension_settings(session, debug=debug)
     return session
+
+
+# on edge://extensions: id of the unpacked Purple build; null until the page's API is there
+EXTENSION_ID = """(() => {
+  const api = window.chrome && chrome.developerPrivate;
+  if (!api) return null;
+  return new Promise((resolve) => api.getExtensionsInfo({ includeDisabled: true }, (list) => {
+    const build = list.find((e) => e.location === "UNPACKED" && e.state === "ENABLED");
+    resolve(build ? build.id : null);
+  }));
+})()"""
+
+
+async def set_extension_settings(session, **settings):
+    """chrome.storage.local.set on the unpacked build, from its popup page in a new tab."""
+    await session.navigate('edge://extensions')
+    extension = await wait_for(session.tab, EXTENSION_ID, timeout=20)
+    if not extension:
+        raise RuntimeError('the unpacked Purple build is not enabled')
+    page = await session.browser.get(f'chrome-extension://{extension}/common/html/popup.html', new_tab=True)
+    try:
+        await read(page, f'new Promise((resolve) => chrome.storage.local.set({json.dumps(settings)}, () => resolve(true)))')
+    finally:
+        await page.close()
+    await session.navigate('about:blank')
 
 
 def _check_build(mode):
@@ -309,6 +337,7 @@ STATE = """(() => {
     workers: e2e.workers,
     messages: e2e.messages,
     workerLog: e2e.workerLog || [],
+    events: (window.__purple && window.__purple.events) || null,
     media: e2e.media || [],
     playlists: e2e.playlists || [],
     server: e2e.server || [],

@@ -21,7 +21,7 @@ from scenarios import Check, registry
 
 
 async def run_one(scenario, mode, profile, args):
-    session = await lib.launch(mode, profile=profile, visible=args.visible)
+    session = await lib.launch(mode, profile=profile, visible=args.visible, debug=getattr(scenario, 'DEBUG', False))
     try:
         checks = await scenario.run(session)
     except Exception:

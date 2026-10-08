@@ -45,7 +45,7 @@ export class Stream {
   private async requestStreamAccess(playerType: StreamType, integrityToken: string): Promise<void> {
     try {
       const streamDataAccess = await this.twitchService.playbackAccessToken(this.channelName, playerType, integrityToken);
-      console.log("New Connection: ", playerType, streamDataAccess.token.includes('"hide_ads":true'));
+      this.scope.logger("New Connection: ", playerType, streamDataAccess.token.includes('"hide_ads":true'));
       const m3u8Text = await this.twitchService.getM3U8(this.channelName, streamDataAccess);
       // the new master replaces the playerType's previous server
       const previous = this.getStreamByStreamType(playerType);

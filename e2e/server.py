@@ -34,6 +34,16 @@ def media_summary(digests):
     }
 
 
+def timeline(records):
+    """One line per poll: time, media sequence, segments, ad segments, DATERANGE classes, roll types."""
+    return [
+        {'at': r['at'], 'seq': r['playlist'].get('mediaSequence'), 'segments': r['playlist']['segments'], 'ads': r['playlist']['adSegments'],
+         'dateranges': [c for c in r['playlist']['dateranges'] if c not in ('timestamp', 'twitch-session', 'twitch-stream-source')],
+         'roll': r['playlist']['rollTypes']}
+        for r in records
+    ]
+
+
 def summarize(state):
     server = state.get('server') or []
     # media playlists the player got through Purple's hook (the master it gets is not counted)
@@ -61,6 +71,8 @@ def summarize(state):
         # media playlists the player requested (the main stream) and the others (Purple's backups)
         'main': media_summary([s['playlist'] for s in media if s['url'] in player_urls]),
         'backups': media_summary([s['playlist'] for s in media if s['url'] not in player_urls]),
+        'mainTimeline': timeline([s for s in media if s['url'] in player_urls]),
+        'backupTimeline': timeline([s for s in media if s['url'] not in player_urls]),
         'delivered': media_summary([d['playlist'] for d in delivered]),
         # distinct token answers: playerType, errors and token flags, with how many times each came back
         'tokens': [{**json.loads(key), 'count': n} for key, n in Counter(

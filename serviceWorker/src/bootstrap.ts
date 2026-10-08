@@ -8,9 +8,13 @@ import { urlOf } from "./url";
 // binds page messages and hooks `fetch`. Has no side effects until called.
 export function bootstrapWorker(scope: WorkerScope) {
   scope.request = scope.fetch;
-  scope.logger = (x: any) => console.log("[Purple]: ", x);
-
   const context = scope as WorkerScope & WorkerContext;
+  context.debug = false;
+  context.logger = (...args: any[]) => context.debug && console.log("[Purple]:", ...args);
+  context.emit = (event) => {
+    if (context.debug) scope.postMessage({ type: "purpleEvent", event: { ...event, at: Date.now() } });
+  };
+
   const controller = new AppController(new Player(context), context);
   const router = createRouter(controller);
   bindMessages(scope, controller);
@@ -29,7 +33,7 @@ export function bootstrapWorker(scope: WorkerScope) {
   };
 
   scope.appController = controller;
-  scope.logger("Script running");
+  context.logger("Script running");
 
   return { controller, router };
 }

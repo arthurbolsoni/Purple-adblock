@@ -1,5 +1,6 @@
 """Level 2 and 3 scenarios. Each module has ID, TITLE, MODES and `async def run(session) -> list[Check]`;
-FRESH_PROFILE = True makes run.py use a new profile for every run."""
+FRESH_PROFILE = True makes run.py use a new profile for every run; DEBUG = True turns the build's `debug` setting on
+(extension mode), so Purple logs and keeps its events in window.__purple.events."""
 from dataclasses import dataclass
 from typing import Any
 

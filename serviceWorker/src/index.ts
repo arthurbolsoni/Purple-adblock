@@ -6,9 +6,14 @@ import { WorkerRegistry } from "./page/worker-registry";
 
 declare global {
   var request: any;
+  // F-17: the worker's debug events, created only with `debug` on
+  var __purple: { events: any[] } | undefined;
 }
 
-const logger = (...args: any[]) => console.log("[Purple]:", ...args);
+const EVENT_LIMIT = 500;
+// the `debug` setting, from the content script's setSettings (the userscript has no settings: off)
+let debug = false;
+const logger = (...args: any[]) => debug && console.log("[Purple]:", ...args);
 
 (function () {
   // every worker created through the injector; on a direct channel load the player creates two
@@ -33,7 +38,7 @@ const logger = (...args: any[]) => console.log("[Purple]:", ...args);
     readonly purple = { postMessage: (message: any) => this.sendFromPurple(message) };
 
     constructor(url: string | URL, options?: WorkerOptions) {
-      console.log("[Purple]: init " + url.toString());
+      logger("init " + url.toString());
 
       const script = readScript(url.toString());
       if (script === null) {
@@ -84,6 +89,10 @@ const logger = (...args: any[]) => console.log("[Purple]:", ...args);
   // Requests from one worker are answered to that worker; settings and quality go to every worker.
   function onWorkerMessage(worker: WorkerInjector, event: MessageEvent) {
     switch (event?.data?.type) {
+      case "purpleEvent": {
+        recordEvent(event.data.event);
+        break;
+      }
       case "getSettings": {
         window.postMessage({ type: "getSettings", value: null });
         break;
@@ -105,7 +114,7 @@ const logger = (...args: any[]) => console.log("[Purple]:", ...args);
     switch (event?.data?.arg?.key) {
       case "quality": {
         if (!event.data.arg.value.name) break;
-        console.log("Changed quality by player: " + event.data.arg.value.name);
+        logger("Changed quality by player: " + event.data.arg.value.name);
         registry.broadcast({ funcName: "setQuality", value: event.data.arg.value.name });
         break;
       }
@@ -114,6 +123,13 @@ const logger = (...args: any[]) => console.log("[Purple]:", ...args);
         break;
       }
     }
+  }
+
+  function recordEvent(purpleEvent: any) {
+    if (!debug || !window.__purple) return;
+    const events = window.__purple.events;
+    events.push(purpleEvent);
+    if (events.length > EVENT_LIMIT) events.splice(0, events.length - EVENT_LIMIT);
   }
 
   // installed when the bundle loads: settings and an /integrity response that come before the first worker are
@@ -125,6 +141,8 @@ const logger = (...args: any[]) => console.log("[Purple]:", ...args);
     //Event listener from window and extension.
     window.addEventListener("message", (event) => {
       if (event.data?.type === "setSettings") {
+        debug = event.data.value?.debug === true;
+        if (debug && !window.__purple) window.__purple = { events: [] };
         //send settings to every worker
         registry.broadcast({ funcName: "setSettings", value: event.data.value });
       }

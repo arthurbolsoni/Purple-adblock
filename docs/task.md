@@ -204,15 +204,15 @@ Runs in parallel with phases 1 to 7. Phase 1 to 6 tasks list L2/L3 scenarios tha
 - Tests: TS-108
 
 ### T-109 Logger behind `debug`
-- [ ] Status · C-09
-- Files: `serviceWorker/src/app.worker.ts`, `serviceWorker/src/modules/**`
+- [x] Status · C-09 · done 2026-10-07: worker and page loggers print only with `debug` on; with it off, the worker printed nothing in L3-01 (2 loads); the content script reads `debug` from storage
+- Files: `serviceWorker/src/bootstrap.ts`, `serviceWorker/src/index.ts`, `serviceWorker/src/app.controller.ts`, `serviceWorker/src/modules/**`, `platform/src/content-script.js`
 - Done when:
   - no direct `console.log` remains in `serviceWorker/src` outside the logger;
   - with `debug` off, nothing is printed per segment or per request.
 - Tests: TS-109
 
 ### T-110 Debug event log in the page
-- [ ] Status · F-17
+- [x] Status · F-17 · done 2026-10-07: `adDetected`, `backupUsed`, `segmentsReplaced` and `whitelisted` are emitted (`blankInserted` and `csaiBlocked` come with T-502 and T-301); L3-02 reads them with `debug` on and caught a midroll blocked by backups ([finding](findings/2026-10-07-l3-server-observations.md#a-midroll-on-a-fresh-profile))
 - Files: `serviceWorker/src/modules/player/player.ts`, `serviceWorker/src/index.ts`
 - Done when:
   - with `debug` on, the worker posts events to the page: `adDetected`, `backupUsed`, `segmentsReplaced`, `blankInserted`, `csaiBlocked`, `whitelisted`, each with channel, playerType (when relevant) and timestamp;

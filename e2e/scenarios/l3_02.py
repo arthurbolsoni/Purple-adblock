@@ -4,6 +4,8 @@ Always: every player worker runs Purple, no player error, video playing at the e
 main stream (ad segments in the playlists Twitch served): no ad overlay during the run and no ad segment in the
 playlists the player got from Purple (docs/tests.md, level 3).
 """
+from collections import Counter
+
 import lib
 import server
 from scenarios import Check
@@ -13,6 +15,7 @@ ID = 'L3-02'
 TITLE = 'preroll on a live channel, fresh profile (TR-001, TR-005)'
 MODES = ('extension',)
 FRESH_PROFILE = True
+DEBUG = True  # Purple's events (window.__purple.events) go in the details of the break checks
 WATCH = 40  # seconds watched after the player settles
 
 
@@ -42,11 +45,13 @@ async def run(session):
               {'settled': outcome, 'first': first, 'last': last}),
         Check('no player error during the run', not any(s['playerError'] for s in samples), [s['playerError'] for s in samples if s['playerError']][:3]),
     ]
+    events = Counter((e.get('type'), e.get('playerType')) for e in state['events'] or [])
+    purple = {'events': {f'{t}{":" + p if p else ""}': n for (t, p), n in events.items()}, 'debug': state['events'] is not None}
     if server.break_recorded(summary):
         checks += [
-            Check('break: no ad overlay', overlay_seconds == 0, {'secondsWithOverlay': overlay_seconds, 'of': len(samples)}),
+            Check('break: no ad overlay', overlay_seconds == 0, {'secondsWithOverlay': overlay_seconds, 'of': len(samples), 'purple': purple}),
             Check('break: no ad segment reached the player', summary['delivered']['pollsWithAds'] == 0,
-                  {'main': summary['main'], 'delivered': summary['delivered'], 'backups': summary['backups']}),
+                  {'main': summary['main'], 'delivered': summary['delivered'], 'backups': summary['backups'], 'purple': purple}),
         ]
     else:
         checks.append(Check('break recorded in the main stream', True, {'main': summary['main'], 'secondsWithOverlay': overlay_seconds}, skipped=True))

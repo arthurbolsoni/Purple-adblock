@@ -47,7 +47,12 @@ const sameSecond = (a: number | null, b: number | null) => a != null && b != nul
 // Replaces each ad segment of the main playlist (first text) with the first live segment of a backup that starts in
 // the same second. Without a replacement the main text comes back unchanged.
 export function mergeM3u8Contents(contents: string[]): string {
-  if (!contents.length) return "";
+  return mergeWithBackups(contents).text;
+}
+
+// mergeM3u8Contents, with the number of ad segments replaced.
+export function mergeWithBackups(contents: string[]): { text: string; replaced: number } {
+  if (!contents.length) return { text: "", replaced: 0 };
   const [main, ...backups] = contents;
 
   const lines = main.split("\n");
@@ -56,6 +61,7 @@ export function mergeM3u8Contents(contents: string[]): string {
     return readSegments(backupLines).map((segment) => ({ ...segment, uriLine: backupLines[segment.uri].trim() }));
   });
 
+  let replaced = 0;
   for (const segment of readSegments(lines)) {
     if (!hasAds(segment.title)) continue;
     for (const candidates of backupSegments) {
@@ -65,8 +71,9 @@ export function mergeM3u8Contents(contents: string[]): string {
       const extinf = `#EXTINF:${replacement.durationText},${replacement.title}`;
       if (segment.extinf >= 0) lines[segment.extinf] = extinf;
       lines[segment.uri] = replacement.uriLine;
+      replaced++;
       break;
     }
   }
-  return lines.join("\n");
+  return { text: replaced ? lines.join("\n") : main, replaced };
 }
