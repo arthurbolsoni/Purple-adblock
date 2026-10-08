@@ -165,3 +165,9 @@ serviceWorker/dist/
 serviceWorker/dist/app.worker.js
 serviceWorker/dist/bundle.js
 __pycache__/
+
+# sim/ (level 2): build output, generated media, the IVS player SDK and its page bundle
+sim/target/
+sim/media/
+sim/page/node_modules/
+sim/page/ivs.js

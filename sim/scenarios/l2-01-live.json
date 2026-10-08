@@ -1,0 +1,9 @@
+{
+  "id": "L2-01",
+  "description": "Clean live stream (B-001, B-003, B-004, B-006): no break; playlists reach the player unchanged",
+  "channel": "simchannel",
+  "variants": [
+    { "name": "720p30", "resolution": "1280x720", "bandwidth": 3000000, "codecs": "avc1.4D401F,mp4a.40.2", "live": "live-720p", "ad": "ad-720p" },
+    { "name": "360p30", "resolution": "640x360", "bandwidth": 800000, "codecs": "avc1.4D401E,mp4a.40.2", "live": "live-360p", "ad": "ad-360p" }
+  ]
+}

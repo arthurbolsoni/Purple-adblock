@@ -1,0 +1,10 @@
+{
+  "id": "L2-04",
+  "description": "Every playerType gets the preroll (B-012): no clean backup, the ad segments are answered with the blank segment (F-14)",
+  "channel": "simchannel",
+  "variants": [
+    { "name": "720p30", "resolution": "1280x720", "bandwidth": 3000000, "codecs": "avc1.4D401F,mp4a.40.2", "live": "live-720p", "ad": "ad-720p" },
+    { "name": "360p30", "resolution": "640x360", "bandwidth": 800000, "codecs": "avc1.4D401E,mp4a.40.2", "live": "live-360p", "ad": "ad-360p" }
+  ],
+  "breaks": [{ "at": 0, "segments": 8, "roll": "PREROLL", "title": "Amazon|SIMPREROLL" }]
+}

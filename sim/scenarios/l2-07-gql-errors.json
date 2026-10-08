@@ -1,0 +1,11 @@
+{
+  "id": "L2-07",
+  "description": "GQL errors (B-014, B-015): the persisted-query hash gets PersistedQueryNotFound and embed a server error; a preroll on site and popout, frontpage live",
+  "channel": "simchannel",
+  "variants": [
+    { "name": "720p30", "resolution": "1280x720", "bandwidth": 3000000, "codecs": "avc1.4D401F,mp4a.40.2", "live": "live-720p", "ad": "ad-720p" }
+  ],
+  "breaks": [{ "at": 0, "segments": 8, "roll": "PREROLL", "title": "Amazon|SIMPREROLL" }],
+  "playerTypes": { "default": { "breaks": false }, "site": { "breaks": true }, "popout": { "breaks": true } },
+  "gql": { "persistedQueryNotFound": true, "errors": { "embed": "service error" } }
+}

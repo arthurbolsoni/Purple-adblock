@@ -1,0 +1,11 @@
+{
+  "id": "L2-02",
+  "description": "SSAI preroll on the page's token (B-007, B-008, B-026): 8 ad segments from the first poll; site and popout tokens get their own preroll (B-029, B-036), frontpage and the rest play live",
+  "channel": "simchannel",
+  "variants": [
+    { "name": "720p30", "resolution": "1280x720", "bandwidth": 3000000, "codecs": "avc1.4D401F,mp4a.40.2", "live": "live-720p", "ad": "ad-720p" },
+    { "name": "360p30", "resolution": "640x360", "bandwidth": 800000, "codecs": "avc1.4D401E,mp4a.40.2", "live": "live-360p", "ad": "ad-360p" }
+  ],
+  "breaks": [{ "at": 0, "segments": 8, "roll": "PREROLL", "title": "Amazon|SIMPREROLL" }],
+  "playerTypes": { "default": { "breaks": false }, "site": { "breaks": true }, "popout": { "breaks": true } }
+}

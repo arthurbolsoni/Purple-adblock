@@ -15,6 +15,11 @@ describe("local checks", () => {
     expect(pkg.scripts["hooks:install"]).toBe("git config core.hooksPath .githooks");
   });
 
+  // T-006: the sim/ server's tests (Rust) run with the rest
+  test("check runs bun test, then cargo test for sim/", () => {
+    expect(pkg.scripts.check).toBe("bun test && cargo test --quiet --manifest-path sim/Cargo.toml");
+  });
+
   test("the pre-commit hook runs the checks", () => {
     const hook = read(".githooks/pre-commit");
     expect(hook).toStartWith("#!/bin/sh\n");
