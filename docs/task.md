@@ -135,8 +135,8 @@ Runs in parallel with phases 1 to 7. Phase 1 to 6 tasks list L2/L3 scenarios tha
 - Tests: TS-101, L3-01
 
 ### T-102 Worker router
-- [ ] Status · C-02 · E2
-- Files: `serviceWorker/src/app.worker.ts`, `serviceWorker/src/decorator/handler.decorator.ts`
+- [x] Status · C-02 · E2 · done 2026-10-07: routes without `ignore` no longer drop URLs containing "null" (an opaque playlist path can); `URL` and `Request` inputs are routed and reach the network as the same object; L3-01 passed in both modes
+- Files: `serviceWorker/src/bootstrap.ts`, `serviceWorker/src/decorator/handler.decorator.ts`, `serviceWorker/src/app.controller.ts`, `serviceWorker/src/url.ts` (new)
 - Done when:
   - a route without `ignore` is not compared against the string `"null"` (channel `nullbyte` goes through the usher hook);
   - `fetch(Request)` and `fetch(URL)` are routed by their URL;
@@ -198,7 +198,7 @@ Runs in parallel with phases 1 to 7. Phase 1 to 6 tasks list L2/L3 scenarios tha
 - Tests: TS-107, L3-01
 
 ### T-108 Segment title without a raw-URI regex
-- [ ] Status · C-08 · E5
+- [x] Status · C-08 · E5 · done 2026-10-07 with T-101: `readSegments` takes titles from the `#EXTINF` lines; TS-108 added
 - Files: `serviceWorker/src/modules/player/m3u8.ts`
 - Done when the title comes from the parser's `segment.title` or from line reading; URIs containing `?`, `+`, `(` or `[` do not change the result.
 - Tests: TS-108

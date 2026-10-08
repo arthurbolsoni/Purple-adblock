@@ -3,6 +3,7 @@ import { Fetch, Message } from "./decorator/handler.decorator";
 import { Player } from "./modules/player/player";
 import { StreamType } from "./modules/stream/interface/stream.enum";
 import type { WorkerContext } from "./scope";
+import { urlOf } from "./url";
 
 // /api/channel/hls/<channel>.m3u8 or /api/v2/channel/hls/<channel>.m3u8; the query string is ignored
 const channelFromUsher = (url: string) => decodeURIComponent(new URL(url).pathname.split("/").pop()!.replace(/\.m3u8$/, ""));
@@ -25,8 +26,8 @@ export class AppController {
 
   @Fetch("usher.ttvnw.net/api/channel/hls/", "picture-by-picture")
   @Fetch("usher.ttvnw.net/api/v2/channel/hls/", "picture-by-picture")
-  async onChannel(url: string, options: any): Promise<Response> {
-    const response: Response = await this.scope.request(url, options);
+  async onChannel(input: any, options: any): Promise<Response> {
+    const response: Response = await this.scope.request(input, options);
     if (!response.ok) {
       console.log("Error on channel load");
       return response;
@@ -34,7 +35,7 @@ export class AppController {
 
     const text = await response.text();
 
-    await this.appService.setChannel(channelFromUsher(url));
+    await this.appService.setChannel(channelFromUsher(urlOf(input)));
     this.appService.setPlayerMaster(text);
     return new Response(text);
   }
@@ -43,8 +44,8 @@ export class AppController {
   @Fetch(function (this: AppController, url: string) {
     return this.appService.isPlayerPlaylist(url);
   })
-  async onFetch(url: string, options: any): Promise<Response> {
-    const body: string = await (await this.scope.request(url, options)).text();
+  async onFetch(input: any, options: any): Promise<Response> {
+    const body: string = await (await this.scope.request(input, options)).text();
     try {
       return new Response(await this.appService.onFetch(body));
     } catch (e) {
@@ -55,8 +56,8 @@ export class AppController {
   }
 
   @Fetch("picture-by-picture")
-  async onChannelPicture(url: string, options: any): Promise<Response> {
-    const response: Response = await this.scope.request(url, options);
+  async onChannelPicture(input: any, options: any): Promise<Response> {
+    const response: Response = await this.scope.request(input, options);
     if (!response.ok) {
       console.log("Error on channel load");
       return response;

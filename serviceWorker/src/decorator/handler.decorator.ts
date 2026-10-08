@@ -4,7 +4,8 @@ import type { WorkerScope } from "../scope";
 export type FetchMatch = string | ((this: any, url: string) => boolean);
 export type FetchRoute = { propertyKey: string; match: FetchMatch; ignore: string | null };
 export type MessageRoute = { propertyKey: string; match: string };
-export type FetchHandler = (url: string, options: any) => Promise<Response>;
+// handlers get the fetch input as the caller passed it (string, URL or Request)
+export type FetchHandler = (input: any, options: any) => Promise<Response>;
 
 const FETCH_ROUTES = Symbol("purple:fetch-routes");
 const MESSAGE_ROUTES = Symbol("purple:message-routes");
@@ -44,14 +45,13 @@ export type Router = {
 export function createRouter(controller: any): Router {
   const routes = getFetchRoutes(controller);
   const matches = (route: FetchRoute, url: string) => (typeof route.match === "function" ? route.match.call(controller, url) : url.includes(route.match));
-  // Known bug kept as in 2.6.7: a null `ignore` is tested as the text "null" (fixed by T-102).
-  const routeFor = (url: string) => routes.find((route) => matches(route, url) && !url.includes(route.ignore!));
+  const routeFor = (url: string) => routes.find((route) => matches(route, url) && (route.ignore == null || !url.includes(route.ignore)));
   return {
     routes,
     routeFor,
     resolve(url: string) {
       const route = routeFor(url);
-      return route && ((url: string, options: any) => controller[route.propertyKey](url, options));
+      return route && ((input: any, options: any) => controller[route.propertyKey](input, options));
     },
   };
 }

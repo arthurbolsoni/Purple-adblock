@@ -2,6 +2,7 @@ import { AppController } from "./app.controller";
 import { bindMessages, createRouter } from "./decorator/handler.decorator";
 import { Player } from "./modules/player/player";
 import type { WorkerContext, WorkerScope } from "./scope";
+import { urlOf } from "./url";
 
 // Installs Purple on a worker scope: keeps the original fetch as `request`, creates the controller,
 // binds page messages and hooks `fetch`. Has no side effects until called.
@@ -14,12 +15,17 @@ export function bootstrapWorker(scope: WorkerScope) {
   const router = createRouter(controller);
   bindMessages(scope, controller);
 
-  scope.fetch = async (url: any, options: any) => {
-    if (typeof url === "string") {
-      const handler = router.resolve(url);
-      if (handler) return handler(url, options);
+  // routed by the input's URL (string, URL or Request); anything else reaches the original fetch with every argument
+  scope.fetch = async (...args: any[]) => {
+    const [input, options] = args;
+    let handler;
+    try {
+      handler = input != null && router.resolve(urlOf(input));
+    } catch {
+      handler = undefined;
     }
-    return context.request.apply(scope, [url, options]);
+    if (handler) return handler(input, options);
+    return context.request.apply(scope, args as [any, any]);
   };
 
   scope.appController = controller;

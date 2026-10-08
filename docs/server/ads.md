@@ -6,7 +6,8 @@ Server-side ad insertion: ad segments are stitched into the media playlist the p
 
 - Observed: a logged-out viewer opening a channel got a preroll (B-007). Across 30 s of polls, 232 `#EXTINF` lines were ads and 37 were live.
 - The break comes with `#EXT-X-DISCONTINUITY` and `DATERANGE` entries (below).
-- Frequency for logged-out and logged-in viewers: unknown (Q-001).
+- Frequency for logged-out and logged-in viewers: unknown (Q-001); it changed within one evening on one channel (B-024).
+- The preroll playlist starts with 3 segments and grows by one per poll; ad segments come from the same CDN host as live ones; no `EXT-X-TWITCH-PREFETCH` during the break (B-026).
 
 ## Markers
 

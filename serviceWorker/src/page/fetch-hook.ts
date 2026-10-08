@@ -2,6 +2,8 @@
 // page always gets the original Response object, unread (CLAUDE.md rule 4). Browsers reject a body on a 204 or 304
 // response, so rebuilding responses would break those requests.
 
+import { urlOf } from "../url";
+
 const INTEGRITY = { host: "gql.twitch.tv", pathname: "/integrity" };
 
 export type FetchHookHandlers = {
@@ -9,7 +11,7 @@ export type FetchHookHandlers = {
   onIntegrity: (body: string) => void;
 };
 
-export const urlOf = (input: RequestInfo | URL): string => (typeof input === "string" ? input : input instanceof URL ? input.href : input.url);
+export { urlOf };
 
 const isIntegrity = (input: RequestInfo | URL) => {
   try {

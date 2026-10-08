@@ -36,6 +36,24 @@ The `token` parameter of the page's usher request carried, in all 7 loads record
 
 No request to `edge.ads.twitch.tv` from the 7 channel pages loaded directly in L3-02. In 10 later L3-01 runs (dedicated profile, 5 per mode), the `/directory/all` page requested `edge.ads.twitch.tv/ads/format` and then `/ads`, both with `bp=midroll`, 0.5 to 1.5 s after it loaded, before the channel card was clicked: 2 requests per directory load, 20 in total. The 10 direct channel loads of those runs made none, nor did 2 more L3-02 loads. Query keys: `afmt`, `aid`, `bp`, `cb`, `did`, `dt`, `dur`, `gdprl`, `geoc`, `pbid`, `pid`, `pj`, `plat`, `sid`, `tcor`, `u`, `ulang`, `ws`, plus `vtype` on `/ads` (values not recorded).
 
+### A preroll with the server digests on
+
+L3-01 at 22:22, dedicated profile, extension mode, one channel: both loads (direct and client-side navigation) had a preroll.
+
+| | Direct load | Client-side navigation |
+| --- | --- | --- |
+| Main playlist polls with ad segments | 6 of 6 | 6 of 6 |
+| Segments per poll | 3, growing by one per poll to 8 | 3 to 5 |
+| Backup playlist polls with ad segments | 5 of 8 | 3 of 7 |
+| Polls that reached the player with ad segments | 2 of 5 | 2 of 6 |
+| Backup token requests | `frontpage` 4, `picture-by-picture` 2 | `frontpage` 4, `picture-by-picture` 1 |
+
+- Main playlist during the preroll: every title `Amazon|…`, `ROLL-TYPE` `PREROLL`, one `EXT-X-DISCONTINUITY`, no `EXT-X-TWITCH-PREFETCH`; ad segments came from the same `*.j.cloudfront.hls.ttvnw.net` host as the live segments.
+- `DATERANGE` attribute names: `twitch-stitched-ad` with `DURATION` and the same 22 `X-TV-TWITCH-AD-*` attributes as on 2026-10-03; `twitch-ad-quartile` with `DURATION` and `X-TV-TWITCH-AD-QUARTILE`; `twitch-trigger` as without ads (`X-TV-TWITCH-TRIGGER-URL`).
+- The backup tokens Purple got (`frontpage`, `picture-by-picture`) carried the same flags as the page token: `server_ads: true`, `show_ads: true`, `hide_ads: false`, `version: 3`. Their playlists were either live (14 segments, 2 `EXT-X-TWITCH-PREFETCH`) or inside the same kind of preroll (3 to 4 segments).
+- The `picture-by-picture` master had 2 variants (360p, 160p); variant order in the `frontpage` masters changed between requests.
+- Purple's result: in the polls where a backup was live, its playlist went to the player; in the others the ad segments stayed (no live backup segment for the same second).
+
 ## Consequences
 
 - `twitch-trigger` alone is not an ad marker; the detector (T-201) must not treat it as one.

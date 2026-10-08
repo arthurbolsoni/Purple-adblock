@@ -4,14 +4,14 @@ import { AppController } from "./app.controller";
 
 const makeScope = (respond: (url: any, init?: any) => Response = () => new Response("original")) => {
   const target = new EventTarget();
-  const calls: { url: any; init: any; self: any }[] = [];
+  const calls: { url: any; init: any; self: any; rest?: any[] }[] = [];
   const posted: any[] = [];
   const scope: any = Object.assign(target, {
     calls,
     posted,
     postMessage: (message: any) => posted.push(message),
-    fetch: async function (this: any, url: any, init?: any) {
-      calls.push({ url, init, self: this });
+    fetch: async function (this: any, url: any, init?: any, ...rest: any[]) {
+      calls.push({ url, init, self: this, ...(rest.length ? { rest } : {}) });
       return respond(url, init);
     },
     send: (data: any) => target.dispatchEvent(new MessageEvent("message", { data })),
@@ -65,15 +65,48 @@ describe("bootstrapWorker", () => {
     expect(scope.calls).toEqual([{ url: "https://example.com/other", init, self: scope }]);
   });
 
-  test("a non-string input is not routed", async () => {
+  // T-102
+  test.each([
+    ["URL", () => new URL("https://usher.ttvnw.net/api/channel/hls/channel.m3u8")],
+    ["Request", () => new Request("https://usher.ttvnw.net/api/channel/hls/channel.m3u8")],
+  ])("a %s input is routed by its URL and reaches the network as the same object", async (_, make) => {
+    const scope = makeScope(() => new Response(MASTER));
+    bootstrapWorker(scope);
+    const input = make();
+
+    await scope.fetch(input);
+
+    expect(scope.appController.appService.actualChannel).toBe("channel");
+    expect(scope.calls[0].url).toBe(input);
+  });
+
+  test("a channel named nullbyte goes through the usher hook", async () => {
+    const scope = makeScope(() => new Response(MASTER));
+    bootstrapWorker(scope);
+    await scope.fetch("https://usher.ttvnw.net/api/v2/channel/hls/nullbyte.m3u8?token=x");
+    expect(scope.appController.appService.actualChannel).toBe("nullbyte");
+  });
+
+  // routes without `ignore` were tested against the text "null"; opaque playlist paths can contain it
+  test("a media playlist whose URL contains \"null\" is handled", async () => {
+    const scope = makeScope(() => new Response("#EXTM3U\n#EXTINF:2.000,live\nlive.ts\n"));
+    bootstrapWorker(scope);
+    const onFetch = spyOn(scope.appController, "onFetch");
+    await scope.fetch("https://sae11.playlist.ttvnw.net/v1/playlist/CnullAbc.m3u8");
+    expect(onFetch).toHaveBeenCalledTimes(1);
+  });
+
+  test("an unrouted call reaches the original fetch with every argument", async () => {
     const scope = makeScope();
     bootstrapWorker(scope);
-    const url = new URL("https://usher.ttvnw.net/api/channel/hls/channel.m3u8");
+    const input = new Request("https://example.com/segment.ts");
+    const init = { method: "GET" };
 
-    await scope.fetch(url);
+    await scope.fetch(input, init, "extra");
 
-    expect(scope.calls[0].url).toBe(url);
-    expect(scope.appController.appService.actualChannel).toBe("");
+    expect(scope.calls[0].url).toBe(input);
+    expect(scope.calls[0].init).toBe(init);
+    expect(scope.calls[0].rest).toEqual(["extra"]);
   });
 
   test("the usher route stores the channel and returns the master body", async () => {

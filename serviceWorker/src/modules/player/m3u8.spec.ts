@@ -121,6 +121,15 @@ describe("mergeM3u8Contents", () => {
     },
   );
 
+  // T-108: titles come from the #EXTINF lines, whatever the URIs contain
+  test.each(["seg?x=1&y=2.ts", "seg+plus.ts", "seg(1).ts", "seg[1].ts"])("a URI like %s keeps its segment's title", (name) => {
+    const main = `#EXTM3U\n#EXT-X-PROGRAM-DATE-TIME:2026-10-03T12:00:00.000Z\n#EXTINF:2.000,Amazon|AD_ID\nhttps://edge.example/${name}\n#EXT-X-PROGRAM-DATE-TIME:2026-10-03T12:00:02.000Z\n#EXTINF:2.000,live\nhttps://edge.example/${name}2`;
+    const backup = "#EXTM3U\n#EXT-X-PROGRAM-DATE-TIME:2026-10-03T12:00:00.000Z\n#EXTINF:2.000,live\nhttps://edge.example/backup.ts";
+
+    expect(readSegments(main.split("\n")).map((s) => s.title)).toEqual(["Amazon|AD_ID", "live"]);
+    expect(mergeM3u8Contents([main, backup])).toBe(main.replace(`#EXTINF:2.000,Amazon|AD_ID\nhttps://edge.example/${name}\n`, "#EXTINF:2.000,live\nhttps://edge.example/backup.ts\n"));
+  });
+
   test("#EXTINF is written as <duration>,<title> even when the backup line has no comma", () => {
     const backup = sampleM3U8_withDates_2.replace("#EXTINF:10,\n#EXT-X-PROGRAM-DATE-TIME:2023-01-01T00:00:20.000Z", "#EXTINF:10\n#EXT-X-PROGRAM-DATE-TIME:2023-01-01T00:00:20.000Z");
     expect(mergeM3u8Contents([sampleM3U8_withDates_1, backup])).toContain("#EXTINF:10,\nsegmentC.ts");
