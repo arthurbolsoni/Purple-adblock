@@ -9,4 +9,5 @@ export type Setting = {
   lowQualityFallback?: boolean;
   pinBackupPlayerType?: boolean;
   stripFallback?: boolean;
+  forcePopoutToken?: boolean;
 };

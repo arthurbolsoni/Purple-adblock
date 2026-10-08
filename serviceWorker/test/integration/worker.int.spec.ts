@@ -349,6 +349,31 @@ ${variant}
     expect(worker.player.integrityToken).toBe("PAGE_INTEGRITY");
   });
 
+  // T-408 (F-12): with forcePopoutToken, parent_domains leaves the page's usher request, and so the backups' requests
+  test("parent_domains is removed from the page's usher request and the backups' usher requests", async () => {
+    const page = "https://usher.ttvnw.net/api/v2/channel/hls/channel.m3u8?parent_domains=example.com,other.example&token=PAGE_TOKEN&sig=PAGE_SIG&supported_codecs=avc1";
+    const worker = setup();
+    twoTypes(worker);
+    worker.twitch.master("channel", masterFor("frontpage-"), StreamType.FRONTPAGE);
+    worker.twitch.master("channel", masterFor("picture-"), StreamType.PICTURE);
+    worker.twitch.mediaPlaylist(MAIN, fixture("m3u8/media-ssai-midroll.m3u8"));
+    expect(await worker.text(page)).toBe(masterFor(""));
+    await worker.text(MAIN);
+    await settle(() => worker.twitch.callsOf("usher").length === 3);
+
+    const usher = worker.twitch.callsOf("usher");
+    expect(usher[0].url).toBe("https://usher.ttvnw.net/api/v2/channel/hls/channel.m3u8?token=PAGE_TOKEN&sig=PAGE_SIG&supported_codecs=avc1");
+    expect(usher.map((call) => new URL(call.url).searchParams.has("parent_domains"))).toEqual([false, false, false]);
+  });
+
+  test("with forcePopoutToken off, parent_domains stays", async () => {
+    const page = "https://usher.ttvnw.net/api/channel/hls/channel.m3u8?parent_domains=example.com&token=PAGE_TOKEN&sig=PAGE_SIG";
+    const worker = setup();
+    worker.player.setSettings({ whitelist: [], toggleProxy: false, proxyUrl: "", forcePopoutToken: false });
+    await worker.text(page);
+    expect(worker.twitch.callsOf("usher").map((c) => c.url)).toEqual([page]);
+  });
+
   test("quality and integrity messages reach the player", () => {
     const worker = setup();
     worker.send("setQuality", "720p60");

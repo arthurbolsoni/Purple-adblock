@@ -343,7 +343,7 @@ Runs in parallel with phases 1 to 7. Phase 1 to 6 tasks list L2/L3 scenarios tha
 - Tests: TS-407
 
 ### T-408 Page token as `popout`
-- [ ] Status · F-12 · E10
+- [x] Status · F-12 · E10 · done 2026-10-08: only `PlaybackAccessToken` operations change (Brave's script changes any `playerType` in such a body); on twitch.tv all 13 page masters of the runs came from popout tokens and played; prerolls still came on 3 of them (B-042), and the ad segments the player requested were answered blank; L3-01 (4 runs), L3-02 (4 runs), L3-07 and L3-08 passed ([server observations](findings/2026-10-08-l3-server-observations.md#the-page-token-as-popout))
 - Files: `serviceWorker/src/page/fetch-hook.ts`, `serviceWorker/src/app.controller.ts`
 - Done when:
   - with `forcePopoutToken`, the `playerType` of the page's `PlaybackAccessToken` becomes `popout` (single and batched bodies);

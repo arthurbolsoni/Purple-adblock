@@ -75,6 +75,25 @@ describe("messages", () => {
     expect(main.posted).toContainEqual({ funcName: "setGqlHeaders", value: { "X-Device-Id": "DEVICE_ID", "Client-Version": "CLIENT_VERSION" } });
   });
 
+  // T-408 (F-12): the page's token request asks for popout until a setSettings turns forcePopoutToken off
+  test("the page's PlaybackAccessToken goes as popout, and as the page made it with forcePopoutToken off", async () => {
+    const body = JSON.stringify({ operationName: "PlaybackAccessToken", variables: { login: "channel", playerType: "site" } });
+    const sentType = () => JSON.parse(env.pageFetch.calls.at(-1)!.init.body).variables.playerType;
+
+    await fetch("https://gql.twitch.tv/gql", { method: "POST", body });
+    expect(sentType()).toBe("popout");
+
+    window.postMessage({ type: "setSettings", value: { whitelist: [], toggleProxy: false, proxyUrl: "", forcePopoutToken: false } }, "*");
+    await Bun.sleep(5);
+    await fetch("https://gql.twitch.tv/gql", { method: "POST", body });
+    expect(sentType()).toBe("site");
+
+    window.postMessage({ type: "setSettings", value: { whitelist: [], toggleProxy: false, proxyUrl: "" } }, "*");
+    await Bun.sleep(5);
+    await fetch("https://gql.twitch.tv/gql", { method: "POST", body });
+    expect(sentType()).toBe("popout");
+  });
+
   test("quality changes reach the worker", () => {
     main.emit({ type: "PlayerQualityChanged", arg: { name: "720p60" } });
     main.emit({ type: "other", arg: { key: "quality", value: { name: "480p" } } });

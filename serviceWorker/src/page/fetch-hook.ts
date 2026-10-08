@@ -18,6 +18,8 @@ export type FetchHookHandlers = {
   onIntegrity: (body: string) => void;
   // T-401: the GQL_HEADERS known so far, each time a page GQL request changes one of them
   onGqlHeaders?: (headers: Record<string, string>) => void;
+  // T-408 (F-12): while this returns true, the page's PlaybackAccessToken requests ask for a popout token
+  forcePopoutToken?: () => boolean;
   // T-301 (F-04): requests to edge.ads.twitch.tv get an empty 200 in the page while this returns true
   blockCsai?: () => boolean;
   onCsaiBlocked?: (url: string) => void;
@@ -47,6 +49,27 @@ function gqlHeaders(input: RequestInfo | URL, init?: RequestInit): Record<string
   return found;
 }
 
+// T-408 (F-12): a GQL body whose PlaybackAccessToken operations ask for `popout` instead of their playerType, as in
+// Brave's scriptlet (behavior reimplemented, docs/research.md). picture-by-picture operations stay, for E10. The same
+// text comes back when nothing changes or the body is not JSON.
+export function popoutTokenBody(body: string): string {
+  if (!body.includes("PlaybackAccessToken")) return body;
+  let parsed: any;
+  try {
+    parsed = JSON.parse(body);
+  } catch {
+    return body;
+  }
+  let changed = false;
+  for (const op of Array.isArray(parsed) ? parsed : [parsed]) {
+    const type = op?.variables?.playerType;
+    if (!String(op?.operationName ?? "").startsWith("PlaybackAccessToken") || !type || type === "popout" || type === "picture-by-picture") continue;
+    op.variables.playerType = "popout";
+    changed = true;
+  }
+  return changed ? JSON.stringify(parsed) : body;
+}
+
 export function createFetchHook(original: typeof fetch, handlers: FetchHookHandlers) {
   let known: Record<string, string> = {};
   return async function (input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
@@ -60,6 +83,15 @@ export function createFetchHook(original: typeof fetch, handlers: FetchHookHandl
       }
     } catch {
       // a failure here must not reach the page
+    }
+
+    try {
+      if (typeof init?.body === "string" && isTarget(input, GQL) && handlers.forcePopoutToken?.()) {
+        const body = popoutTokenBody(init.body);
+        if (body !== init.body) init = { ...init, body };
+      }
+    } catch {
+      // the request goes as the page made it
     }
 
     let blocked = false;

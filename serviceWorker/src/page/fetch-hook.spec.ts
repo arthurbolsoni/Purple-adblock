@@ -172,3 +172,65 @@ describe("page GQL headers", () => {
     expect(sent).toEqual([]);
   });
 });
+
+// T-408 (F-12): with forcePopoutToken, the page's PlaybackAccessToken asks for a popout token; picture-by-picture
+// requests stay as they are (E10)
+describe("page token as popout", () => {
+  const GQL = "https://gql.twitch.tv/gql";
+  const single = fixtureJson<{ body: string }>("gql/page-gql-init.json").body;
+  const batch = JSON.stringify(fixtureJson("gql/page-token-batch.json"));
+  const playerTypes = (body: string) => [JSON.parse(body)].flat().map((op: any) => op.variables?.playerType ?? null);
+
+  const hook = (force: boolean) => {
+    const original = mock(async (_input: any, _init?: any) => new Response("{}"));
+    return { original, hooked: createFetchHook(original as any, { onIntegrity() {}, forcePopoutToken: () => force }) };
+  };
+  const sentBody = (original: ReturnType<typeof hook>["original"]) => original.mock.calls[0][1].body as string;
+
+  test("a single PlaybackAccessToken body gets playerType popout; everything else in it stays", async () => {
+    const { original, hooked } = hook(true);
+    await hooked(GQL, { method: "POST", body: single });
+    const body = JSON.parse(sentBody(original));
+    expect(body.variables.playerType).toBe("popout");
+    expect({ ...body, variables: { ...body.variables, playerType: "site" } }).toEqual(JSON.parse(single));
+  });
+
+  test("a batched body: only the PlaybackAccessToken operation changes", async () => {
+    const { original, hooked } = hook(true);
+    await hooked(GQL, { method: "POST", body: batch });
+    expect(playerTypes(sentBody(original))).toEqual([null, "popout", null]);
+  });
+
+  test("a picture-by-picture token request is left alone, alone or in a batch", async () => {
+    const pbyp = single.replace('"playerType":"site"', '"playerType":"picture-by-picture"');
+    const { original, hooked } = hook(true);
+    await hooked(GQL, { method: "POST", body: pbyp });
+    await hooked(GQL, { method: "POST", body: `[${pbyp},${single}]` });
+    expect(original.mock.calls[0][1].body).toBe(pbyp);
+    expect(playerTypes(original.mock.calls[1][1].body)).toEqual(["picture-by-picture", "popout"]);
+  });
+
+  test("with forcePopoutToken off, other URLs, other bodies and Request bodies: the request goes as the page made it", async () => {
+    const off = hook(false);
+    const init = { method: "POST", body: single };
+    await off.hooked(GQL, init);
+    expect(off.original.mock.calls[0][1]).toBe(init);
+
+    const on = hook(true);
+    const other = { method: "POST", body: single };
+    await on.hooked("https://gql.example/gql", other);
+    const notToken = { method: "POST", body: '{"operationName":"UseLive","variables":{"playerType":"site"}}' };
+    await on.hooked(GQL, notToken);
+    const request = new Request(GQL, { method: "POST", body: single });
+    await on.hooked(request);
+    expect(on.original.mock.calls.map((call) => call[1])).toEqual([other, notToken, undefined]);
+    expect(on.original.mock.calls[2][0]).toBe(request);
+  });
+
+  test("a body that is not JSON goes as it is", async () => {
+    const { original, hooked } = hook(true);
+    const init = { method: "POST", body: "PlaybackAccessToken {" };
+    await hooked(GQL, init);
+    expect(original.mock.calls[0][1]).toBe(init);
+  });
+});

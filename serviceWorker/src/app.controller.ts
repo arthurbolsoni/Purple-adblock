@@ -9,6 +9,15 @@ import { urlOf } from "./url";
 // /api/channel/hls/<channel>.m3u8 or /api/v2/channel/hls/<channel>.m3u8; the query string is ignored
 const channelFromUsher = (url: string) => decodeURIComponent(new URL(url).pathname.split("/").pop()!.replace(/\.m3u8$/, ""));
 
+// T-408 (F-12): the usher URL without parent_domains, the other parameters as written. Brave's scriptlet: "parent_domains
+// is used to determine if the player is embeded and stripping it gets rid of fake ads" (behavior reimplemented)
+export const withoutParentDomains = (url: string) => {
+  const at = url.indexOf("?");
+  if (at < 0) return url;
+  const params = url.slice(at + 1).split("&").filter((pair) => pair && decodeURIComponent(pair.split("=")[0]) !== "parent_domains");
+  return url.slice(0, at) + (params.length ? "?" + params.join("&") : "");
+};
+
 @Controller()
 export class AppController {
   getSettings = () => this.scope.postMessage({ type: "getSettings" });
@@ -44,7 +53,11 @@ export class AppController {
   @Fetch("usher.ttvnw.net/api/channel/hls/", "picture-by-picture")
   @Fetch("usher.ttvnw.net/api/v2/channel/hls/", "picture-by-picture")
   async onChannel(input: any, options: any): Promise<Response> {
-    const response: Response = await this.scope.request(input, options);
+    // T-408: with forcePopoutToken (default on), parent_domains leaves the request, and so the backups' requests (F-08)
+    const original = urlOf(input);
+    const url = this.appService.setting?.forcePopoutToken === false ? original : withoutParentDomains(original);
+    const target = url === original ? input : input instanceof Request ? new Request(url, input) : url;
+    const response: Response = await this.scope.request(target, options);
     if (!response.ok) {
       this.scope.logger("Error on channel load", response.status);
       return response;
@@ -52,8 +65,8 @@ export class AppController {
 
     const text = await response.text();
 
-    await this.appService.setChannel(channelFromUsher(urlOf(input)));
-    this.appService.setUsherUrl(urlOf(input));
+    await this.appService.setChannel(channelFromUsher(url));
+    this.appService.setUsherUrl(url);
     this.appService.setPlayerMaster(text);
     return new Response(text);
   }

@@ -1,6 +1,6 @@
 # Server behavior in the level 3 runs of 2026-10-08
 
-Date: 2026-10-08, 03:10 to 04:40. Logged out. Builds: one per task (T-203 to T-404), each checked with L3-01, L3-02 (3 runs), L3-07 and L3-08.
+Date: 2026-10-08, 03:10 to 04:52. Logged out. Builds: one per task (T-203 to T-408), each checked with L3-01, L3-02 (3 or 4 runs), L3-07 and L3-08.
 
 ## Probe
 
@@ -39,6 +39,18 @@ With T-404, backups reuse the page's usher request: the `/api/v2/` path and its 
 | `autoplay`, `picture-by-picture` | 1 each | 2 (360p, 160p) |
 
 The page's own master in that load came from the same path with a `site` token. In the same break, 10 of 30 backup polls had ad segments; the player got 1 poll with 2 ad segments listed, requested both, and both were answered in the worker (none from the network).
+
+## The page token as popout
+
+With T-408 (04:42 to 04:52), the page's own `PlaybackAccessToken` asked for `popout`. All 13 page masters of these runs came from tokens with `player_type` `popout` (flags `server_ads`, `show_ads`, `https_required` true), from the v2 usher path, and every load played.
+
+| Profile | Loads | Prerolls |
+| --- | --- | --- |
+| dedicated (`/channel-c`) | 8 | 2, both loads of one L3-01 run (8 polls each) |
+| fresh (`/channel-d`, `/channel-c`, `/channel-w`, `/channel-b`) | 4 | 1, `/channel-d`: 29 of 29 polls, the night's first fresh-profile preroll |
+| directory | 2 | - |
+
+In the two `/channel-c` prerolls, the player requested 2 ad segments each time and both were answered in the worker; in the `/channel-d` one it requested none of the 3 listed.
 
 ## Midrolls
 

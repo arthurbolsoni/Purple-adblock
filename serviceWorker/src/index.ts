@@ -17,6 +17,8 @@ let debug = false;
 const logger = (...args: any[]) => debug && console.log("[Purple]:", ...args);
 // F-04: answer edge.ads.twitch.tv in the page (default on, so the userscript blocks too)
 let blockCsai = true;
+// F-12: the page's PlaybackAccessToken asks for popout (default on, so the userscript does it too)
+let forcePopoutToken = true;
 const csaiBlocked: Record<string, number> = {};
 
 (function () {
@@ -88,6 +90,7 @@ const csaiBlocked: Record<string, number> = {};
     global.fetch = createFetchHook(global.request, {
       onIntegrity: (body) => registry.broadcast({ funcName: "setIntegrity", value: body }),
       onGqlHeaders: (headers) => registry.broadcast({ funcName: "setGqlHeaders", value: headers }),
+      forcePopoutToken: () => forcePopoutToken,
       blockCsai: () => blockCsai,
       onCsaiBlocked,
     });
@@ -162,6 +165,7 @@ const csaiBlocked: Record<string, number> = {};
       if (event.data?.type === "setSettings") {
         debug = event.data.value?.debug === true;
         blockCsai = event.data.value?.blockCsai !== false;
+        forcePopoutToken = event.data.value?.forcePopoutToken !== false;
         if (debug && !window.__purple) window.__purple = { events: [] };
         //send settings to every worker
         registry.broadcast({ funcName: "setSettings", value: event.data.value });
