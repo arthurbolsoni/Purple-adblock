@@ -17,6 +17,9 @@ silenceConsole();
 
 let main: FakeWorker;
 
+// the player's own first message to its worker; Purple sends nothing before it (docs/findings/2026-10-07-l3-server-observations.md)
+const PLAYER_INIT = { id: 0, funcName: "init", args: [] };
+
 const nextWindowMessage = (type: string) =>
   new Promise<any>((resolve) => {
     const listener = (event: any) => {
@@ -30,7 +33,11 @@ const nextWindowMessage = (type: string) =>
 beforeAll(async () => {
   FakeXMLHttpRequest.scripts.set(WORKER_URL, WORKER_SCRIPT);
   await import("../../src/index");
+  // the page requests /integrity before the player creates its first worker (directory page, client-side navigation)
+  await fetch("https://gql.twitch.tv/integrity", { method: "POST" });
+  await Bun.sleep(5);
   main = new (window as any).Worker(WORKER_URL);
+  main.postMessage(PLAYER_INIT);
 });
 
 describe("worker injection", () => {
@@ -84,6 +91,7 @@ describe("worker registry", () => {
 
   beforeAll(() => {
     second = new (window as any).Worker(WORKER_URL, { name: "second" });
+    second.postMessage(PLAYER_INIT);
   });
 
   test("worker options reach the native Worker", () => {
@@ -129,12 +137,26 @@ describe("worker registry", () => {
 
   test("a worker created later gets the current settings, integrity and quality", async () => {
     await fetch("https://gql.twitch.tv/integrity", { method: "POST" });
+    await Bun.sleep(5);
     const later = new (window as any).Worker(WORKER_URL);
+    expect(later.posted).toEqual([]);
+
+    later.postMessage(PLAYER_INIT);
     expect(later.posted).toEqual([
+      PLAYER_INIT,
+      { funcName: "setIntegrity", value: INTEGRITY_BODY },
       { funcName: "setSettings", value: settings },
       { funcName: "setQuality", value: "1080p60" },
-      { funcName: "setIntegrity", value: INTEGRITY_BODY },
     ]);
+  });
+
+  // a setIntegrity sent before the player's init killed the player worker on twitch.tv
+  test("nothing from Purple reaches a worker before the player's first message", async () => {
+    const fresh = new (window as any).Worker(WORKER_URL);
+    window.postMessage({ type: "setSettings", value: settings }, "*");
+    await Bun.sleep(5);
+    fresh.emit({ type: "pause" });
+    expect(fresh.posted).toEqual([]);
   });
 
   test("a terminated worker gets nothing more", async () => {
@@ -155,25 +177,34 @@ describe("worker registry", () => {
     const worker = new (window as any).Worker(url);
     expect(worker).toBeInstanceOf(FakeWorker);
     expect(worker.url).toBe(url);
+    worker.postMessage(PLAYER_INIT);
     window.postMessage({ type: "setSettings", value: settings }, "*");
     await Bun.sleep(5);
-    expect(worker.posted).toEqual([]);
+    expect(worker.posted).toEqual([PLAYER_INIT]);
   });
 });
 
 describe("integrity capture", () => {
-  test("the /integrity response is sent to the worker and still readable by the page", async () => {
-    const response = await fetch("https://gql.twitch.tv/integrity", { method: "POST" });
+  test("an /integrity response from before the first worker reaches it right after the player's first message", () => {
+    expect(main.posted.slice(0, 2)).toEqual([PLAYER_INIT, { funcName: "setIntegrity", value: INTEGRITY_BODY }]);
+  });
 
+  // T-106: the page gets the original response; the token is read from a clone
+  test("the /integrity response is sent to the worker and the page gets the original response", async () => {
+    const response = await fetch("https://gql.twitch.tv/integrity", { method: "POST" });
+    await Bun.sleep(5);
+
+    expect(response).toBe(env.pageFetch.calls.at(-1)!.response);
     expect(await response.text()).toBe(INTEGRITY_BODY);
     expect(response.headers.get("x-test")).toBe("1");
     expect(main.posted).toContainEqual({ funcName: "setIntegrity", value: INTEGRITY_BODY });
   });
 
-  test("other requests go to the original fetch", async () => {
+  test("other requests go to the original fetch and the page gets the same response, unread", async () => {
     const before = main.posted.length;
     const response = await fetch("https://gql.twitch.tv/gql", { method: "POST", body: "{}" });
-    expect(response.status).toBe(200);
+    expect(response).toBe(env.pageFetch.calls.at(-1)!.response);
+    expect(response.bodyUsed).toBe(false);
     expect(env.pageFetch.calls.map((c) => c.url)).toContain("https://gql.twitch.tv/gql");
     expect(main.posted).toHaveLength(before);
   });

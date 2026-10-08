@@ -28,7 +28,7 @@ Client-side ad insertion (B-011, Reported):
 - the ad is requested from `edge.ads.twitch.tv` (`bp=preroll` or `bp=midroll`);
 - upstream changelog, May 2026: every channel they observed ended every break this way.
 
-Not observed by us yet (Q-008).
+Observed on 2026-10-07 (B-025): the `/directory/all` page, logged out, requested `edge.ads.twitch.tv/ads/format` and `/ads` with `bp=midroll` right after loading, before any channel was opened; channel pages loaded directly made no such request. What the page does with the answer, and how it relates to a playlist break, is still open (Q-008).
 
 ## Backup player types
 

@@ -71,16 +71,17 @@ export class FakeXMLHttpRequest {
   }
 }
 
-export type PageFetchCall = { url: string; init?: any };
+export type PageFetchCall = { url: string; init?: any; response: Response };
 
 // Page fetch: records calls; `routes` maps a URL prefix to a response factory, anything else gets an empty 200.
 export function createPageFetch(routes: Record<string, () => Response> = {}) {
   const calls: PageFetchCall[] = [];
   const fetch = async (input: any, init?: any) => {
     const url = typeof input === "string" ? input : String(input?.url ?? input);
-    calls.push({ url, init });
     const prefix = Object.keys(routes).find((p) => url.startsWith(p));
-    return prefix ? routes[prefix]() : new Response("");
+    const response = prefix ? routes[prefix]() : new Response("");
+    calls.push({ url, init, response });
+    return response;
   };
   return { fetch, calls };
 }

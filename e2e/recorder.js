@@ -59,6 +59,18 @@
   // Purple's worker code, the end of the script (the player's own script follows Purple's code),
   // errors, and whether it posted Purple's boot message.
   const NativeWorker = window.Worker;
+  // Purple's messages to a worker: logged on the native prototype, so calls through super.postMessage
+  // (Purple's own sends) are seen too (the player's RPC also uses funcName, so pause and play may come from it)
+  const entries = new WeakMap();
+  const nativePost = NativeWorker.prototype.postMessage;
+  NativeWorker.prototype.postMessage = function (message, ...rest) {
+    const entry = entries.get(this);
+    const name = message && message.funcName;
+    if (entry && ["pause", "play", "setSettings", "setQuality", "setIntegrity"].includes(name) && entry.messages.length < 200) {
+      entry.messages.push({ at: Math.round(performance.now()), to: "worker", funcName: name });
+    }
+    return nativePost.call(this, message, ...rest);
+  };
   const proxy = new Proxy(NativeWorker, {
     construct(target, args, newTarget) {
       const url = String(args[0]);
@@ -87,16 +99,10 @@
       }
       const worker = Reflect.construct(target, args, newTarget);
       state.workers.push(entry);
-      // Purple's messages: pause/play/settings requests from the worker, and what the page sends back
-      // (the player's own RPC also uses funcName, so pause and play may come from the player too)
+      // pause/play/settings requests from the worker; what the page sends back is logged on the prototype above
       entry.messages = [];
+      entries.set(worker, entry);
       const log = (m) => entry.messages.length < 200 && entry.messages.push(Object.assign({ at: Math.round(performance.now()) }, m));
-      const nativePost = worker.postMessage;
-      worker.postMessage = function (message, ...rest) {
-        const name = message && message.funcName;
-        if (["pause", "play", "setSettings", "setQuality", "setIntegrity"].includes(name)) log({ to: "worker", funcName: name });
-        return nativePost.call(this, message, ...rest);
-      };
       worker.addEventListener("message", (e) => {
         const type = e.data && e.data.type;
         if (type === "getSettings") entry.purpleBoot = true;

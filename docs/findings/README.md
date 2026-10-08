@@ -14,6 +14,7 @@ New discoveries are added here as they happen. A later finding that contradicts 
 | [2026-10-03-ivs-player-sdk.md](2026-10-03-ivs-player-sdk.md) | Public Amazon IVS player SDK as the level 2 player | open |
 | [2026-10-03-worker-unit-tests.md](2026-10-03-worker-unit-tests.md) | Worker behavior seen while writing the T-001 unit tests: whitelist, variant regex | open |
 | [2026-10-04-worker-injection-race.md](2026-10-04-worker-injection-race.md) | On a direct channel load the player workers start before Purple's hook; live check of `bootstrapWorker` | open |
+| [2026-10-07-page-hook-and-early-messages.md](2026-10-07-page-hook-and-early-messages.md) | Page fetch hook installed at load; a Purple message before the player's first one killed the player worker | open |
 | [2026-10-07-l3-server-observations.md](2026-10-07-l3-server-observations.md) | Server behavior in the L3 runs: prerolls over time, page token flags, media playlist tags, `twitch-trigger` without ads | open |
 | [2026-10-07-backups-and-rewritten-playlists.md](2026-10-07-backups-and-rewritten-playlists.md) | Captured masters, backups with ads during a preroll, the player stall on playlists rewritten by `generateM3u8` | open |
 | [2026-10-07-e2e-harness.md](2026-10-07-e2e-harness.md) | Level 3 harness: hidden desktop, page selectors, worker log; first L3-01 runs break on usher v2 | open |

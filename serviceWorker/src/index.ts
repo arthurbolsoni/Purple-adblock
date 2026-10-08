@@ -1,6 +1,7 @@
 //this line gonna import the content from compile worker as string
 //@ts-expect-error
 import txt from "../dist/app.worker.js?raw";
+import { createFetchHook } from "./page/fetch-hook";
 import { WorkerRegistry } from "./page/worker-registry";
 
 declare global {
@@ -12,7 +13,6 @@ const logger = (...args: any[]) => console.log("[Purple]:", ...args);
 (function () {
   // every worker created through the injector; on a direct channel load the player creates two
   const registry = new WorkerRegistry();
-  let pageHooked = false;
 
   // the original worker script, or null when it cannot be downloaded
   const readScript = (url: string): string | null => {
@@ -26,7 +26,12 @@ const logger = (...args: any[]) => console.log("[Purple]:", ...args);
     }
   };
 
-  window.Worker = class WorkerInjector extends Worker {
+  class WorkerInjector extends Worker {
+    private injected = false;
+    private started = false;
+    // what the registry sends to: Purple's messages to its code in this worker
+    readonly purple = { postMessage: (message: any) => this.sendFromPurple(message) };
+
     constructor(url: string | URL, options?: WorkerOptions) {
       console.log("[Purple]: init " + url.toString());
 
@@ -41,39 +46,43 @@ const logger = (...args: any[]) => console.log("[Purple]:", ...args);
 
       const newBlob = URL.createObjectURL(new Blob([newBlobStr], { type: "text/javascript" }));
       super(newBlob, options);
+      this.injected = true;
 
       this.addEventListener("message", (event) => onWorkerMessage(this, event));
-      registry.add(this);
+    }
 
-      if (!pageHooked) {
-        declareEventWindow();
-        integrity();
-        pageHooked = true;
+    // The page's own messages (the player's RPC). The first one is the player's init: nothing from Purple may reach
+    // the worker before it (a setIntegrity sent first killed the player worker on twitch.tv), so the worker joins
+    // the registry, and gets the current settings, integrity and quality, only then.
+    postMessage(message: any, ...rest: any[]) {
+      super.postMessage(message, ...(rest as [any]));
+      if (this.injected && !this.started) {
+        this.started = true;
+        registry.add(this.purple);
       }
+    }
+
+    // Purple's messages; dropped until the player has sent its first one
+    sendFromPurple(message: any) {
+      if (this.started) super.postMessage(message);
     }
 
     terminate() {
-      registry.remove(this);
+      registry.remove(this.purple);
       super.terminate();
     }
-  };
+  }
+  window.Worker = WorkerInjector;
 
   function integrity() {
     global.request = fetch;
-    global.fetch = async (url: any, options: any) => {
-      const response = await global.request(url, options);
-      const body = await response.text();
-
-      if (url == "https://gql.twitch.tv/integrity") {
-        registry.broadcast({ funcName: "setIntegrity", value: body });
-      }
-
-      return new Response(body, response);
-    };
+    global.fetch = createFetchHook(global.request, {
+      onIntegrity: (body) => registry.broadcast({ funcName: "setIntegrity", value: body }),
+    });
   }
 
   // Requests from one worker are answered to that worker; settings and quality go to every worker.
-  function onWorkerMessage(worker: Worker, event: MessageEvent) {
+  function onWorkerMessage(worker: WorkerInjector, event: MessageEvent) {
     switch (event?.data?.type) {
       case "getSettings": {
         window.postMessage({ type: "getSettings", value: null });
@@ -84,11 +93,11 @@ const logger = (...args: any[]) => console.log("[Purple]:", ...args);
         break;
       }
       case "pause": {
-        worker.postMessage({ funcName: "pause", args: undefined, id: 1 });
+        worker.sendFromPurple({ funcName: "pause", args: undefined, id: 1 });
         break;
       }
       case "play": {
-        worker.postMessage({ funcName: "play", args: undefined, id: 1 });
+        worker.sendFromPurple({ funcName: "play", args: undefined, id: 1 });
         break;
       }
     }
@@ -101,11 +110,16 @@ const logger = (...args: any[]) => console.log("[Purple]:", ...args);
         break;
       }
       case "state": {
-        worker.postMessage({ funcName: event.data.arg.value });
+        worker.sendFromPurple({ funcName: event.data.arg.value });
         break;
       }
     }
   }
+
+  // installed when the bundle loads: settings and an /integrity response that come before the first worker are
+  // kept by the registry and sent to the workers when they are created
+  declareEventWindow();
+  integrity();
 
   function declareEventWindow() {
     //Event listener from window and extension.

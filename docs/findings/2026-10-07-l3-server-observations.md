@@ -34,7 +34,7 @@ The `token` parameter of the page's usher request carried, in all 7 loads record
 
 ### Client-side ads
 
-No request to `edge.ads.twitch.tv` from the page in the 7 recorded loads.
+No request to `edge.ads.twitch.tv` from the 7 channel pages loaded directly in L3-02. In 10 later L3-01 runs (dedicated profile, 5 per mode), the `/directory/all` page requested `edge.ads.twitch.tv/ads/format` and then `/ads`, both with `bp=midroll`, 0.5 to 1.5 s after it loaded, before the channel card was clicked: 2 requests per directory load, 20 in total. The 10 direct channel loads of those runs made none, nor did 2 more L3-02 loads. Query keys: `afmt`, `aid`, `bp`, `cb`, `did`, `dt`, `dur`, `gdprl`, `geoc`, `pbid`, `pid`, `pj`, `plat`, `sid`, `tcor`, `u`, `ulang`, `ws`, plus `vtype` on `/ads` (values not recorded).
 
 ## Consequences
 

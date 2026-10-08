@@ -14,7 +14,7 @@ Three groups: strategies that already exist (E-xx, none is removed), fixes to ex
 | E6 | Pause and play when entering and leaving an ad (player's internal RPC) | `player.ts`, `index.ts` | kept | T-601 |
 | E7 | Per-channel whitelist (popup + storage) | `popup.js`, `content-script.js` | never applies: the worker stores the whole `setSettings` message (C-10); would apply only after a page reload | T-602, T-603 |
 | E8 | Backup in the quality selected in the player | `stream.types.ts`, `index.ts` | kept | T-407 |
-| E9 | Integrity token capture from the `/integrity` call | `index.ts` | the hook reads every page response | T-106, T-401 |
+| E9 | Integrity token capture from the `/integrity` call | `index.ts`, `page/fetch-hook.ts` | the hook reads every page response and rebuilds it (a 204/304 body throws in browsers); installed with the first worker, so a token from before it is lost | T-106, T-401 |
 | E10 | Capture of the mini player's picture-by-picture stream | `app.controller.ts` (`onChannelPicture`) | kept | T-408 |
 | E11 | Distribution: Chromium MV3, Firefox MV2, userscript | `cli/`, `platform/` | userscript build is manual | T-701, T-702 |
 | E12 | Configurable proxy (`toggleProxy`, `proxyUrl`) | `popup.js` | UI not read by the worker since 2023 (#79) | Open decisions in `docs/task.md` |

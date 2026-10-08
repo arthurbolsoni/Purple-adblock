@@ -177,14 +177,14 @@ Runs in parallel with phases 1 to 7. Phase 1 to 6 tasks list L2/L3 scenarios tha
 - Tests: TS-105, L3-01
 
 ### T-106 Page fetch hook limited to target URLs
-- [ ] Status · C-06 · E9
-- Files: `serviceWorker/src/index.ts` (extract into `serviceWorker/src/page/fetch-hook.ts`)
+- [x] Status · C-06 · E9 · done 2026-10-07: only `/integrity` is a target for now (GQL with T-401, `edge.ads.twitch.tv` with T-301); the hook is installed when the bundle loads, so the token from the directory page reaches the player after client-side navigation; L3-01 passed 6 of 6 runs ([finding](findings/2026-10-07-page-hook-and-early-messages.md))
+- Files: `serviceWorker/src/index.ts`, `serviceWorker/src/page/fetch-hook.ts` (new)
 - Done when:
   - only target URLs (`gql.twitch.tv/integrity`, GQL, `edge.ads.twitch.tv`) reach the hook logic; every other call returns the original `Response` unread;
   - integrity capture reads `response.clone()`;
   - 204/304 and binary responses reach the page untouched;
   - URLs inside `Request` or `URL` objects are recognized.
-- Tests: TS-106
+- Tests: TS-106, L3-01
 
 ### T-107 Worker registry
 - [x] Status · C-07 · E1 · done 2026-10-07: on a direct load with a preroll, the second player worker's pause/play went unanswered and the player stalled at `readyState 0` once T-111 put Purple in both workers; fixed ([finding](findings/2026-10-07-e2e-harness.md))
@@ -193,7 +193,8 @@ Runs in parallel with phases 1 to 7. Phase 1 to 6 tasks list L2/L3 scenarios tha
   - every created worker is registered and removed on `terminate()`;
   - `setSettings`, headers, integrity and quality reach every live worker, including ones created later;
   - a message from a worker is answered to that worker, not to the first one;
-  - if the XHR for the worker script fails, the worker is created with the original URL.
+  - if the XHR for the worker script fails, the worker is created with the original URL;
+  - nothing from Purple reaches a worker before the page's first message to it (the player's init): a `setIntegrity` sent first killed the player worker ([finding](findings/2026-10-07-page-hook-and-early-messages.md)).
 - Tests: TS-107, L3-01
 
 ### T-108 Segment title without a raw-URI regex

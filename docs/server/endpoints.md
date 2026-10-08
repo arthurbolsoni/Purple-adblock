@@ -46,6 +46,7 @@ All video endpoints are requested from the player worker. In Edge they are visib
 | Item | Value | Evidence |
 | --- | --- | --- |
 | CSAI requests | `edge.ads.twitch.tv`, query `bp=preroll` or `bp=midroll` | Reported (B-011) |
+| From the directory page | `GET /ads/format`, then `GET /ads`, `bp=midroll`; query keys `afmt`, `aid`, `bp`, `cb`, `did`, `dt`, `dur`, `gdprl`, `geoc`, `pbid`, `pid`, `pj`, `plat`, `sid`, `tcor`, `u`, `ulang`, `ws` (`/ads` adds `vtype`) | Observed (B-025) |
 
 ## Player assets
 
