@@ -329,7 +329,7 @@ Runs in parallel with phases 1 to 7. Phase 1 to 6 tasks list L2/L3 scenarios tha
 - Tests: TS-405
 
 ### T-406 Pinned type and contaminated type
-- [ ] Status · F-10
+- [x] Status · F-10 · done 2026-10-08: a type is contaminated when none of its servers gave a clean backup (ads or its own break announced, T-204); while skipped it gets no fetch and no token request; L3-01, L3-02 (3 runs), L3-07 and L3-08 passed, with no break in them, so pinning is not seen live yet ([finding](findings/2026-10-08-backup-type-pinning.md))
 - Files: `serviceWorker/src/modules/player/player.ts`
 - Done when:
   - with `pinBackupPlayerType`, the last clean type is tried first on the next break (`autoplay` is never pinned);

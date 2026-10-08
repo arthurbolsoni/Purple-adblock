@@ -231,7 +231,7 @@ Builds a fake worker scope and boots the worker code on it, the way it runs insi
 | TS-403 | T-403 | unit | default body carries the new hash; `PersistedQueryNotFound` triggers a second call with the full query; `token-flat.json` accepted |
 | TS-404 | T-404 | unit | original usher parameters kept (including `supported_codecs`); `token` with `&`, `#` and `+` encoded; v2 path kept |
 | TS-405 | T-405 | int | `site` with ads and `popout` clean returns the `popout` playlist; order follows `backupPlayerTypes`; `frontpage` and `picture-by-picture` stay in the chain; all with ads plus `lowQualityFallback` requests `autoplay` with `platform: "android"`; without the flag it does not |
-| TS-406 | T-406 | int | the pinned type is first on the next break; `autoplay` is never pinned; a contaminated type is skipped before 5 s and retried after (`setSystemTime`) |
+| TS-406 | T-406 | unit + int | the pinned type is first on the next break, and not with `pinBackupPlayerType` off; `autoplay` is never pinned; a type with ads or its own break announced is skipped before 5 s with no token request and retried after (`setSystemTime`); a type whose other server gave a clean backup is not skipped |
 | TS-407 | T-407 | unit | picks same quality and codec; then same resolution with another codec; then `bestQuality()` |
 | TS-408 | T-408 | unit (happy-dom) + int | single and batched bodies switch to `popout`; a `picture-by-picture` body is unchanged; flag off changes nothing; usher URL without `parent_domains` in the worker |
 | TS-501 | T-501 | unit | a 400 ms difference on a 2 s segment matches; 1.5 s does not; backup `EXT-X-MAP` inserted and the main one restored; `MEDIA-SEQUENCE` and segment count unchanged |

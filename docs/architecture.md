@@ -26,7 +26,7 @@ The userscript has no content script or popup: `bundle.js` is the whole script a
    - `MARKED_LIVE` (markers over live segments) → original text, no backup lookup, no pause/play (T-202);
    - channel on the whitelist → original text (never reached in 2.6.7, C-10; the worker keeps the `setSettings` value since T-602);
    - no ads → original text (T-101);
-   - ads → walks `backupPlayerTypes` (F-09: `site`, `popout`, `frontpage`, `picture-by-picture`, `mobile_web`, `embed`, then `autoplay` as `android` with `lowQualityFallback`; T-405), variants read with `m3u8-parser` (T-104); the first clean backup replaces the whole playlist: no ad segment and no stitched-ad marker, so a backup announcing its own break is skipped (T-204); a type without one gets a new token;
+   - ads → walks `backupPlayerTypes` (F-09: `site`, `popout`, `frontpage`, `picture-by-picture`, `mobile_web`, `embed`, then `autoplay` as `android` with `lowQualityFallback`; T-405), variants read with `m3u8-parser` (T-104); the first clean backup replaces the whole playlist: no ad segment and no stitched-ad marker, so a backup announcing its own break is skipped (T-204); a type without one gets a new token and is left out of the chain for 5 s; the type of the last clean backup goes first (F-10, T-406);
    - none clean → `mergeM3u8Contents` edits the main playlist's lines: each ad segment with a live backup segment in the same second gets that segment's `#EXTINF` and URI lines; every other line stays (T-101); ad segments on both sides come from the detector (T-203).
 7. When the ad state changes → pause and play on the player.
 
@@ -34,7 +34,7 @@ The userscript has no content script or popup: `bundle.js` is the whole script a
 
 | From → to | Message | Effect |
 | --- | --- | --- |
-| worker → page | `{ type: "getSettings" }` | page forwards `window.postMessage({ type: "getSettings" })`; the content script answers once `storage` has answered, with `whitelist`, `toggleProxy`, `proxyUrl`, `debug` (logs and events, C-09, F-17), `blockCsai`, `backupPlayerTypes` and `lowQualityFallback` |
+| worker → page | `{ type: "getSettings" }` | page forwards `window.postMessage({ type: "getSettings" })`; the content script answers once `storage` has answered, with `whitelist`, `toggleProxy`, `proxyUrl`, `debug` (logs and events, C-09, F-17), `blockCsai`, `backupPlayerTypes`, `lowQualityFallback` and `pinBackupPlayerType` |
 | content script → page | `{ type: "setSettings", value }`, also on every change to a stored setting (T-602) | page sends `{ funcName: "setSettings", value }` to every registered worker; the worker's player keeps `value` |
 | page → worker | `{ funcName: "setIntegrity", value }` | sent to every registered worker; the worker stores the integrity token |
 | worker → page | `{ type: "pause" }`, `{ type: "play" }` | page sends `{ funcName: "pause" \| "play", id: 1 }` to the worker that asked (player's internal RPC) |

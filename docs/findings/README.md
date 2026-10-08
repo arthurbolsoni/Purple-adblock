@@ -21,4 +21,5 @@ New discoveries are added here as they happen. A later finding that contradicts 
 | [2026-10-07-midroll-soak.md](2026-10-07-midroll-soak.md) | Soak sessions (`e2e/soak.py`) with and without Purple: `twitch-maf-ad` client-side slots, stitched midrolls poll by poll, new ad titles, the player paused after breaks Purple rewrote | open |
 | [2026-10-08-ad-segment-coverage.md](2026-10-08-ad-segment-coverage.md) | Ad segments by title, `twitch-stitched-ad` range and stream source in the soak recordings; backups announcing their own break (T-203, T-204) | open |
 | [2026-10-08-settings-without-reload.md](2026-10-08-settings-without-reload.md) | Whitelist changed in storage while a channel plays (L3-07, T-602); prerolls on fresh profiles that night | closed |
+| [2026-10-08-backup-type-pinning.md](2026-10-08-backup-type-pinning.md) | Pinned and contaminated backup types (T-406): tests and live runs, no break in them | open |
 | [../research.md](../research.md) | Brave's Twitch scriptlet | closed |

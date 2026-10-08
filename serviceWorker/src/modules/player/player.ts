@@ -17,6 +17,9 @@ export const DEFAULT_BACKUP_PLAYER_TYPES: string[] = [
   StreamType.EMBED,
 ];
 
+// F-10: how long a type whose backup had ads (or announced its own break) is left out of the chain
+export const CONTAMINATED_MS = 5000;
+
 export class Player {
   integrityToken = ""; //the integrity token
 
@@ -27,6 +30,8 @@ export class Player {
   quality: string = ""; //the quality of the stream
   freeStream: boolean = false; //if the stream is free
   private playerVariants = new Map<string, Stream>(); //variant URL (without query) of the player's masters -> stream
+  private pinnedType: string | null = null; // F-10: type of the last clean backup delivered
+  private contaminatedUntil = new Map<string, number>(); // F-10: type -> time (ms) until which it is skipped
 
   constructor(private readonly scope: WorkerContext) {}
 
@@ -106,12 +111,16 @@ export class Player {
 
     const dump: string[] = [];
 
-    // F-09: the first backup without ads replaces the playlist (E4); a type without one gets a new token
+    // F-09: the first backup without ads replaces the playlist (E4); a type without one gets a new token.
+    // F-10: a type whose backup had ads is skipped for CONTAMINATED_MS, with no fetch and no token request.
     for (const type of this.backupPlayerTypes()) {
+      if ((this.contaminatedUntil.get(type) ?? 0) > Date.now()) continue;
       const backup = await this.fetchm3u8ByStreamType(type);
       if (!backup.data) this.currentStream().createStreamAccess(type, this.integrityToken, type === StreamType.AUTOPLAY ? "android" : "web");
       if (backup.dump) dump.push(...backup.dump);
+      if (backup.contaminated && !backup.data) this.contaminatedUntil.set(type, Date.now() + CONTAMINATED_MS);
       if (backup.data) {
+        if (type !== StreamType.AUTOPLAY) this.pinnedType = type;
         this.emit({ type: "backupUsed", playerType: type });
         return backup.data;
       }
@@ -129,15 +138,19 @@ export class Player {
   }
 
 
-  // F-09: the setting's list (default: DEFAULT_BACKUP_PLAYER_TYPES); autoplay only with lowQualityFallback (default on), last
+  // F-09: the setting's list (default: DEFAULT_BACKUP_PLAYER_TYPES); autoplay only with lowQualityFallback (default on), last.
+  // F-10: with pinBackupPlayerType (default on), the type of the last clean backup goes first.
   backupPlayerTypes(): string[] {
     const types = (this.setting?.backupPlayerTypes ?? DEFAULT_BACKUP_PLAYER_TYPES).filter((type) => type !== StreamType.AUTOPLAY);
-    return this.setting?.lowQualityFallback === false ? types : [...types, StreamType.AUTOPLAY];
+    const pinned = this.setting?.pinBackupPlayerType !== false && this.pinnedType && types.includes(this.pinnedType) ? this.pinnedType : null;
+    const ordered = pinned ? [pinned, ...types.filter((type) => type !== pinned)] : types;
+    return this.setting?.lowQualityFallback === false ? ordered : [...ordered, StreamType.AUTOPLAY];
   }
 
-  async fetchm3u8ByStreamType(accessType: StreamType | string): Promise<{ data: string | null; dump: string[] }> {
+  async fetchm3u8ByStreamType(accessType: StreamType | string): Promise<{ data: string | null; dump: string[]; contaminated: boolean }> {
     let dump: string[] = [];
     let data: string = "";
+    let contaminated = false;
 
     let servers: Server[] = this.currentStream().getStreamByStreamType(accessType);
 
@@ -164,6 +177,7 @@ export class Player {
       if (!isCleanBackup(text)) {
         this.scope.logger("Stream Type: " + accessType + (this.isAds(text) ? " - Ads found" : " - Break announced"));
         this.currentStream().removeServer(server);
+        contaminated = true;
         continue;
       } else {
         data = text;
@@ -173,7 +187,7 @@ export class Player {
 
     }
 
-    return { data: data, dump: dump };
+    return { data: data, dump: dump, contaminated };
   }
 
   // Variants of a master the player requested: their media playlists are recognized by URL, whatever their path.

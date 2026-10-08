@@ -1,7 +1,7 @@
 // Worker pipeline as it runs inside the Twitch player worker (bootstrapWorker on a fake scope), against FakeTwitch.
 // Characterizes Purple 2.6.7: usher -> channel, media playlist -> ad check -> backup by playerType (E3, E4),
 // merge by PROGRAM-DATE-TIME (E5), picture-by-picture capture (E10), pause/play on ad state changes (E6).
-import { describe, expect, test } from "bun:test";
+import { afterEach, describe, expect, setSystemTime, test } from "bun:test";
 import { Parser } from "m3u8-parser";
 import { silenceConsole } from "../harness/console";
 import { fixture } from "../harness/fixtures";
@@ -415,5 +415,88 @@ describe("backup player types", () => {
     await Bun.sleep(5);
 
     expect(worker.twitch.callsOf("gql").map((c) => c.playerType)).toEqual(DEFAULT_ORDER.slice(0, -1));
+  });
+});
+
+// T-406 (F-10): the type that gave the last clean backup is tried first (never autoplay); a type that returned ads,
+// or announced its own break, is skipped for 5 s. site is left out: its backup is the main playlist's own URL.
+describe("pinned and contaminated backup types", () => {
+  const clean = fixture("m3u8/backup-clean.m3u8");
+  const ads = fixture("m3u8/backup-ads.m3u8");
+  const midroll = fixture("m3u8/media-ssai-midroll.m3u8");
+  const live = fixture("m3u8/media-live-ts.m3u8");
+  const T0 = new Date("2026-10-08T12:00:00.000Z").getTime();
+
+  afterEach(() => setSystemTime());
+
+  const breakWith = async (backups: Record<string, string>, settings: Record<string, unknown>, ...main: string[]) => {
+    const worker = createWorkerScope();
+    worker.twitch.master("channel", masterFor(""));
+    worker.twitch.mediaPlaylist(MAIN, ...main);
+    for (const [type, playlist] of Object.entries(backups)) {
+      worker.twitch.master("channel", masterFor(`${type}-`), type);
+      worker.twitch.mediaPlaylist(`${HOST}${type}-chunked.m3u8`, playlist);
+    }
+    await worker.text(USHER);
+    worker.player.setSettings({ whitelist: [], toggleProxy: false, proxyUrl: "", backupPlayerTypes: Object.keys(backups), lowQualityFallback: false, ...settings });
+    return worker;
+  };
+  // media playlists fetched by one poll, without the host
+  const poll = async (worker: Awaited<ReturnType<typeof breakWith>>) => {
+    const before = worker.twitch.callsOf("media").length;
+    const text = await worker.text(MAIN);
+    return { text, media: worker.twitch.callsOf("media").slice(before).map((c) => c.url.replace(HOST, "")) };
+  };
+  const servers = (worker: Awaited<ReturnType<typeof breakWith>>, n: number) => settle(() => worker.player.currentStream().serverList.length >= n);
+
+  test.each([
+    [true, ["chunked.m3u8", "frontpage-chunked.m3u8"]],
+    [false, ["chunked.m3u8", "popout-chunked.m3u8", "frontpage-chunked.m3u8"]],
+  ])("pinBackupPlayerType %p: order on the next break", async (pin, expected) => {
+    setSystemTime(T0);
+    const worker = await breakWith({ popout: ads, frontpage: clean }, { pinBackupPlayerType: pin }, midroll, midroll, live, midroll);
+    await poll(worker); // tokens requested
+    await servers(worker, 3);
+    expect((await poll(worker)).text).toBe(clean); // popout has ads, frontpage is clean
+    await poll(worker); // live: the break is over
+    await servers(worker, 3);
+
+    setSystemTime(T0 + 6000); // popout is no longer skipped
+    const next = await poll(worker);
+    expect(next.text).toBe(clean);
+    expect(next.media).toEqual(expected);
+  });
+
+  test("autoplay is never pinned", async () => {
+    setSystemTime(T0);
+    const worker = await breakWith({ popout: ads }, { lowQualityFallback: true }, midroll);
+    worker.twitch.master("channel", masterFor("autoplay-"), "autoplay");
+    worker.twitch.mediaPlaylist(`${HOST}autoplay-chunked.m3u8`, clean);
+    await poll(worker);
+    await servers(worker, 3);
+    expect((await poll(worker)).text).toBe(clean); // popout has ads, autoplay is clean
+    await servers(worker, 3);
+
+    setSystemTime(T0 + 6000);
+    expect((await poll(worker)).media).toEqual(["chunked.m3u8", "popout-chunked.m3u8", "autoplay-chunked.m3u8"]);
+  });
+
+  test("a type that returned ads is skipped for 5 s, with no new token, then tried again", async () => {
+    setSystemTime(T0);
+    const worker = await breakWith({ popout: ads, frontpage: fixture("m3u8/backup-announced-break.m3u8") }, {}, midroll);
+    await poll(worker);
+    await servers(worker, 3);
+    expect((await poll(worker)).media).toEqual(["chunked.m3u8", "popout-chunked.m3u8", "frontpage-chunked.m3u8"]);
+    await servers(worker, 3);
+    const tokens = worker.twitch.callsOf("gql").length;
+
+    setSystemTime(T0 + 3000);
+    const skipped = await poll(worker);
+    expect(skipped.media).toEqual(["chunked.m3u8"]);
+    await Bun.sleep(5);
+    expect(worker.twitch.callsOf("gql").length).toBe(tokens);
+
+    setSystemTime(T0 + 5001);
+    expect((await poll(worker)).media).toEqual(["chunked.m3u8", "popout-chunked.m3u8", "frontpage-chunked.m3u8"]);
   });
 });

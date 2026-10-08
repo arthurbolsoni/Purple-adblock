@@ -87,6 +87,11 @@ A backup with a `twitch-maf-ad` marker over live segments replaces the playlist 
 
 `site`, `popout`, `frontpage`, `picture-by-picture`, `mobile_web`, `embed`. With `lowQualityFallback`, `autoplay` (requested with `platform: "android"`) is appended.
 
+### F-10: pinned and contaminated types
+
+- With `pinBackupPlayerType`, the type of the last clean backup delivered moves to the front of the list; `autoplay` is never pinned and stays last.
+- A type none of whose servers gave a clean backup (ad segments, or its own break announced, F-03) is skipped for 5 s: no playlist fetch and no token request. The token requested when it failed is used once the 5 s are over.
+
 ## Settings (`Setting`)
 
 | Field | Type | Default | Used by |
@@ -103,7 +108,7 @@ A backup with a `twitch-maf-ad` marker over live segments replaces the playlist 
 | `stripFallback` | `boolean` | `true` | F-14 |
 | `reloadAfterAd` | `boolean` | `false` | F-15 |
 
-The content script sends the stored `whitelist`, `toggleProxy`, `proxyUrl`, `debug`, `blockCsai`, `backupPlayerTypes` and `lowQualityFallback` when storage first answers, when a worker asks, and whenever one of them changes (T-602). The worker replaces its settings with each message it gets. The userscript uses the defaults.
+The content script sends the stored `whitelist`, `toggleProxy`, `proxyUrl`, `debug`, `blockCsai`, `backupPlayerTypes`, `lowQualityFallback` and `pinBackupPlayerType` when storage first answers, when a worker asks, and whenever one of them changes (T-602). The worker replaces its settings with each message it gets. The userscript uses the defaults.
 
 ## Out of scope
 

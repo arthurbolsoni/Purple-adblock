@@ -313,3 +313,23 @@ describe("Player messages to the page", () => {
     expect(player.integrityToken).toBe("INTEGRITY");
   });
 });
+
+// T-406 (F-10): a type is skipped only when none of its servers gave a clean backup
+describe("contaminated backup types", () => {
+  test("a type whose backup was clean is tried again on the next poll, even if another of its servers had ads", async () => {
+    jest.useFakeTimers();
+    const player = new Player(makeContext());
+    player.setChannel("channel");
+    player.setSettings({ whitelist: [], toggleProxy: false, proxyUrl: "", backupPlayerTypes: [StreamType.POPOUT], lowQualityFallback: false });
+    player.currentStream().createStreamAccess = async () => {};
+    const tried: string[] = [];
+    player.fetchm3u8ByStreamType = async (type) => {
+      tried.push(type);
+      return { data: LIVE, dump: [ADS, LIVE], contaminated: true };
+    };
+
+    expect(await player.onFetch(ADS)).toBe(LIVE);
+    expect(await player.onFetch(ADS)).toBe(LIVE);
+    expect(tried).toEqual([StreamType.POPOUT, StreamType.POPOUT]);
+  });
+});

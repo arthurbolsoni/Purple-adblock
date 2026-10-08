@@ -7,4 +7,5 @@ export type Setting = {
   debug?: boolean;
   backupPlayerTypes?: string[];
   lowQualityFallback?: boolean;
+  pinBackupPlayerType?: boolean;
 };
