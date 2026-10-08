@@ -123,6 +123,22 @@ describe("messages", () => {
     expect(main.posted).toContainEqual({ funcName: "play", args: undefined, id: 1 });
   });
 
+  // E6: the worker dispatches commands by player id; the public IVS SDK created its player as 0 and dropped Purple's
+  // pause/play sent as 1 (docs/findings/2026-10-08-level2-player-page.md)
+  test("pause and play go to the player the page created in that worker", () => {
+    const worker = new (window as any).Worker(WORKER_URL, { name: "sdk" });
+    worker.postMessage({ id: 0, funcName: "create", args: [{}, {}] });
+    worker.emit({ type: "pause" });
+    worker.emit({ type: "play" });
+    expect(worker.posted.slice(-2)).toEqual([
+      { funcName: "pause", args: undefined, id: 0 },
+      { funcName: "play", args: undefined, id: 0 },
+    ]);
+    worker.postMessage({ id: 3, funcName: "create", args: [{}, {}] });
+    worker.emit({ type: "pause" });
+    expect(worker.posted.at(-1)).toEqual({ funcName: "pause", args: undefined, id: 3 });
+  });
+
   // T-601 (F-15): the page reloads the player through Twitch's React player state and answers the worker
   test("a reload request with no Twitch player in the page is answered not done", () => {
     main.emit({ type: "reload" });

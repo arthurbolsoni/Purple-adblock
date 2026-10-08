@@ -47,7 +47,7 @@ What the first runs showed about `sim/`, fixed before the set above:
 - After a break `sim/` kept listing the ad segments until they left the 14-segment window, so Purple never saw the end of a midroll within L2-03 and the player sat on blank segments in L2-04. It now lists the whole window as live once the newest segment is past the break (B-034: the broadcast goes on under the break).
 - With a 60 s live loop the player paused at `currentTime` 57.4, Purple on or off: the first segment after the wrap restarts its timestamps behind an `EXT-X-DISCONTINUITY`. The live renditions are now 6 minutes; `sim/`'s stream clock starts at each scenario load.
 
-At the L2-03 end edge the worker posted `pause` and `play` and the SDK's `<video>` fired no event; Purple's pause/play (E6) reaches the public SDK's worker, and its effect there is not shown. L2-03 asserts that both messages went out.
+At the L2-03 end edge the worker posted `pause` and `play` and the SDK's `<video>` fired no event. The SDK's worker dispatches each command by player id (`activePlayers[id]`) and drops one for an id it has no player for; the page created its player as 0 (`create` with `id: 0`) and Purple sent pause and play as 1. On twitch.tv the page creates player 0 in its first worker and player 1, the main one, in the second, which is why id 1 worked there. Since C-12 the page uses the id of the last `create` it sent that worker: on the L2-03 rerun the `<video>` paused 1 ms after the end edge's `pause` and played again 67 ms later from `currentTime` 0, as on twitch.tv; L2-03 now checks that the `<video>` reacts within 1 s of each worker `pause`. Probe: the recorder's page-to-worker log (`e2e/recorder.js`) now keeps `create` and the `id` of each message.
 
 ## For T-006 to T-009
 

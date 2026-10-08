@@ -34,6 +34,7 @@ Three groups: strategies that already exist (E-xx, none is removed), fixes to ex
 | C-09 | Logs behind the `debug` flag | T-109 |
 | C-10 | The worker stores the `setSettings` value, not the whole message, so the whitelist applies | T-602 |
 | C-11 | Page hook installed before the player creates its workers, also on a direct channel load | T-111 |
+| C-12 | Pause and play (E6) go to the player the page created in that worker (the id of its `create` message), not always to id 1: the worker drops commands for an id it has no player for. On twitch.tv the main player is id 1 in the second worker, the first worker has player 0; the public IVS SDK's only player is 0 | - |
 
 ## New features
 

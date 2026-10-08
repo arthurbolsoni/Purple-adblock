@@ -175,8 +175,9 @@
   NativeWorker.prototype.postMessage = function (message, ...rest) {
     const entry = entries.get(this);
     const name = message && message.funcName;
-    if (entry && ["pause", "play", "setSettings", "setQuality", "setIntegrity"].includes(name) && entry.messages.length < 200) {
-      entry.messages.push({ at: Math.round(performance.now()), to: "worker", funcName: name });
+    // "create" and its id: the player id the worker dispatches commands by (Purple's pause/play send id 1)
+    if (entry && ["create", "pause", "play", "setSettings", "setQuality", "setIntegrity"].includes(name) && entry.messages.length < 200) {
+      entry.messages.push({ at: Math.round(performance.now()), to: "worker", funcName: name, id: message.id });
     }
     if (name === "gqlResponse") recordBridged(message.value);
     return nativePost.call(this, message, ...rest);

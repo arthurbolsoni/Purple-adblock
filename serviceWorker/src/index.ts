@@ -42,6 +42,9 @@ const csaiBlocked: Record<string, number> = {};
   class WorkerInjector extends Worker {
     private injected = false;
     private started = false;
+    // E6: the id of the last player the page created in this worker (its "create" message); the worker dispatches
+    // pause and play by it. 1 until a create is seen, as before (the main player's id on twitch.tv)
+    playerId = 1;
     // what the registry sends to: Purple's messages to its code in this worker
     readonly purple = { postMessage: (message: any) => this.sendFromPurple(message) };
 
@@ -68,6 +71,7 @@ const csaiBlocked: Record<string, number> = {};
     // the worker before it (a setIntegrity sent first killed the player worker on twitch.tv), so the worker joins
     // the registry, and gets the current settings, integrity and quality, only then.
     postMessage(message: any, ...rest: any[]) {
+      if (message?.funcName === "create" && message.id != null) this.playerId = message.id;
       super.postMessage(message, ...(rest as [any]));
       if (this.injected && !this.started) {
         this.started = true;
@@ -133,11 +137,11 @@ const csaiBlocked: Record<string, number> = {};
         break;
       }
       case "pause": {
-        worker.sendFromPurple({ funcName: "pause", args: undefined, id: 1 });
+        worker.sendFromPurple({ funcName: "pause", args: undefined, id: worker.playerId });
         break;
       }
       case "play": {
-        worker.sendFromPurple({ funcName: "play", args: undefined, id: 1 });
+        worker.sendFromPurple({ funcName: "play", args: undefined, id: worker.playerId });
         break;
       }
       // T-601 (F-15): reload of the player at the end of a break; the worker pauses and plays if it was not done
