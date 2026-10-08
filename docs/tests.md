@@ -253,7 +253,7 @@ Both levels run in Python with nodriver driving Microsoft Edge.
 | Item | Value |
 | --- | --- |
 | Browser | `C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe` (Edge 154 on 2026-10-03) |
-| Profile | `~/nodriver/profile-edge-purple`, used only by these tests; never the general `~/nodriver/profile-edge` |
+| Profile | `~/nodriver/profile-edge-purple`, used only by these tests and logged out; never the general `~/nodriver/profile-edge`. Logged-in runs (TR-007, L3-09): `--profile` with a separate test profile, logged in once |
 | Library | nodriver 0.50.3 on Python 3.14 (its `cdp/network.py` ships in cp1252 and must be re-saved as UTF-8 after install or upgrade) |
 | Code | `e2e/` (T-004) |
 | Desktop | on Windows, a separate hidden Win32 desktop (`CreateDesktopW`, not headless): no window on the user's screen, no physical input; pages get focus emulation. `--visible` runs on the user's desktop for debugging |

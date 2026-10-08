@@ -26,6 +26,9 @@ import twitch_selectors as sel
 REPO = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 EDGE = r'C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe'
 PROFILE = os.path.expanduser('~/nodriver/profile-edge-purple')
+# logged in to Twitch (TR-007), apart from PROFILE so the logged-out runs keep their conditions:
+# python e2e/run.py <scenario> --profile ~/nodriver/profile-edge-purple-login
+LOGIN_PROFILE = os.path.expanduser('~/nodriver/profile-edge-purple-login')
 EXTENSION_BUILD = os.path.join(REPO, 'dist', 'purple-adblock-chromium')
 # seconds for edge://extensions to list the unpacked build as enabled; a fresh profile took over 20 s twice in about 30 runs
 EXTENSION_WAIT = 45
