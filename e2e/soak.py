@@ -3,16 +3,16 @@ does during them (docs/server/) and what Purple delivers to the player.
 
     python e2e/soak.py <session> --mode extension|userscript|record [--debug] [--until HH:MM | --minutes N]
                        [--channel /name] [--avoid /a,/b] [--rotate MINUTES] [--out DIR] [--visible]
-                       [--setting KEY=JSON ...] [--stop-after-breaks N]
+                       [--setting KEY=JSON ...] [--stop-after-breaks N] [--leave-after-breaks N]
 
 One Edge on a fresh temporary profile (deleted at the end). Every DRAIN seconds the recorder's arrays in the page
 (window.__e2e, and window.__purple.events with --debug) are emptied into JSONL files under
 <out>/<session>/ (default ~/purple-recordings/<date>-soak/), never inside the repo. Breaks are logged as they
 happen. The channel changes when it goes offline (also when the page plays a recorded video instead: no live media
-playlist for NO_LIVE_AFTER seconds; that channel is not reopened), the player fails for good, or after --rotate minutes
-without a break. With --stop-after-breaks N the session ends once N stitched breaks (ad segments or stitched-ad
-markers) have ended; --until or --minutes stays the limit. Several sessions run in parallel as separate processes;
-each avoids the channels the others are on.
+playlist for NO_LIVE_AFTER seconds; that channel is not reopened), the player fails for good, after --rotate minutes
+without a break, or after --leave-after-breaks N stitched breaks on it. With --stop-after-breaks N the session ends
+once N stitched breaks (ad segments or stitched-ad markers) have ended; --until or --minutes stays the limit. Several
+sessions run in parallel as separate processes; each avoids the channels the others are on.
 """
 import argparse
 import asyncio
@@ -314,6 +314,9 @@ async def soak(args, recorder, end):
                 tried.add(watch.channel)
             elif args.rotate and minutes > args.rotate and not watch.stitched and not watch.in_break:
                 reason = f'{args.rotate} minutes without a stitched break'
+            elif args.leave_after_breaks and watch.stitched_ended >= args.leave_after_breaks and not watch.in_break:
+                reason = f'{args.leave_after_breaks} stitched breaks on the channel'
+                tried.add(watch.channel)
             if args.stop_after_breaks and stitched_before + watch.stitched_ended >= args.stop_after_breaks and not watch.in_break:
                 recorder.note('goal reached', stitched_breaks=stitched_before + watch.stitched_ended, minutes=round(minutes, 1))
                 ended = f'{args.stop_after_breaks} stitched breaks'
@@ -368,6 +371,8 @@ def main():
     ap.add_argument('--rotate', type=float, default=50, help='minutes on a channel without a stitched break before moving on (0: never)')
     ap.add_argument('--stop-after-breaks', type=int, default=0, metavar='N',
                     help='end the session once N stitched breaks have ended (the time limit still applies)')
+    ap.add_argument('--leave-after-breaks', type=int, default=0, metavar='N',
+                    help='move to another channel once N stitched breaks have ended on this one')
     ap.add_argument('--out', default=os.path.join(RECORDINGS, f'{datetime.date.today().isoformat()}-soak'))
     ap.add_argument('--visible', action='store_true')
     ap.add_argument('--setting', action='append', type=setting, metavar='KEY=JSON',
