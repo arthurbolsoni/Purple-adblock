@@ -6,6 +6,7 @@ import { tmpdir } from "os";
 import { join } from "path";
 
 const SCRIPT = join(import.meta.dir, "build.js");
+const VERSION = JSON.parse(readFileSync(join(import.meta.dir, "..", "..", "package.json"), "utf8")).version;
 const BUNDLE = "/* worker bundle */";
 let cwd: string;
 
@@ -29,7 +30,8 @@ describe("userscript build", () => {
     expect(text).toContain("// @match        *://*.twitch.tv/*\n");
     expect(text).toContain("// @run-at       document-start\n");
     expect(text).toContain("// @grant        none\n");
-    expect(text).toContain("// @version      9.9.9\n");
+    // T-701: from package.json, not from the npm_package_version that only `bun run` sets
+    expect(text).toContain(`// @version      ${VERSION}\n`);
     expect(text).toEndWith(BUNDLE);
     expect(existsSync(join(cwd, "platform"))).toBe(false);
   });

@@ -46,4 +46,5 @@ export async function buildServiceWorker(dev: boolean) {
     await build(index);
 }
 
-buildServiceWorker(false);
+// T-701: `bun serviceWorker/build.ts dev` builds with sourcemaps
+buildServiceWorker(process.argv[2] === "dev");

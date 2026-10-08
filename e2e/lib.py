@@ -26,7 +26,7 @@ import twitch_selectors as sel
 REPO = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 EDGE = r'C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe'
 PROFILE = os.path.expanduser('~/nodriver/profile-edge-purple')
-EXTENSION_BUILD = os.path.join(REPO, 'dist', 'purple-adblock-purple-adblock-chromium')
+EXTENSION_BUILD = os.path.join(REPO, 'dist', 'purple-adblock-chromium')
 USERSCRIPT_BUILD = os.path.join(REPO, 'dist', 'purpleadblocker.user.js')
 MODES = ('extension', 'userscript', 'record')
 WARM_UP_MARKER = 'purple-e2e-warm-up'  # in the profile directory, written after the warm-up launch

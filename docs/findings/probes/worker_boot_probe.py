@@ -15,7 +15,7 @@ import nodriver as uc
 PROFILE = os.path.expanduser('~/nodriver/profile-edge-purple')
 BROWSER = r'C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe'
 # optional argument: path of another unpacked build (e.g. one made from main)
-EXT = os.path.abspath(POSITIONAL[0] if POSITIONAL else os.path.join(os.path.dirname(__file__), '..', '..', '..', 'dist', 'purple-adblock-purple-adblock-chromium'))
+EXT = os.path.abspath(POSITIONAL[0] if POSITIONAL else os.path.join(os.path.dirname(__file__), '..', '..', '..', 'dist', 'purple-adblock-chromium'))
 ARGS = ['--window-size=1400,950', '--lang=en-US', f'--load-extension={EXT}', f'--disable-extensions-except={EXT}',
         '--disable-component-extensions-with-background-pages']
 

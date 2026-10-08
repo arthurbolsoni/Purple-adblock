@@ -410,7 +410,7 @@ Runs in parallel with phases 1 to 7. Phase 1 to 6 tasks list L2/L3 scenarios tha
 ## Phase 7: build and release
 
 ### T-701 Single Bun build
-- [ ] Status · E11
+- [x] Status · E11 · done 2026-10-08: `build` runs `bun serviceWorker/build.ts`, `bun cli/build.ts` and the userscript build; `dev` passes `dev` to the worker build (sourcemaps) and writes the unpacked builds; `ts-node`, the `bun` package and the `preinstall` hook (with `cli/preinstall.js`) are gone, and `bun run test` runs Bun 1.4.1. Zips are `dist/purple-adblock-<version>-<platform>.zip`; the unpacked builds moved to `dist/purple-adblock-<platform>` (e2e, `docs/tests.md` and two probes follow). The builders take the output folder and the worker bundle and resolve once the zip is written; the userscript takes its `@version` from `package.json` (a direct `bun platform/tampermonkey/build.js` wrote `undefined`). `lint` lints `serviceWorker/src`, `platform/src` and `cli`. `bun run build` checked by hand: worker bundle, both zips (17 entries each, no spec file, manifest 2.6.7) and the userscript. L3-01 (both modes) and L3-07 passed on the unpacked build at the new path; a first L3-01 attempt froze on the channel page (the renderer idle and answering no CDP call for 7 min) and was stopped
 - Files: `package.json`, `serviceWorker/build.ts`, `cli/*.js`, `cli/preinstall.js`, `platform/tampermonkey/build.js`
 - Done when:
   - every script runs on Bun: `build` calls `bun serviceWorker/build.ts`; `ts-node` and the `bun` npm package leave `package.json` (the package pins `^1.4.1` until then, so `bun run` scripts do not fall back to Bun 1.1.20; see `docs/findings/2026-10-03-bun-test.md`);

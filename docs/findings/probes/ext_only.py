@@ -4,7 +4,7 @@
 import os, nodriver as uc
 PROFILE = os.path.expanduser('~/nodriver/profile-edge-purple')
 BROWSER = r'C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe'
-EXT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', '..', 'dist', 'purple-adblock-purple-adblock-chromium'))
+EXT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', '..', 'dist', 'purple-adblock-chromium'))
 ARGS = ['--lang=en-US', f'--load-extension={EXT}', f'--disable-extensions-except={EXT}', '--disable-component-extensions-with-background-pages']
 async def main():
     b = await uc.start(user_data_dir=PROFILE, browser_executable_path=BROWSER, headless=False, browser_args=ARGS)

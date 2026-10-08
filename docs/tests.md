@@ -26,7 +26,7 @@ Level 3 discovers behaviors and writes them to `docs/findings/` and `docs/server
 - Runner: `bun test`, APIs from `bun:test` (`describe`, `test`, `expect`, `mock`, `spyOn`, `beforeAll`, `afterEach`, `setSystemTime`, `jest.useFakeTimers`, `jest.advanceTimersByTime`). Checked on Bun 1.4.1: legacy decorators (`experimentalDecorators` in `tsconfig.json`), fake timers, the `?raw` plugin, and global `fetch`, `Response`, `addEventListener` and `Bun.YAML`.
 - Worker code runs on Bun's globals (`fetch`, `Response`, `Blob`, `URL.createObjectURL`, `EventTarget`).
 - Page and platform code (`index.ts`, `content-script.js`, `popup.js`) runs on happy-dom through `@happy-dom/global-registrator`, registered per file with `useDom()` from `harness/dom.ts` or `usePageEnv()` from `harness/page-env.ts` (register in `beforeAll`, unregister in `afterAll`). File loading is off, so nothing reaches the network. happy-dom calls `on*` handler properties without binding `this`; tests that depend on it call the handler with the element as `this`.
-- Package scripts (`bun run test`) use the `bun` binary from `node_modules/.bin` while the `bun` npm package is a dependency; it pins the same version as the local runtime until T-701 removes it.
+- Package scripts (`bun run test`) used the `bun` binary from `node_modules/.bin` while the `bun` npm package was a dependency; since T-701 it is not one, and they use the installed Bun removes it.
 - `bunfig.toml` ignores `dist/**`, and the builders leave `*.spec.ts` out of the extension (`cli/files.js`): tests next to the platform scripts are neither run from the build output nor shipped.
 - `bun test` runs every file in one process. A test that changes a global restores it in `afterEach`; the harness helpers do this themselves.
 - There is no `isolateModules`/`resetModules`. Tests build fresh instances through `createRouter(controller)`, `bindMessages(scope, controller)` and `bootstrapWorker(scope)` (T-001) instead of re-importing modules.
@@ -240,7 +240,7 @@ Builds a fake worker scope and boots the worker code on it, the way it runs insi
 | TS-602 | T-602 | unit (happy-dom) + int | `AppController` passes the `setSettings` value to the player; the content script reads `backupPlayerTypes` and `lowQualityFallback` with the other keys, sends the new settings to the page when a stored setting changes and nothing for other keys (the page already sends `setSettings` to every worker, TS-107); in the worker, settings sent as a message set the backup list, and a channel added to the whitelist mid-session gets Twitch's playlist on the next poll with no backup fetched |
 | TS-603 | T-603 | unit (happy-dom) | the popup (its markup, `chrome.tabs.query` answering the active tab's URL) shows the channel of `www.twitch.tv/<channel>`, `m.twitch.tv/<channel>`, `www.twitch.tv/popout/<channel>/chat`, URLs with a query string or a later path part, in lower case; a whitelisted channel shows as disabled from each form; `www.twitch.tv/`, another site and a browser page show "Waiting for channel" with the button off |
 | TS-604 | T-604 | unit | `pauseAndPlay` posts `play` twice after `pausePlayDelayMs` (fake timers); 1500 ms without the setting; with 0, `pause` and both `play` in the same turn; a negative or non-number value falls back to 1500 |
-| TS-701 | T-701 | int | `bun run build` produces both zips with the version in the name and the userscript with `@version` equal to `package.json`; `package.json` has no `ts-node`, `jest` or `preinstall` |
+| TS-701 | T-701 | int | `package.json` has no `ts-node`, `jest`, `bun` package or `preinstall` (and `cli/preinstall.js` is gone); `build`, `dev` and `lint` scripts as in T-701; each builder, given a temp folder and a stub bundle, writes `purple-adblock-<version>-<platform>.zip` and the unpacked `purple-adblock-<platform>` with the package version in the manifest and no spec file; the userscript header has `@version` from `package.json` even with another `npm_package_version` (`platform/tampermonkey/build.spec.ts`). The full `bun run build` is checked by hand, since the check runs before every commit and the build rewrites the committed userscript |
 | TS-702 | T-702 | unit | no workflow triggers on `pull_request`; no step runs tests; releases only on push to `main` or a tag; `oven-sh/setup-bun` used; no `marvinpinto/action-automatic-releases` (read with `Bun.YAML.parse`) |
 
 ## Browser setup (levels 2 and 3)
@@ -259,7 +259,7 @@ No other extension runs under nodriver. Every launch passes `--disable-component
 
 | Mode | Extra flags | Used by |
 | --- | --- | --- |
-| Extension | `--load-extension=<build> --disable-extensions-except=<build>` (`<build>` = `<repo>/dist/purple-adblock-purple-adblock-chromium`) | level 3 |
+| Extension | `--load-extension=<build> --disable-extensions-except=<build>` (`<build>` = `<repo>/dist/purple-adblock-chromium`) | level 3 |
 | Userscript | `--disable-extensions`; the built userscript (`<repo>/dist/purpleadblocker.user.js`) is injected with `Page.addScriptToEvaluateOnNewDocument` (main world, document start, like Tampermonkey with `@run-at document-start` and `@grant none`), only on URLs its `@match` covers | levels 2 and 3 |
 | Record | `--disable-extensions` (Purple off) | level 3 recorder |
 
