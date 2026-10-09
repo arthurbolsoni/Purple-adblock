@@ -79,6 +79,7 @@ export class AppController {
     await this.appService.setChannel(channelFromUsher(url));
     this.appService.setUsherUrl(url);
     this.appService.setPlayerMaster(text);
+    this.appService.prewarmAtLoad();
     return new Response(text);
   }
 

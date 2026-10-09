@@ -530,7 +530,7 @@ Odd behaviors seen in the runs. Each task ends with its cause in a finding (and 
 - Tests: TS-811, a join-on-break run
 
 ### T-812 Backup tokens at the channel load
-- [ ] Status · F-19
+- [~] Status · F-19 · F-22 · 2026-10-09: `prewarmAtLoad` (default off) runs F-19's prewarm at the page's usher request (TS-409); the live comparison is open
 - Origin: two of the four breaks in the first seconds after the page opened were midrolls announced 5 and 12 s after it, before any backup token was asked; their first ad segments were answered blank and the video stood still 7 s (T-810).
 - Files: `serviceWorker/src/modules/player/player.ts`, `serviceWorker/src/app.controller.ts`
 - Done when:

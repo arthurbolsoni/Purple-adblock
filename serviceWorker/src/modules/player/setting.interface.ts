@@ -15,4 +15,5 @@ export type Setting = {
   prewarmBackups?: boolean;
   stripAdMarkers?: boolean;
   pausePlayOnBreaks?: boolean;
+  prewarmAtLoad?: boolean;
 };

@@ -62,6 +62,7 @@ Three groups: strategies that already exist (E-xx, none is removed), fixes to ex
 | F-19 | Backup tokens requested when the page asks for a `picture-by-picture` master, a few seconds before a possible midroll (B-044), only for the backup types with no stored master (T-410). Soak e: the same blank segments, time to the first backup and token requests as without it at later midrolls. Soaks e and f, a channel's first midroll: `site` 720p as the first backup with it (7 of 7), the 360p `picture-by-picture` master without it (6 of 6) ([finding](findings/2026-10-08-prewarm-backups.md)) | Purple | `prewarmBackups = true` (since T-410; `false` before) | T-409, T-410 |
 | F-20 | The ad's own `DATERANGE` lines (`twitch-stitched-ad`, `twitch-ad-quartile`) leave a playlist Purple delivers with blanked ad segments or an announced break: the page's ad UI started in 4 of the 5 soak breaks whose ad segments reached the player (T-811) | Purple | `stripAdMarkers = false` | T-811 |
 | F-21 | E6 at the break edges can be turned off; the pause/play after a failed reload (F-15) stays | Purple | `pausePlayOnBreaks = true` | T-809 |
+| F-22 | The page's usher request for a channel also brings F-19's prewarm (tokens for the backup types with no stored master), for midrolls announced in the first seconds of a load (T-810) | Purple | `prewarmAtLoad = false` | T-812 |
 
 ### F-02: markers
 
@@ -162,8 +163,9 @@ The wait between `pause` and `play` at each break edge (F-15) comes from `pauseP
 | `prewarmBackups` | `boolean` | `true` | F-19 |
 | `stripAdMarkers` | `boolean` | `false` | F-20 |
 | `pausePlayOnBreaks` | `boolean` | `true` | F-21 |
+| `prewarmAtLoad` | `boolean` | `false` | F-22 |
 
-The content script sends the stored `whitelist`, `toggleProxy`, `proxyUrl`, `debug`, `blockCsai`, `backupPlayerTypes`, `lowQualityFallback`, `pinBackupPlayerType`, `stripFallback`, `forcePopoutToken`, `reloadAfterAd`, `pausePlayDelayMs`, `prewarmBackups`, `stripAdMarkers` and `pausePlayOnBreaks` when storage first answers, when a worker asks, and whenever one of them changes (T-602). The worker replaces its settings with each message it gets. The userscript uses the defaults.
+The content script sends the stored `whitelist`, `toggleProxy`, `proxyUrl`, `debug`, `blockCsai`, `backupPlayerTypes`, `lowQualityFallback`, `pinBackupPlayerType`, `stripFallback`, `forcePopoutToken`, `reloadAfterAd`, `pausePlayDelayMs`, `prewarmBackups`, `stripAdMarkers`, `pausePlayOnBreaks` and `prewarmAtLoad` when storage first answers, when a worker asks, and whenever one of them changes (T-602). The worker replaces its settings with each message it gets. The userscript uses the defaults.
 
 ## Out of scope
 

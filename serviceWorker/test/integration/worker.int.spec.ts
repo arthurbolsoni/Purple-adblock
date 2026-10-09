@@ -244,6 +244,23 @@ describe("worker pipeline", () => {
       expect(events).toEqual([expect.objectContaining({ type: "backupsPrewarmed", count: 1 })]);
     });
 
+    // T-812 (F-22): midrolls announced in the first seconds of a load came before any backup token was asked
+    test("prewarmAtLoad: the page's usher request brings tokens for the backup types", async () => {
+      const worker = setup();
+      worker.send("setSettings", { debug: true, whitelist: [], toggleProxy: false, proxyUrl: "", backupPlayerTypes: [StreamType.SITE, StreamType.FRONTPAGE], lowQualityFallback: false, prewarmAtLoad: true });
+      await worker.text(USHER);
+      await settle(() => worker.twitch.callsOf("gql").length === 2);
+      expect(worker.twitch.callsOf("gql").map((c) => c.playerType)).toEqual([StreamType.SITE, StreamType.FRONTPAGE]);
+    });
+
+    test("without prewarmAtLoad (default), the usher request brings no token", async () => {
+      const worker = setup();
+      prewarm(worker, true);
+      await worker.text(USHER);
+      await Bun.sleep(5);
+      expect(worker.twitch.callsOf("gql")).toEqual([]);
+    });
+
     test("every backup type with a master: no token request and no event", async () => {
       const worker = setup();
       prewarm(worker, true);
