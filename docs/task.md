@@ -509,6 +509,7 @@ Odd behaviors seen in the runs. Each task ends with its cause in a finding (and 
 
 ### T-809 Still video at midroll edges with E6 on the main player
 - [~] Status · E6 · F-18 · F-21 · 2026-10-09: soak h, the same three midrolls with E6 on and off on `/channel-d`: no ad media and no ad UI either way; the longest still stretch was 1, 1 and 1 s with E6 and 0, 0 and 4 s without (soak f, where E6 never reached the main player: 0 s in 12 midrolls). E6 is not needed to keep ad media out at midroll edges. Whether its default changes is the maintainer's decision (E6 is an existing strategy, rule 2) ([finding](findings/2026-10-08-e6-at-midrolls.md))
+- 2026-10-09: the 4 s with E6 off came from the switch to a `popout` backup whose newest sequence was the one the player already had: the player waited 3 s for the next one. E6's restart at the same switch made the player start over on the backup (1 s). Soak d's 7 s (E6 on) had the same wait at a switch between two backups, where E6 does not run. Over the whole sessions: 7 s still with E6 off, 14 s with E6 on (1 s at each of the 6 restarts, and 5 s about a minute after one, T-814). With E6 off the delay behind the stream did not grow across the midrolls (0, -1.7 and +1.4 s). Next: a restart only at a switch to a playlist that lists nothing past what the player got (to be decided by the maintainer), then the default.
 - Origin: midrolls later in a load stood still 0 s in soak f, where E6's pause/play went to the picture-by-picture player (C-13), and about 1 s in soaks d and g, where they reached the main player; soak e, with the same C-13 bug, had 2 to 3 s ([backup behind](findings/2026-10-08-backup-behind.md#soaks)).
 - Check: midrolls with E6 on the main player (the C-13 build) and with E6 sent nowhere, on the same channels: still seconds, ad overlay, ad media reaching the player, and the player's position after each edge.
 - Done when: whether E6 is needed at midroll edges is in a finding; E6 stays (rule 2), and a change of when it runs goes behind a setting with its default recorded.
@@ -544,6 +545,20 @@ Odd behaviors seen in the runs. Each task ends with its cause in a finding (and 
 - Origin: the T-808 runs (`~/purple-recordings/2026-10-08-t808`) and the join runs of 2026-10-08.
 - Files: `e2e/run.py`, `e2e/join_break.py`
 - Tests: L2-01 after the change
+
+### T-814 Still stretches about a minute after E6's restart at a break end
+- [ ] Status · E6
+- Origin: soak h, E6 on: after the restart at the end of the 23:07:55 midroll (23:09:52), the video stood still 2.5 s from 23:10:42 and 4.5 s from 23:10:54, each after a 2.8 s gap between segment fetches; the E6-off session on the same channel did not stand still then. At level 2 the isolated player kept 2.5 to 3.7 s of buffer after E6's restart at the break end and 3.5 to 5.9 s without it (one run) ([finding](findings/2026-10-08-e6-at-midrolls.md#every-still-stretch-in-the-two-sessions)).
+- Check: the player's buffer after a restart and without one, at level 2 (`level2.watch` samples it) and at level 3 if the page's player gives it.
+- Done when: whether a restart leaves the player with less buffer is in a finding.
+- Tests: L2-09, soak
+
+### T-815 Level 2 does not reproduce the wait at a switch to a backup behind
+- [ ] Status · B-048 · `sim/`
+- Origin: in soak h (E6 off) and soak d the player waited 3 s and more for a backup to list a sequence past the one it had; L2-09 with E6 off and backups 3 or 5 segments behind drained the buffer to 0.3 s and filled it again within a second ([finding](findings/2026-10-08-e6-at-midrolls.md#level-2)).
+- Check: the `sim/` request log of an L2-09 run with E6 off: which playlist and segments the player got from the switch until the buffer filled again, against soak h's sequence at 23:47:55.
+- Done when: L2-09 or a new scenario reproduces the wait, or the difference is in a finding.
+- Tests: L2-09
 
 ### T-808 New preroll after a player reload
 - [x] Status · B-045 · Q-018 · done 2026-10-09: no reload kind avoided it. L3-13 reloaded the player at 6 break ends: a soft reload right away brought no new break (0 of 2; 1 of 4 with B-045's), a soft reload 15 s later a preroll (1 of 1), a new token a midroll (1 of 2), a new player and token a break (1 of 1). `reloadAfterAd` stays off ([finding](findings/2026-10-09-reload-kinds.md))

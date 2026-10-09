@@ -1,7 +1,7 @@
 <!doctype html>
 <!--
   Isolated player page for level 2 (T-008). Served by sim/ at
-  /page/index.html?channel=<name>[&purple=0][&debug=1][&src=<master URL instead of usher>][&csai=1].
+  /page/index.html?channel=<name>[&purple=0][&debug=1][&settings=<JSON>][&src=<master URL instead of usher>][&csai=1].
   Like Twitch's page: Purple's bundle first (unless purple=0, the L2-08 control), then /integrity and a
   PlaybackAccessToken request as "site" on gql.twitch.tv, the v2 usher URL with that token, and the IVS player.
   Every Twitch hostname is answered by sim/ through the e2e Fetch bridge; nothing reaches Twitch.
@@ -25,8 +25,11 @@
         const l2 = window.__l2;
         const channel = params.get("channel") || "simchannel";
         try {
-          // Purple's settings, as the content script would send them (the userscript runs with the defaults)
-          if (params.get("debug") === "1") window.postMessage({ type: "setSettings", value: { whitelist: [], toggleProxy: false, proxyUrl: "", debug: true } }, "*");
+          // Purple's settings, as the content script would send them (the userscript runs with the defaults);
+          // settings=<JSON> adds stored settings, for instance {"pausePlayOnBreaks":false}
+          const stored = params.get("settings") ? JSON.parse(params.get("settings")) : null;
+          if (params.get("debug") === "1" || stored)
+            window.postMessage({ type: "setSettings", value: { whitelist: [], toggleProxy: false, proxyUrl: "", debug: params.get("debug") === "1", ...stored } }, "*");
           await fetch("https://gql.twitch.tv/integrity", { method: "POST", headers: { "Client-Id": "simclient" } });
           l2.steps.push("integrity");
           const body = JSON.stringify({

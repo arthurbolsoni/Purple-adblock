@@ -1,6 +1,8 @@
 """Shared steps of the level 2 scenarios (docs/tests.md, "Level 2"): sim/ with a scenario loaded, the Fetch bridge on
 the session's tab, the isolated page, a watch with one video sample per second, and what each side recorded.
 """
+import os
+import urllib.parse
 from dataclasses import dataclass, field
 
 import lib
@@ -46,13 +48,17 @@ class Watch:
 
 
 async def watch(session, scenario, seconds, purple=True, extra=''):
+    # L2_SETTINGS: JSON added to the settings the isolated page sends Purple, for instance {"pausePlayOnBreaks": false}
+    if os.environ.get('L2_SETTINGS'):
+        extra += '&settings=' + urllib.parse.quote(os.environ['L2_SETTINGS'])
     async with sim.running(scenario) as s:
         await s.bridge(session.tab)
         await session.navigate(s.page(purple=purple, extra=extra))
         samples = []
         for _ in range(seconds):
             await session.tab.sleep(1)
-            video = await lib.read(session.tab, "(() => { const v = document.querySelector('video'); return v && { readyState: v.readyState, currentTime: Math.round(v.currentTime * 10) / 10, paused: v.paused } })()")
+            # buffer and latency: the IVS player's own readings (window.__player on the isolated page)
+            video = await lib.read(session.tab, "(() => { const v = document.querySelector('video'), p = window.__player; return v && { readyState: v.readyState, currentTime: Math.round(v.currentTime * 10) / 10, paused: v.paused, buffer: p ? Math.round(p.getBufferDuration() * 10) / 10 : null, latency: p ? Math.round(p.getLiveLatency() * 10) / 10 : null, lowLatency: p ? p.isLiveLowLatency() : null } })()")
             samples.append(video or {})
         state = await lib.page_state(session.tab)
         page = await lib.read(session.tab, 'window.__l2 || null') or {}

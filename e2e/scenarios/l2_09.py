@@ -44,7 +44,9 @@ def waits(media):
 async def run(session):
     w = await level2.watch(session, os.environ.get('L2_09_SCENARIO', 'l2-09-backup-behind'), WATCH)
     detail = {'longestStill': longest_still(w.samples[5:]), 'waiting': waits(w.state['media'] or []),
-              'backups': [e.get('playerType') for e in w.events('backupUsed')][:10], 'samples': [s.get('currentTime') for s in w.samples]}
+              'backups': [e.get('playerType') for e in w.events('backupUsed')][:10], 'e6Pauses': len(w.worker_pauses()),
+              'samples': [s.get('currentTime') for s in w.samples], 'buffer': [s.get('buffer') for s in w.samples],
+              'latency': [s.get('latency') for s in w.samples], 'lowLatency': sorted({str(s.get('lowLatency')) for s in w.samples})}
     return level2.base_checks(w) + [
         Check('no ad segment requested from sim/', not w.ad_segments_requested(), {'ads': w.ad_segments_requested()[:5]}),
         Check('the break handled with a backup', bool(w.events('backupUsed')), detail),
