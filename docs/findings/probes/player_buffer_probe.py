@@ -51,7 +51,7 @@ for folder in sys.argv[1:]:
     restarts = [(origin + m['at']) / 1000 for m in rows(f'{folder}/media.jsonl') if m.get('event') == 'play' and m.get('currentTime') == 0]
     breaks, start = [], None
     for r in log:
-        if r.get('note') == 'break start' and r.get('kind') != 'MAF' and start is None:
+        if r.get('note') in ('break start', 'stitched break start') and r.get('kind') != 'MAF' and start is None:
             start = epoch(r['at'])
         elif r.get('note') == 'break end' and start is not None:
             breaks.append((start, epoch(r['at'])))

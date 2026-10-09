@@ -51,6 +51,17 @@ Soak d's 7 s at 09:45:12 (`/channel-b`, E6 on the main player) had the same sequ
 
 After E6's restart at the end of the 23:07:55 midroll (23:09:52), the player fetched a segment every 2 s until two gaps of 2.8 s (23:10:39.10 to 41.95 and 23:10:49.28 to 52.07); the buffer ran out after each. The E6-off session, on the same channel, did not stand still then. The restarts at the ends of the two later midrolls had no still stretch after them (the session stopped 27 s after the last one).
 
+## Buffer after a restart (T-814)
+
+Soak j, 2026-10-09, `/channel-d`, the page player's own `getBufferDuration()` and `getLiveLatency()` each second ([`player_buffer_probe.py`](probes/player_buffer_probe.py)); the same three stitched midrolls:
+
+| Session | Before the midrolls | In the 3 minutes after E6's restart at a break end |
+| --- | --- | --- |
+| E6 on | buffer 2.6 s, latency 3.0 s (60 s before the second) | buffer 1.0 s (0.4 s at the lowest, in the first 30 s), latency 1.3 s, after each of the three |
+| E6 off, `alignBackupSequence` on (no restart) | buffer 1.7 to 1.8 s, latency 2.0 s | buffer 1.7 to 1.8 s, latency 2.0 s after the first two; 3.5 s and 1.8 s after the third, the rate above 1 for 49 s inside it |
+
+A restart starts the player at the live edge with about 1 s of buffer; a segment more than that late stands it still, as at 23:10:42 and 23:10:54 in soak h.
+
 ## Delay behind the stream
 
 Wall clock minus `currentTime`, every 30 s ([`soak_stills_probe.py`](probes/soak_stills_probe.py)):
@@ -76,4 +87,3 @@ With E6 off, the first backup playlist ended at segment 12 with prefetch URIs 13
 ## Open
 
 - Why the backup's newest sequence can be the player's: the page's playlist numbers the stream ahead of the backups' after midrolls (B-054, [sequence numbering](2026-10-09-sequence-numbering.md), T-816). A fix at the switch, numbering the backup as the page's playlist (T-817) or a restart only when the new playlist lists nothing past the player's number, with E6 at the break edges off: the decision on `pausePlayOnBreaks`' default waits on it (T-809).
-- Still stretches after E6's restart at a break end (T-814).

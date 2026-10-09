@@ -60,6 +60,20 @@ In the playlists without ad segments, `MEDIA-SEQUENCE` minus `EXT-X-TWITCH-LIVE-
 
 With E6 on and `alignBackupSequence` off (3 runs), the player started over at both edges of the break and the samples showed no still second; after the restart at the end it kept 2.4 to 3.8 s of buffer, against 3.3 to 5.5 s before the break, and 4.8 to 6.2 s after the break with `alignBackupSequence` and E6 off.
 
+## Soaks i and j (twitch.tv)
+
+Soak i, 2026-10-09 13:29 to 14:28, `/channel-d`, a session with E6 off: the switch to the first backup had a gap of +2 at the first stitched midroll of the load (no still) and -1 at the second (14:27:58: the next number came 2.8 s later, 5 s still).
+
+Soak j, 14:29 to 16:10, `/channel-d`, two sessions with the same three stitched midrolls ([`switch_gap_probe.py`](probes/switch_gap_probe.py), [`soak_stills_probe.py`](probes/soak_stills_probe.py), `e2e/soak_report.py`); recordings in `~/purple-recordings/2026-10-09-soak-j`:
+
+| | `e6-on`: E6 on, `alignBackupSequence` off | `aligned`: `alignBackupSequence` on, E6 off |
+| --- | --- | --- |
+| Gap at the switch to the first backup, midrolls 1 to 3 | +2, -3, -3 | +2, +2, +2 (shifts 5 at midroll 2; 5 and 7 at midroll 3) |
+| Still stretches over the session | 13 s: 1 s at the load, 1 s at each of 6 restarts, 6 s at 16:08:01 | 3 s: 1 s at the load, 2 s at 16:08:06 |
+| Ad overlay, page ad UI | none | none |
+
+The page's playlist had `MEDIA-SEQUENCE` 5 ahead of `EXT-X-TWITCH-LIVE-SEQUENCE` before the second and third midrolls and 8 after the third; the backups asked at the load 0, one asked later 3. The 6 s at 16:08:01 with E6 on came at a switch from `site` to `popout` (gap -3, the next number 14.7 s later), 4 s after E6's restart: E6 does not run at a switch between backups. The 2 s at 16:08:06 with `alignBackupSequence` came at a switch from `popout` to a `site` token asked 0.2 s before, whose playlist listed nothing newer than `popout`'s by date-time and moved 1.5 s later.
+
 ## Open
 
-- A soak pair on twitch.tv: `alignBackupSequence` with E6 off against E6 on (T-817).
+- `alignBackupSequence`'s default, and with it E6's at the break edges (T-809): the maintainer's decision.
