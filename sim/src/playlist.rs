@@ -23,6 +23,8 @@ pub struct Timeline {
     pub breaks: bool,
     /// Segments its playlists end behind the stream clock (the scenario's `lag` for its playerType, B-048).
     pub lag: i64,
+    /// How far its `MEDIA-SEQUENCE` runs ahead of `EXT-X-TWITCH-LIVE-SEQUENCE` (the scenario's `ahead`, B-054).
+    pub ahead: i64,
 }
 
 /// Number of files in a rendition folder, for the media loop (a discontinuity where it wraps).
@@ -133,7 +135,7 @@ pub fn media(scenario: &Scenario, v: &Variant, t: &Timeline, counts: Counts, now
     let mut out = String::from("#EXTM3U\n");
     out += &format!("#EXT-X-VERSION:{}\n", if v.fmp4 { 6 } else { 3 });
     out += "#EXT-X-TARGETDURATION:6\n";
-    out += &format!("#EXT-X-MEDIA-SEQUENCE:{}\n", 1000 + first);
+    out += &format!("#EXT-X-MEDIA-SEQUENCE:{}\n", 1000 + first + t.ahead);
     out += &format!("#EXT-X-TWITCH-LIVE-SEQUENCE:{}\n", 1000 + first);
     out += &format!("#EXT-X-TWITCH-ELAPSED-SECS:{:.3}\n", (first * seg) as f64 / 1000.0);
     out += &format!("#EXT-X-TWITCH-TOTAL-SECS:{:.3}\n", ((last + 1) * seg) as f64 / 1000.0);
@@ -301,7 +303,7 @@ mod tests {
     const COUNTS: Counts = Counts { live: 30, ad: 15 };
 
     fn timeline(breaks: bool) -> Timeline {
-        Timeline { session: 7, epoch_ms: EPOCH, first: 100, breaks, lag: 0 }
+        Timeline { session: 7, epoch_ms: EPOCH, first: 100, breaks, lag: 0, ahead: 0 }
     }
 
     fn preroll() -> Break {
@@ -415,7 +417,7 @@ mod tests {
     fn backups_share_the_stream_clock() {
         let s = scenario(vec![preroll()], false);
         let main = media(&s, &s.variants[0], &timeline(true), COUNTS, EPOCH + 112 * 2000).0;
-        let backup = media(&s, &s.variants[0], &Timeline { session: 8, epoch_ms: EPOCH, first: 110, breaks: false, lag: 0 }, COUNTS, EPOCH + 112 * 2000).0;
+        let backup = media(&s, &s.variants[0], &Timeline { session: 8, epoch_ms: EPOCH, first: 110, breaks: false, lag: 0, ahead: 0 }, COUNTS, EPOCH + 112 * 2000).0;
         let dates = |t: &str| t.lines().filter(|l| l.starts_with("#EXT-X-PROGRAM-DATE-TIME")).map(String::from).collect::<Vec<_>>();
         assert_eq!(dates(&main), dates(&backup));
     }
@@ -425,11 +427,24 @@ mod tests {
         let s = scenario(vec![], false);
         let now = EPOCH + 130 * 2000;
         let sequence = |lag: i64| {
-            let t = Timeline { session: 9, epoch_ms: EPOCH, first: 100, breaks: false, lag };
+            let t = Timeline { session: 9, epoch_ms: EPOCH, first: 100, breaks: false, lag, ahead: 0 };
             let text = media(&s, &s.variants[0], &t, COUNTS, now).0;
             text.lines().find_map(|l| l.strip_prefix("#EXT-X-MEDIA-SEQUENCE:")).unwrap().parse::<i64>().unwrap()
         };
         assert_eq!(sequence(0) - sequence(3), 3);
+    }
+
+    #[test]
+    fn a_token_ahead_numbers_the_same_segments_higher_and_keeps_the_live_sequence() {
+        let s = scenario(vec![], false);
+        let now = EPOCH + 130 * 2000;
+        let text = |ahead: i64| media(&s, &s.variants[0], &Timeline { session: 9, epoch_ms: EPOCH, first: 100, breaks: false, lag: 0, ahead }, COUNTS, now).0;
+        let tag = |t: &str, name: &str| t.lines().find_map(|l| l.strip_prefix(name)).unwrap().parse::<i64>().unwrap();
+        let (page, backup) = (text(2), text(0));
+        assert_eq!(tag(&page, "#EXT-X-MEDIA-SEQUENCE:") - tag(&backup, "#EXT-X-MEDIA-SEQUENCE:"), 2);
+        assert_eq!(tag(&page, "#EXT-X-TWITCH-LIVE-SEQUENCE:"), tag(&backup, "#EXT-X-TWITCH-LIVE-SEQUENCE:"));
+        let rest = |t: &str| t.lines().filter(|l| !l.starts_with("#EXT-X-MEDIA-SEQUENCE:")).map(String::from).collect::<Vec<_>>();
+        assert_eq!(rest(&page), rest(&backup));
     }
 
     #[test]

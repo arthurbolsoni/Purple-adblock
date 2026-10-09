@@ -63,6 +63,7 @@ Three groups: strategies that already exist (E-xx, none is removed), fixes to ex
 | F-20 | The ad's own `DATERANGE` lines (`twitch-stitched-ad`, `twitch-ad-quartile`) leave a playlist Purple delivers with blanked ad segments or an announced break: the page's ad UI started in 4 of the 5 soak breaks whose ad segments reached the player; in joins into a running midroll it showed 3 of 3 times with them and 0 of 3 without (T-811, [finding](findings/2026-10-08-ad-ui-on-early-breaks.md)) | Purple | `stripAdMarkers = true` (since T-811; `false` before) | T-811 |
 | F-21 | E6 at the break edges can be turned off; the pause/play after a failed reload (F-15) stays | Purple | `pausePlayOnBreaks = true` | T-809 |
 | F-22 | The page's usher request for a channel also brings F-19's prewarm (tokens for the backup types with no stored master), for midrolls announced in the first seconds of a load (T-810): no ad segment reached the player in 3 of 3 such midrolls with it, 2 to 3 polls and 6 s of still video in 2 of 2 without ([finding](findings/2026-10-09-prewarm-at-load.md)) | Purple | `prewarmAtLoad = true` (since T-812; `false` before) | T-812 |
+| F-23 | A backup replacing the page's playlist gets the sequence numbers the page's playlist gives the same date-time: the page's playlist numbers the stream ahead of backups asked before it after its stitched midrolls (B-054), and the player, which asks for the number after its last segment, waited at the switch until the backup's numbers caught up, 3 to 7 s still when that took 2 s or more (T-816, [finding](findings/2026-10-09-sequence-numbering.md)) | Purple | `alignBackupSequence = false` (until the soak comparison, T-817) | T-817 |
 
 ### F-02: markers
 
@@ -139,6 +140,10 @@ With `reloadAfterAd`, the end of the break asks the page to reload the player in
 
 The wait between `pause` and `play` at each break edge (F-15) comes from `pausePlayDelayMs`: a number of ms from 0 up, else the default, 0. With 0, `play` is posted in the same turn as `pause`. The wait was 1500 ms from `10128a5` (500 before it) until soak d measured both on live midrolls: 0.19 to 1.05 s from `pause` to `playing` at 0 ms against 1.62 to 2.62 s at 1500 ms. The player restarts its timeline at 0 after the pause/play with any wait. Measured in [pause length](findings/2026-10-08-pause-length.md).
 
+### F-23: backup sequence numbers
+
+`sequence.ts`. Each page playlist without ad segments (and each one that only announces a break) sets the reference: its newest live segment's sequence number, `PROGRAM-DATE-TIME` and duration; a new page master clears it. A poll with ad segments does not move it: inside a break the page's own numbers move (B-054). When a backup replaces the page's playlist (E4), its `MEDIA-SEQUENCE` moves by the shift that gives each of its segments the number the page's playlist gives the moment where that segment ends, rounded up past 0.05 segment of date-time jitter: a backup segment starting inside a page segment gets the next number, so the player, at the end of what it fetched, gets the backup segment covering what follows. With no reference yet, the newest live segment before the ads of the current page playlist is used. The shift is computed once per backup variant and break, so the backup's numbers do not move between polls; the page's playlist after the break comes back untouched. Only the `MEDIA-SEQUENCE` line changes: `EXT-X-TWITCH-LIVE-SEQUENCE` numbers the live stream alike on every token, and the page's playlist runs ahead of it by the same shift (0 to 2 on `/channel-d`, 0 to 8 on `/channel-b`). `sequenceShifted` (F-17) carries the shift.
+
 ### F-10: pinned and contaminated types
 
 - With `pinBackupPlayerType`, the type of the last clean backup delivered moves to the front of the list; `autoplay` is never pinned and stays last. `picture-by-picture` (360p only) is not pinned either: a break that ended on it started the next midroll on its 360p master for 5 and 24 s (T-802).
@@ -164,8 +169,9 @@ The wait between `pause` and `play` at each break edge (F-15) comes from `pauseP
 | `stripAdMarkers` | `boolean` | `true` | F-20 |
 | `pausePlayOnBreaks` | `boolean` | `true` | F-21 |
 | `prewarmAtLoad` | `boolean` | `true` | F-22 |
+| `alignBackupSequence` | `boolean` | `false` | F-23 |
 
-The content script sends the stored `whitelist`, `toggleProxy`, `proxyUrl`, `debug`, `blockCsai`, `backupPlayerTypes`, `lowQualityFallback`, `pinBackupPlayerType`, `stripFallback`, `forcePopoutToken`, `reloadAfterAd`, `pausePlayDelayMs`, `prewarmBackups`, `stripAdMarkers`, `pausePlayOnBreaks` and `prewarmAtLoad` when storage first answers, when a worker asks, and whenever one of them changes (T-602). The worker replaces its settings with each message it gets. The userscript uses the defaults.
+The content script sends the stored `whitelist`, `toggleProxy`, `proxyUrl`, `debug`, `blockCsai`, `backupPlayerTypes`, `lowQualityFallback`, `pinBackupPlayerType`, `stripFallback`, `forcePopoutToken`, `reloadAfterAd`, `pausePlayDelayMs`, `prewarmBackups`, `stripAdMarkers`, `pausePlayOnBreaks`, `prewarmAtLoad` and `alignBackupSequence` when storage first answers, when a worker asks, and whenever one of them changes (T-602). The worker replaces its settings with each message it gets. The userscript uses the defaults.
 
 ## Out of scope
 

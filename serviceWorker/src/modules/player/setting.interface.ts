@@ -16,4 +16,5 @@ export type Setting = {
   stripAdMarkers?: boolean;
   pausePlayOnBreaks?: boolean;
   prewarmAtLoad?: boolean;
+  alignBackupSequence?: boolean;
 };

@@ -5,6 +5,7 @@ import { Server, StreamUrl, type VariantTarget } from "../stream/interface/strea
 import { blankAds, mergeWithBackups, stripAdDateranges } from "./m3u8";
 import { AdClass, detectAds, isCleanBackup } from "./ad-detector";
 import { AdBreak } from "./ad-break";
+import { sequenceReference, sequenceShift, shiftSequence, type SequenceReference } from "./sequence";
 import { parseVariants } from "../stream/master";
 import type { PurpleEvent, WorkerContext } from "../../scope";
 
@@ -42,6 +43,8 @@ export class Player {
   private contaminatedUntil = new Map<string, number>(); // F-10: type -> time (ms) until which it is skipped
   private blankUris = new Map<string, number>(); // F-14: ad URI -> time (ms) of the last poll that listed it
   private lastPrewarm = -Infinity; // F-19: time (ms) of the last prewarm
+  private pageSequence: SequenceReference | null = null; // F-23: newest live segment of the last page playlist without ads
+  private sequenceShifts = new Map<string, number>(); // F-23: backup variant URL (without query) -> shift, for this break
   // F-15 (T-601): pause/play at the edges of a break (E6); with reloadAfterAd, a reload at its end
   private adBreak = new AdBreak({
     pauseAndPlay: () => this.edgePauseAndPlay(),
@@ -165,6 +168,7 @@ export class Player {
     // F-14: a stitched break announced past the last segment (B-034) ends with prefetch lines to its first ad segments,
     // which the player fetched before the first poll with ad segments: they go, and their URIs are answered blank
     if (detectAds(text).class === AdClass.MARKED_LIVE) {
+      this.pageSequence = sequenceReference(text) ?? this.pageSequence;
       if (this.setting?.stripFallback === false) return text;
       const announced = blankAds(text, [], url);
       if (!announced.uris.length) return text;
@@ -175,6 +179,9 @@ export class Player {
     if (!this.isAds(text, true)) {
       this.scope.logger("Stream is free");
       this.freeStream = false;
+      // F-23: the page's numbering outside breaks; inside a break the page's own numbers move (B-054)
+      this.pageSequence = sequenceReference(text) ?? this.pageSequence;
+      this.sequenceShifts.clear();
       return text;
     }
     this.emit({ type: "adDetected" });
@@ -193,7 +200,7 @@ export class Player {
         // F-10: autoplay and picture-by-picture (360p) are never pinned (T-802: the next midroll started on the 360p master)
         if (type !== StreamType.AUTOPLAY && type !== StreamType.PICTURE) this.pinnedType = type;
         this.emit({ type: "backupUsed", playerType: type, quality: backup.variant?.quality });
-        return backup.data;
+        return this.alignSequence(backup.data, backup.variant, text);
       }
     }
 
@@ -215,6 +222,24 @@ export class Player {
   // F-20 (T-811): with stripAdMarkers (default on), a playlist Purple delivers with blanked ad segments or an announced
   // break loses the ad's DATERANGE lines, which the page's ad UI starts from
   private adMarkers = (text: string) => (this.setting?.stripAdMarkers === false ? text : stripAdDateranges(text));
+
+  // F-23 (T-817): with alignBackupSequence, a backup replacing the page's playlist gets the numbers the page's playlist
+  // gives the same date-time, from its last poll without ads (else the live segments before the ads of this one). The
+  // shift is kept per backup variant for the break, so its numbers do not move between polls.
+  private alignSequence(backup: string, variant: StreamUrl | undefined, main: string): string {
+    if (this.setting?.alignBackupSequence !== true) return backup;
+    const key = withoutQuery(variant?.url ?? "");
+    let shift = this.sequenceShifts.get(key);
+    if (shift == null) {
+      const reference = this.pageSequence ?? sequenceReference(main, true);
+      const computed = reference ? sequenceShift(backup, reference) : null;
+      if (computed == null) return backup;
+      shift = computed;
+      this.sequenceShifts.set(key, shift);
+      if (shift) this.emit({ type: "sequenceShifted", count: shift });
+    }
+    return shiftSequence(backup, shift);
+  }
 
 
   // F-09: the setting's list (default: DEFAULT_BACKUP_PLAYER_TYPES); autoplay only with lowQualityFallback (default on), last.
@@ -281,6 +306,9 @@ export class Player {
   // Variants of a master the player requested: their media playlists are recognized by URL, whatever their path.
   setPlayerMaster(text: string) {
     for (const variant of parseVariants(text)) this.playerVariants.set(withoutQuery(variant.url), { stream: this.currentStream(), variant });
+    // F-23: a new page token numbers the stream from its own base
+    this.pageSequence = null;
+    this.sequenceShifts.clear();
   }
 
   // T-407: the variant of the player's master a media playlist URL belongs to; else the quality the player reported

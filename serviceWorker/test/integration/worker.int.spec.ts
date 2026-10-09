@@ -948,3 +948,99 @@ describe("backup usher request", () => {
     }
   });
 });
+
+// F-23 (T-817): each token's playlist numbers the stream from its own base, and the page's moves ahead of the backups'
+// at each stitched midroll it gets (B-054); the player asks for the number after the last segment it fetched
+describe("backup sequence numbers", () => {
+  const SEGMENTS = "https://edge.j.cloudfront.hls.ttvnw.net/v1/segment/";
+  const T0 = Date.parse("2026-10-09T02:46:00.910Z");
+  const PAGE_BASE = T0 - 100 * 2000; // the page's playlist: segment 100 at T0
+  const OLD_BASE = PAGE_BASE + 3000; // a backup asked before the page's last midrolls: the same moment 1.5 segments lower
+
+  // `count` 2 s segments from `first`, segment n at `base` + n x 2 s; `ads`: indexes with an ad title; prefetch URIs after
+  const playlist = (prefix: string, first: number, count: number, base: number, { ads = [] as number[], prefetch = 2 } = {}) => {
+    const lines = ["#EXTM3U", "#EXT-X-VERSION:3", "#EXT-X-TARGETDURATION:6", `#EXT-X-MEDIA-SEQUENCE:${first}`, `#EXT-X-TWITCH-LIVE-SEQUENCE:${first}`];
+    for (let i = 0; i < count; i++) {
+      const n = first + i;
+      lines.push(`#EXT-X-PROGRAM-DATE-TIME:${new Date(base + n * 2000).toISOString()}`, `#EXTINF:2.000,${ads.includes(i) ? "Amazon|AD_ID" : "live"}`, `${SEGMENTS}${prefix}-${n}.ts`);
+    }
+    for (let p = 1; p <= prefetch; p++) lines.push(`#EXT-X-TWITCH-PREFETCH:${SEGMENTS}${prefix}-${first + count - 1 + p}.ts`);
+    return lines.join("\n");
+  };
+  // the last number the player can fetch from a playlist: MEDIA-SEQUENCE + segments + prefetch URIs - 1
+  const newest = (text: string) =>
+    Number(/#EXT-X-MEDIA-SEQUENCE:(\d+)/.exec(text)![1]) + (text.match(/^#EXTINF:/gm) ?? []).length + (text.match(/^#EXT-X-TWITCH-PREFETCH:/gm) ?? []).length - 1;
+  const mediaSequence = (text: string) => Number(/#EXT-X-MEDIA-SEQUENCE:(\d+)/.exec(text)![1]);
+  const otherLines = (text: string) => text.split("\n").filter((line) => !line.startsWith("#EXT-X-MEDIA-SEQUENCE:"));
+
+  // the page's polls in order, the frontpage backup's polls (one per poll with ads); the playlists the player got
+  const polls = async (settings: Record<string, unknown>, main: string[], backup: string[]) => {
+    const worker = setup();
+    worker.player.setSettings({ whitelist: [], toggleProxy: false, proxyUrl: "", backupPlayerTypes: [StreamType.FRONTPAGE], lowQualityFallback: false, ...settings });
+    worker.twitch.mediaPlaylist(MAIN, ...main);
+    worker.twitch.mediaPlaylist(FRONTPAGE, ...backup);
+    await worker.text(USHER);
+    worker.player.currentStream().setStreamAccess(masterFor("frontpage-"), StreamType.FRONTPAGE);
+    worker.player.currentStream().createStreamAccess = async () => {};
+    const out: string[] = [];
+    for (let i = 0; i < main.length; i++) out.push(await worker.text(MAIN));
+    return out;
+  };
+
+  const free = playlist("live", 100, 14, PAGE_BASE); // newest 113 at T0 + 26 s, prefetch 114 and 115
+  const withAds = playlist("live", 101, 16, PAGE_BASE, { ads: [14, 15], prefetch: 0 }); // live up to 114, ads 115 and 116
+  const lowerBackup = playlist("backup", 100, 14, OLD_BASE); // 113 at T0 + 29 s, prefetch 114 and 115
+
+  test("alignBackupSequence: a backup that numbers the same moment lower gets the page's numbers, past the player's last", async () => {
+    const [first, second] = await polls({ alignBackupSequence: true }, [free, withAds], [lowerBackup]);
+
+    expect(first).toBe(free);
+    // 113 starts 1.5 page segments after the page's 113: it gets 115, so the player's next number, 116, is the segment
+    // after the end of what it fetched
+    expect(mediaSequence(second)).toBe(102);
+    expect(newest(second)).toBeGreaterThan(newest(free));
+    expect(otherLines(second)).toEqual(otherLines(lowerBackup));
+  });
+
+  test("alignBackupSequence off: the backup comes out as Twitch sent it, with nothing past the player's last number", async () => {
+    const [, second] = await polls({ alignBackupSequence: false }, [free, withAds], [lowerBackup]);
+
+    expect(second).toBe(lowerBackup);
+    expect(newest(second)).toBe(newest(free));
+  });
+
+  test("alignBackupSequence: a backup numbered like the page's playlist comes out unchanged", async () => {
+    const sameBackup = playlist("backup", 101, 14, PAGE_BASE);
+    const [, second] = await polls({ alignBackupSequence: true }, [free, withAds], [sameBackup]);
+
+    expect(second).toBe(sameBackup);
+  });
+
+  test("alignBackupSequence: a poll with ads does not move the reference the last poll without ads set", async () => {
+    // the page's playlist inside the break, its live segments 3 s earlier for the same numbers: from it the shift would be 3
+    const drifted = playlist("live", 101, 16, PAGE_BASE - 3000, { ads: [14, 15], prefetch: 0 });
+    const [, second, third] = await polls({ alignBackupSequence: true }, [free, drifted, drifted], [lowerBackup, playlist("backup", 101, 14, OLD_BASE)]);
+
+    expect(mediaSequence(second)).toBe(102);
+    expect(mediaSequence(third)).toBe(103);
+  });
+
+  test("alignBackupSequence: with no poll without ads before the break, the live segments before the ads are the reference", async () => {
+    const [first] = await polls({ alignBackupSequence: true }, [withAds], [lowerBackup]);
+
+    // 114 at T0 + 28 s on the page; the backup's 113 at T0 + 29 s starts half a segment later
+    expect(mediaSequence(first)).toBe(102);
+  });
+
+  test("alignBackupSequence: the page's playlist after a break comes out untouched, and the next break takes its numbering", async () => {
+    // after the first break the page numbers the same moment 1 segment higher (B-054): base 2 s earlier
+    const after = playlist("live", 120, 14, PAGE_BASE - 2000);
+    const nextAds = playlist("live", 121, 16, PAGE_BASE - 2000, { ads: [14, 15], prefetch: 0 });
+    const out = await polls({ alignBackupSequence: true }, [free, withAds, after, nextAds], [lowerBackup, playlist("backup", 120, 14, OLD_BASE)]);
+
+    expect(mediaSequence(out[1])).toBe(102);
+    expect(out[2]).toBe(after);
+    // 133 at T0 + 69 s on the backup; on the page 133 is at T0 + 64 s: 2.5 segments later, so 3
+    expect(mediaSequence(out[3])).toBe(123);
+  });
+});

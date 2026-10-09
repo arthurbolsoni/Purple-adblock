@@ -567,7 +567,7 @@ Odd behaviors seen in the runs. Each task ends with its cause in a finding (and 
 - Tests: probes over the soak recordings, L2-09
 
 ### T-817 Backup playlists numbered as the page's playlist numbers the same date-time
-- [ ] Status · B-054 · F-13 · new strategy, behind a setting
+- [~] Status · B-054 · F-23 · new strategy, behind a setting · 2026-10-09: `alignBackupSequence` (F-23, `sequence.ts`, default off) with TS-817; `sim/` `ahead` and L2-10: E6 off, the switch without it skipped 4.4 s of video and waited about 2 s (3 of 3), with it the video went on with no skip and no wait (3 of 3) ([finding](findings/2026-10-09-sequence-numbering.md#numbering-the-backup-as-the-pages-playlist-f-23)). Next: the soak pair.
 - Origin: T-816: the stall at a switch comes from the backup's lower sequence numbers for the same moment.
 - Check: while a backup replaces the main playlist, shift its `MEDIA-SEQUENCE` (one line, rule 3) so that its segments get the numbers the page's playlist gives their date-time, from the last main playlist's newest live segment; the main playlist after the break goes back untouched.
 - Done when: a level 1 test reproduces the switch with a backup numbered lower and passes with the shift; L2-09 with backups numbered lower (a `sim/` per-type sequence offset) stands still 0 s with E6 off; a soak pair compares it with E6 on; the setting and its default are in `docs/feat.md` (the default is the maintainer's decision).

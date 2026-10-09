@@ -245,6 +245,7 @@ fn twitch(app: &App, method: &Method, t: &Target, body: &Bytes, now: i64, entry:
             first,
             breaks: scenario.breaks_for(&s.player_type),
             lag: scenario.lag_for(&s.player_type) as i64,
+            ahead: scenario.ahead_for(&s.player_type),
         };
         entry.session = Some(id);
         entry.player_type = Some(s.player_type.clone());

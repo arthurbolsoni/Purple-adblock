@@ -45,6 +45,21 @@ The page player kept 1.1 to 2.3 s of buffer at the live edge (low latency on; `g
 
 E6's pause and play restart the player (currentTime 0), which then starts over on the playlist it gets from its newest segments, whatever their numbers: at the same 23:47:55 switch with E6 on, 1 s still. Each restart costs about 1 s of still video and leaves the player with a smaller buffer (T-814).
 
+## EXT-X-TWITCH-LIVE-SEQUENCE
+
+In the playlists without ad segments, `MEDIA-SEQUENCE` minus `EXT-X-TWITCH-LIVE-SEQUENCE` was 0 on every backup, and on the page's playlist 0, 1, 2 and 2 at the bases 765.9, 764.6, 762.9 and 762.2 (soak h), and 0, 3, 6, 6, 7 and 8 at 804.9, 799.8, 794.8, 793.5, 791.9 and 790.1 (soak d): the base difference in segments, rounded up. `EXT-X-TWITCH-LIVE-SEQUENCE` numbers the live stream alike on every token; the page's `MEDIA-SEQUENCE` runs ahead of it after its midrolls.
+
+## Numbering the backup as the page's playlist (F-23)
+
+`alignBackupSequence` (T-817): while a backup replaces the page's playlist, its `MEDIA-SEQUENCE` moves so that its segments get the numbers the page's playlist gives the same date-time. Level 2, L2-10 (`sim/` `ahead`: the page's token numbers the stream 2 segments ahead of the backups), 3 runs each; reports in `~/purple-recordings/2026-10-09-t817`:
+
+| `alignBackupSequence` (E6 off) | First backup playlist: newest number, against the page's last | At the switch | Longest still |
+| --- | --- | --- | --- |
+| off | +1 | the video went 4.4 s forward, then waited 2.3 to 2.5 s (2 runs) or about 2 s | 2 s |
+| on (shift +2) | +3 | the video went on with no skip and no wait | 1 s, before the switch: the buffer ran out while the page's playlist only announced the break, as in L2-09 |
+
+With E6 on and `alignBackupSequence` off (3 runs), the player started over at both edges of the break and the samples showed no still second; after the restart at the end it kept 2.4 to 3.8 s of buffer, against 3.3 to 5.5 s before the break, and 4.8 to 6.2 s after the break with `alignBackupSequence` and E6 off.
+
 ## Open
 
-- Purple numbering a backup playlist as the page's playlist numbers the same date-time (a `MEDIA-SEQUENCE` shift while a backup replaces the main playlist), so the switch brings the numbers the player expects (T-817).
+- A soak pair on twitch.tv: `alignBackupSequence` with E6 off against E6 on (T-817).
