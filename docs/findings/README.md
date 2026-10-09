@@ -39,4 +39,5 @@ New discoveries are added here as they happen. A later finding that contradicts 
 | [2026-10-08-early-break-stall.md](2026-10-08-early-break-stall.md) | Breaks in the first seconds after the page opened: the video stands still on the blank segments answered before any backup is ready (T-810) | closed |
 | [2026-10-08-ad-ui-on-early-breaks.md](2026-10-08-ad-ui-on-early-breaks.md) | The page's ad UI on breaks whose blanked ad segments reached the player, with and without the ad's DATERANGE lines (T-811, F-20) | closed |
 | [2026-10-08-e6-at-midrolls.md](2026-10-08-e6-at-midrolls.md) | E6 on and off at the same midrolls (T-809) | open |
+| [2026-10-09-reload-kinds.md](2026-10-09-reload-kinds.md) | Player reload kinds at a break's end and the new breaks after them (T-808, L3-13) | closed |
 | [../research.md](../research.md) | Brave's Twitch scriptlet | closed |

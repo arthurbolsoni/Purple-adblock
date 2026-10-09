@@ -540,7 +540,7 @@ Odd behaviors seen in the runs. Each task ends with its cause in a finding (and 
 - Tests: TS-409, soak
 
 ### T-808 New preroll after a player reload
-- [ ] Status · B-045 · Q-018
+- [x] Status · B-045 · Q-018 · done 2026-10-09: no reload kind avoided it. L3-13 reloaded the player at 6 break ends: a soft reload right away brought no new break (0 of 2; 1 of 4 with B-045's), a soft reload 15 s later a preroll (1 of 1), a new token a midroll (1 of 2), a new player and token a break (1 of 1). `reloadAfterAd` stays off ([finding](findings/2026-10-09-reload-kinds.md))
 - Origin: a soft reload with the same token at the first live poll after a preroll brought a new preroll in 1 of 2 reloads ([player reload](findings/2026-10-08-ad-break-reload.md)); `reloadAfterAd` stays off.
 - Check: L3-11 with the reload delayed, with a new token, and after midrolls.
 - Done when: the condition is in `docs/server/` (B-045, Q-018), and `reloadAfterAd`'s default is decided on it.
