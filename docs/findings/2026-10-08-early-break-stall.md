@@ -16,6 +16,19 @@ In the four midrolls the pause took effect within 10 ms, both plays that followe
 
 On `/channel-f` the page's ad UI appeared at 17:48:01.26, as the video played again after the restart (T-811).
 
-## Open
+## With E6 off, and at level 2
 
-- The same breaks with E6 off at the break edges (`pausePlayOnBreaks`, F-21) and with a wait between pause and play (`pausePlayDelayMs`), on a channel joined during its midroll (`e2e/join_break.py`).
+`e2e/join_break.py` opened `/channel-d` while its midroll ran (2026-10-08 23:07 to 2026-10-09 00:09): a watcher without Purple finds the midroll's ad segments, a second session with Purple opens the channel. Every join had the break's first ad segments answered blank before a backup was ready:
+
+| Join | E6 | Longest still |
+| --- | --- | --- |
+| `j6` 1 to 4 | on | 7, 6, 7 and 6 s |
+| `j7` 1 | off (`pausePlayOnBreaks` false) | 7 s |
+
+At level 2, `sim/` scenario `l2-04-all-backups-ads` (every backup type in the same 8-segment preroll, so all 8 ad segments are answered blank; L2-09's checks with `L2_09_SCENARIO`, 2 runs): the video stood at 2.0 s and then 0 for 12 s, a `waiting` of 14.2 s, and played again from 0.
+
+## Cause
+
+The video stands still while the player gets the blank segments (F-14, Brave's `BLANK_MP4`, no samples): a break whose first polls with ad segments come before any backup is ready answers 3 to 4 of them blank, 6 to 8 s, and the player then starts again from position 0. E6 is not the cause: with it off the join stood still 7 s. Later in a load the backups have masters (or F-19 prewarmed them), so a backup replaces the first poll with ad segments and no ad segment is answered blank.
+
+Of the four early breaks in soaks e and f, two were midrolls announced 5 and 12 s after the page opened (`/channel-k`, `/channel-a` 15:15:45), before any backup token was asked; the other two were running breaks the page joined at the load, where a backup token asked then can get a preroll of its own (B-052: `/channel-f`, 5 of 5 backup playlists with ad segments). T-812 asks backup tokens at the channel load.

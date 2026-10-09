@@ -17,7 +17,7 @@ Phases run in order. Inside a phase, the "Depends on" column says what must come
 | 5. Playlist assembly | T-501, T-502 | T-101, T-201 |
 | 6. Player control and settings | T-601 to T-604 | T-107, T-201 |
 | 7. Build and release | T-701, T-702 | Phase 0 |
-| 8. Investigations | T-801 to T-811 | - |
+| 8. Investigations | T-801 to T-812 | - |
 
 ## Phase 0: test base
 
@@ -516,7 +516,7 @@ Odd behaviors seen in the runs. Each task ends with its cause in a finding (and 
 - Tests: TS-809, soak, L3-12
 
 ### T-810 The video stands still 7 to 8 s in a break that starts right after the page opens
-- [~] Status · E6 · 2026-10-08: in the four midrolls 5 to 12 s after the page opened, E6's pause took effect, both plays sent with it were ignored, and the player restarted on its own from position 0 6.7 to 8.1 s later; later in a load the same pause and play recover within 1 s. The variants (E6 off, a wait between pause and play) are open ([finding](findings/2026-10-08-early-break-stall.md))
+- [x] Status · F-14 · done 2026-10-09: the blank segments. A break whose first polls with ad segments come before any backup is ready gets 3 to 4 of them answered blank (6 to 8 s with no frames), and the player then restarts from position 0; with E6 off a joined break stood still 7 s too, and at level 2 eight blank segments stood the video still 12 s. A backup ready earlier can avoid it for midrolls announced right after the load (T-812); in a break running at the load a backup token can get a preroll of its own (B-052) ([finding](findings/2026-10-08-early-break-stall.md))
 - Origin: the four breaks that started 5 to 12 s after the page opened (soaks e and f) stood still 7 to 8 s; midrolls later in a load 0 to 3 s ([backup behind](findings/2026-10-08-backup-behind.md#soaks)).
 - Check: the same in record mode (no Purple) and with Purple, at the page load; what the player does in those seconds (first variant, E6 at the load, the break's first polls).
 - Done when: the cause is in a finding; a fix task if Purple causes it.
@@ -528,6 +528,16 @@ Odd behaviors seen in the runs. Each task ends with its cause in a finding (and 
 - Check: the same kind of break with the ad's `DATERANGE` lines removed (`stripAdMarkers`, F-20) and kept, for instance by opening a channel while another session sees its midroll start (B-049).
 - Done when: whether removing those lines keeps the ad UI off is in a finding, with `stripAdMarkers`' default decided on it.
 - Tests: TS-811, a join-on-break run
+
+### T-812 Backup tokens at the channel load
+- [ ] Status · F-19
+- Origin: two of the four breaks in the first seconds after the page opened were midrolls announced 5 and 12 s after it, before any backup token was asked; their first ad segments were answered blank and the video stood still 7 s (T-810).
+- Files: `serviceWorker/src/modules/player/player.ts`, `serviceWorker/src/app.controller.ts`
+- Done when:
+  - with `prewarmBackups`, the page's usher request for a channel also brings tokens for the backup types with no stored master;
+  - soaks or joins compare, at midrolls in the first minute of a load, the blank segments and the still video with it and without it;
+  - the default is recorded in `docs/feat.md`.
+- Tests: TS-409, soak
 
 ### T-808 New preroll after a player reload
 - [ ] Status · B-045 · Q-018
