@@ -87,6 +87,9 @@ async def join(joiner, channel, settings):
         'toPlayer': {k: to_player.count(k) for k in set(to_player)}, 'toPlayerWithAdDateranges': with_ad_dateranges,
         'mainPollsWithAds': summary['main']['pollsWithAds'], 'adMedia': summary['adMedia'],
         'events': {t: sum(1 for e in events if e['type'] == t) for t in {e['type'] for e in events}},
+        # the page's picture-by-picture requests (F-19 prewarms there): seconds after the channel opened
+        'pictureByPicture': [round((w['wall'] - opened) / 1000, 1) for w in state.get('workerLog') or []
+                             if 'picture-by-picture master stored' in (w.get('text') or '') and w.get('wall')],
         'firstAdAfter': first(('adDetected', 'blankInserted')), 'firstBackupAfter': first(('backupUsed',)),
         'blankSegments': sum(e.get('count') or 0 for e in events if e['type'] == 'blankInserted'),
         'playerError': state.get('playerError'),

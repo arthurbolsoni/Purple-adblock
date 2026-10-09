@@ -523,7 +523,7 @@ Odd behaviors seen in the runs. Each task ends with its cause in a finding (and 
 - Tests: L3-02, soak
 
 ### T-811 The page's ad UI on a break whose ad segments reached the player
-- [ ] Status · F-14 · F-20
+- [x] Status · F-14 · F-20 · done 2026-10-09: the ad's `DATERANGE` lines. In six joins into a running midroll on `/channel-d`, with blanked ad segments reaching the player each time, the ad UI showed for 47 to 49 s with those lines (3 of 3) and not at all without them (3 of 3); `stripAdMarkers` is on by default ([finding](findings/2026-10-08-ad-ui-on-early-breaks.md))
 - Origin: in soaks e and f the ad UI (`video-ad-label`, `video-ad-countdown`) showed in 4 of the 5 breaks whose ad segments reached the player (blanked, no ad media from the network): 18 s, 49 s, and on both soak e sessions for the whole 2 hours; it never showed in the 23 breaks whose polls all got a backup. Those 5 breaks came 5 to 12 s after the page opened, before any backup was ready; the exception was a preroll.
 - Check: the same kind of break with the ad's `DATERANGE` lines removed (`stripAdMarkers`, F-20) and kept, for instance by opening a channel while another session sees its midroll start (B-049).
 - Done when: whether removing those lines keeps the ad UI off is in a finding, with `stripAdMarkers`' default decided on it.

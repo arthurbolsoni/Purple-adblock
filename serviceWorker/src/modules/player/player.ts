@@ -212,9 +212,9 @@ export class Player {
     return this.adMarkers(blanked.text);
   }
 
-  // F-20 (T-811): with stripAdMarkers (default off), a playlist Purple delivers with blanked ad segments or an announced
+  // F-20 (T-811): with stripAdMarkers (default on), a playlist Purple delivers with blanked ad segments or an announced
   // break loses the ad's DATERANGE lines, which the page's ad UI starts from
-  private adMarkers = (text: string) => (this.setting?.stripAdMarkers === true ? stripAdDateranges(text) : text);
+  private adMarkers = (text: string) => (this.setting?.stripAdMarkers === false ? text : stripAdDateranges(text));
 
 
   // F-09: the setting's list (default: DEFAULT_BACKUP_PLAYER_TYPES); autoplay only with lowQualityFallback (default on), last.

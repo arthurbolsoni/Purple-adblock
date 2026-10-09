@@ -8,6 +8,7 @@ import { fixture } from "../harness/fixtures";
 import { createWorkerScope, type WorkerHarness } from "../harness/worker-scope";
 import { sigFor, tokenFor } from "../harness/fake-twitch";
 import { StreamType } from "../../src/modules/stream/interface/stream.enum";
+import { stripAdDateranges } from "../../src/modules/player/m3u8";
 
 silenceConsole();
 
@@ -106,9 +107,10 @@ describe("worker pipeline", () => {
     worker.send("setIntegrity", JSON.stringify({ token: "INTEGRITY" }));
     await worker.text(USHER);
 
-    // first poll: no backup yet, the ad playlist goes out unchanged and the tokens are requested
+    // first poll: no backup yet, the ad playlist goes out with its lines (without the ad's DATERANGE lines, F-20) and
+    // the tokens are requested
     const first = await worker.text(MAIN);
-    expect(first).toBe(midroll);
+    expect(first).toBe(stripAdDateranges(midroll));
     expect(worker.posted).toContainEqual({ type: "pause" });
 
     await settle(() => worker.player.currentStream().serverList.length === 2);
@@ -789,9 +791,10 @@ describe("blank segments", () => {
 
   test("every backup in its own preroll: the playlist keeps its lines, the ad URIs get the blank segment, Twitch gets none", async () => {
     const worker = await prerollEverywhere();
-    expect(await worker.text(MAIN)).toBe(preroll);
+    // every line but the ad's DATERANGE lines (F-20, default on)
+    expect(await worker.text(MAIN)).toBe(stripAdDateranges(preroll));
     await settle(() => worker.player.currentStream().serverList.length >= 3);
-    expect(await worker.text(MAIN)).toBe(preroll);
+    expect(await worker.text(MAIN)).toBe(stripAdDateranges(preroll));
 
     const response = await worker.fetch(AD);
     expect((await response.arrayBuffer()).byteLength).toBe(1137);
@@ -811,7 +814,8 @@ describe("blank segments", () => {
     await worker.text(USHER);
 
     const delivered = await worker.text(MAIN);
-    expect(delivered.split("\n")).toEqual(announced.split("\n").filter((l) => !l.includes("/ad-3009.ts") && !l.includes("/ad-3010.ts")));
+    const kept = announced.split("\n").filter((l) => !l.includes("/ad-3009.ts") && !l.includes("/ad-3010.ts")).join("\n");
+    expect(delivered).toBe(stripAdDateranges(kept));
     expect((await (await worker.fetch(AD_PREFETCH)).arrayBuffer()).byteLength).toBe(1137);
     expect(worker.twitch.calls.filter((c) => c.url === AD_PREFETCH)).toEqual([]);
     expect(blankEvents(worker)).toEqual([2]);
@@ -844,8 +848,14 @@ describe("blank segments", () => {
     expect(delivered).toContain('CLASS="twitch-session"');
   });
 
-  test("without stripAdMarkers (default) the ad's DATERANGE lines stay", async () => {
+  // on by default since T-811's joins (docs/findings/2026-10-08-ad-ui-on-early-breaks.md)
+  test("without the setting the ad's DATERANGE lines go (default on)", async () => {
     const worker = await prerollEverywhere();
+    expect(adDateranges(await worker.text(MAIN))).toEqual([]);
+  });
+
+  test("stripAdMarkers off: the ad's DATERANGE lines stay", async () => {
+    const worker = await prerollEverywhere({ stripAdMarkers: false });
     expect(adDateranges(await worker.text(MAIN))).toHaveLength(2);
   });
 

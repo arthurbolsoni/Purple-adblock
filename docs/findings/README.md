@@ -37,4 +37,6 @@ New discoveries are added here as they happen. A later finding that contradicts 
 | [2026-10-08-backup-behind.md](2026-10-08-backup-behind.md) | Backups behind the main playlist at level 2 (L2-09) and the longest still video inside each soak break (T-804) | open |
 | [2026-10-08-rewritten-playlist-stall.md](2026-10-08-rewritten-playlist-stall.md) | The 2026-10-07 stall on regenerated playlists: fMP4 channels lose `EXT-X-MAP`; fresh and dedicated profiles had opened different channels (T-806) | closed |
 | [2026-10-08-early-break-stall.md](2026-10-08-early-break-stall.md) | Breaks in the first seconds after the page opened: the video stands still on the blank segments answered before any backup is ready (T-810) | closed |
+| [2026-10-08-ad-ui-on-early-breaks.md](2026-10-08-ad-ui-on-early-breaks.md) | The page's ad UI on breaks whose blanked ad segments reached the player, with and without the ad's DATERANGE lines (T-811, F-20) | closed |
+| [2026-10-08-e6-at-midrolls.md](2026-10-08-e6-at-midrolls.md) | E6 on and off at the same midrolls (T-809) | open |
 | [../research.md](../research.md) | Brave's Twitch scriptlet | closed |
