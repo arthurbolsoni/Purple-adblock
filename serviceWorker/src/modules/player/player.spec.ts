@@ -410,3 +410,12 @@ describe("contaminated backup types", () => {
     expect(tried).toEqual([StreamType.POPOUT, StreamType.POPOUT]);
   });
 });
+
+// T-819: picture-by-picture masters have 360p only; a break that went to it from a 720p backup dropped the picture to
+// 360p for a few seconds (25 times in soaks h to l) and once stood the video still 6 s at the way back to 720p
+describe("default backup order", () => {
+  test("the types that give 720p come first, then picture-by-picture (360p), autoplay last", () => {
+    expect(DEFAULT_BACKUP_PLAYER_TYPES).toEqual([StreamType.SITE, StreamType.POPOUT, StreamType.FRONTPAGE, StreamType.MOBILE_WEB, StreamType.EMBED, StreamType.PICTURE]);
+    expect(new Player(makeContext()).backupPlayerTypes().slice(-2)).toEqual([StreamType.PICTURE, StreamType.AUTOPLAY]);
+  });
+});

@@ -3,7 +3,7 @@
 
 Usage: python docs/findings/probes/switch_gap_probe.py <session folder>...
 
-Source of each media playlist the player got (delivered.jsonl, main worker): the last Purple console line of that worker
+Source of each media playlist the player got (delivered.jsonl, the main worker of each channel load): the last Purple console line of that worker
 before it, within 200 ms (workerLog.jsonl): `Stream Type: <type> - Free Stream` is that backup type, anything else
 (`Stream is free`, or no line: a poll that only announces a break) the main playlist. Its newest number is
 MEDIA-SEQUENCE + segments + prefetch URIs - 1, the last segment the player can fetch from it (it fetches prefetch URIs
@@ -35,23 +35,29 @@ def rows(path):
         return []
 
 
-def main_worker(delivered):
+def main_workers(delivered):
+    """Per channel load, the worker that got the most media playlists (the main player's)."""
     counts = {}
     for d in delivered:
         if (d.get('playlist') or {}).get('type') == 'media':
-            counts[d['worker']] = counts.get(d['worker'], 0) + 1
-    return max(counts, key=counts.get) if counts else None
+            key = (d.get('load'), d['worker'])
+            counts[key] = counts.get(key, 0) + 1
+    best = {}
+    for (load, worker), n in counts.items():
+        if n > counts.get((load, best.get(load)), 0):
+            best[load] = worker
+    return set(best.values())
 
 
 summary = {}
 for folder in sys.argv[1:]:
     delivered = rows(f'{folder}/delivered.jsonl')
-    worker = main_worker(delivered)
-    if worker is None:
+    workers = main_workers(delivered)
+    if not workers:
         continue
-    logs = [r for r in rows(f'{folder}/workerLog.jsonl') if r['kind'] == 'console' and r['worker'] == worker and '[Purple]' in r.get('text', '')]
-    origin = next((r['timeOrigin'] for r in rows(f'{folder}/samples.jsonl')), 0)
-    restarts = [origin + m['at'] for m in rows(f'{folder}/media.jsonl') if m.get('event') == 'play' and m.get('currentTime') == 0]
+    logs = [r for r in rows(f'{folder}/workerLog.jsonl') if r['kind'] == 'console' and r['worker'] in workers and '[Purple]' in r.get('text', '')]
+    origins = {r['load']: r['timeOrigin'] for r in rows(f'{folder}/samples.jsonl')}
+    restarts = [origins.get(m['load'], 0) + m['at'] for m in rows(f'{folder}/media.jsonl') if m.get('event') == 'play' and m.get('currentTime') == 0]
     stills, since = [], None
     for r in rows(f'{folder}/transitions.jsonl'):
         if r['key'] == 'progressing':
@@ -60,11 +66,12 @@ for folder in sys.argv[1:]:
             elif since is not None:
                 stills.append((since, r['wall'] - since))
                 since = None
-    polls, li = [], 0
-    for d in sorted((d for d in delivered if d['worker'] == worker and (d.get('playlist') or {}).get('type') == 'media'), key=lambda d: d['wall']):
-        while li < len(logs) and logs[li]['wall'] <= d['wall']:
-            li += 1
-        last = logs[li - 1] if li else None
+    polls, by_worker = [], {}
+    for r in logs:
+        by_worker.setdefault(r['worker'], []).append(r)
+    for d in sorted((d for d in delivered if d['worker'] in workers and (d.get('playlist') or {}).get('type') == 'media'), key=lambda d: d['wall']):
+        own = [r for r in by_worker.get(d['worker'], []) if r['wall'] <= d['wall']]
+        last = own[-1] if own else None
         m = TYPE.search(last['text']) if last and d['wall'] - last['wall'] <= 200 else None
         p = d['playlist']
         if p.get('mediaSequence') is None:

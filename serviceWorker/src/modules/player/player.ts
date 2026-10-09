@@ -9,14 +9,15 @@ import { newestNumber, sequenceReference, sequenceShift, shiftSequence, type Seq
 import { parseVariants } from "../stream/master";
 import type { PurpleEvent, WorkerContext } from "../../scope";
 
-// F-09 (docs/feat.md)
+// F-09 (docs/feat.md). T-819: the types that give 720p first; picture-by-picture (360p only) after them, so a break
+// that rotates through backups stays at 720p when one of them is clean
 export const DEFAULT_BACKUP_PLAYER_TYPES: string[] = [
   StreamType.SITE,
   StreamType.POPOUT,
   StreamType.FRONTPAGE,
-  StreamType.PICTURE,
   StreamType.MOBILE_WEB,
   StreamType.EMBED,
+  StreamType.PICTURE,
 ];
 
 // F-10: how long a type whose backup had ads (or announced its own break) is left out of the chain

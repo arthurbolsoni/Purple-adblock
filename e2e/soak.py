@@ -3,7 +3,7 @@ does during them (docs/server/) and what Purple delivers to the player.
 
     python e2e/soak.py <session> --mode extension|userscript|record [--debug] [--until HH:MM | --minutes N]
                        [--channel /name] [--avoid /a,/b] [--rotate MINUTES] [--out DIR] [--visible]
-                       [--setting KEY=JSON ...] [--stop-after-breaks N] [--leave-after-breaks N]
+                       [--setting KEY=JSON ...] [--stop-after-breaks N] [--leave-after-breaks N] [--hop SECONDS]
 
 One Edge on a fresh temporary profile (deleted at the end). Every DRAIN seconds the recorder's arrays in the page
 (window.__e2e, and window.__purple.events with --debug) are emptied into JSONL files under
@@ -11,8 +11,10 @@ One Edge on a fresh temporary profile (deleted at the end). Every DRAIN seconds 
 happen. The channel changes when it goes offline (also when the page plays a recorded video instead: no live media
 playlist for NO_LIVE_AFTER seconds; that channel is not reopened), the player fails for good, after --rotate minutes
 without a break, or after --leave-after-breaks N stitched breaks on it. With --stop-after-breaks N the session ends
-once N stitched breaks (ad segments or stitched-ad markers) have ended; --until or --minutes stays the limit. Several
-sessions run in parallel as separate processes; each avoids the channels the others are on.
+once N stitched breaks (ad segments or stitched-ad markers) have ended; --until or --minutes stays the limit. With
+--hop SECONDS the session goes from channel to channel, the directory's cards in random order: it leaves a channel
+SECONDS after opening it, or SECONDS after its last break ended (prerolls come at loads, T-818). Several sessions run in
+parallel as separate processes; each avoids the channels the others are on.
 """
 import argparse
 import asyncio
@@ -20,6 +22,7 @@ import datetime
 import glob
 import json
 import os
+import random
 import shutil
 import sys
 import tempfile
@@ -43,9 +46,9 @@ LIVE_CLASSES = ('timestamp', 'twitch-session', 'twitch-stream-source', 'twitch-t
 # (currentTime of the first <video> advancing within the last second), the number of <video> elements and of
 # playing ones (a client-side ad plays in its own element), and page elements whose data-a-target or
 # data-test-selector names an ad or picture-by-picture, with wall-clock times. Every second also the page player's own
-# buffer, latency, low-latency mode and playback rate (T-814): the `props.mediaPlayerInstance` of the React component
-# with `setPlayerActive`, found by a fiber walk written here (docs/findings/probes/page_player_probe.py). Drained with
-# the rest.
+# buffer, latency, low-latency mode and playback rate (T-814) and the frame counters (T-819): the
+# `props.mediaPlayerInstance` of the React component with `setPlayerActive`, found by a fiber walk written here
+# (docs/findings/probes/page_player_probe.py), and the <video>'s getVideoPlaybackQuality(). Drained with the rest.
 MONITOR = """(() => {
   if (window.__soak) return true;
   const S = %s;
@@ -74,8 +77,15 @@ MONITOR = """(() => {
     try {
       if (!instance || typeof instance.getBufferDuration !== 'function' || instance.getHTMLVideoElement?.() !== document.querySelector('video')) instance = findPlayer();
       if (!instance) return;
+      // T-819: frames, cumulative: the player's dropped and decoded ones, the <video>'s dropped, total and corrupted
+      // ones (getVideoPlaybackQuality), and its picture size
+      const v = document.querySelector('video');
+      const q = v && v.getVideoPlaybackQuality ? v.getVideoPlaybackQuality() : null;
       soak.player.push({ wall: Date.now(), currentTime: t === null ? null : Math.round(t * 10) / 10, buffer: round(instance.getBufferDuration()),
-        latency: round(instance.getLiveLatency()), lowLatency: instance.isLiveLowLatency(), rate: instance.getPlaybackRate() });
+        latency: round(instance.getLiveLatency()), lowLatency: instance.isLiveLowLatency(), rate: instance.getPlaybackRate(),
+        dropped: instance.getDroppedFrames(), decoded: instance.getDecodedFrames(),
+        videoDropped: q ? q.droppedVideoFrames : null, videoTotal: q ? q.totalVideoFrames : null, videoCorrupted: q ? q.corruptedVideoFrames : null,
+        size: v ? v.videoWidth + 'x' + v.videoHeight : null });
     } catch (e) {
       instance = null;
     }
@@ -218,6 +228,7 @@ class Watch:
         self.last_live = time.time()  # last main media playlist poll seen
         self.stitched_ended = 0  # stitched breaks that started and ended on this channel (--stop-after-breaks)
         self.in_stitched = False
+        self.last_break_end = None  # time of the last break end (--hop)
 
 
 async def drain(session, recorder, watch, mode, final=False):
@@ -260,6 +271,7 @@ async def drain(session, recorder, watch, mode, final=False):
             watch.in_break = False
             watch.stitched_ended += watch.in_stitched
             watch.in_stitched = False
+            watch.last_break_end = time.time()
             recorder.note('break end', channel=watch.channel, at=stamp(entry.get('wall')))
     for entry in data['csai']:
         recorder.note('edge.ads request', path=entry.get('path'), bp=entry.get('bp'), status=entry.get('status'), at=stamp(entry.get('wall')))
@@ -292,10 +304,14 @@ async def directory(session):
     return list(dict.fromkeys(await lib.read(session.tab, common.CARDS)))[:DIRECTORY_CARDS]
 
 
-async def open_next(session, recorder, tried, slot, load, fixed=None):
-    """Opens the first directory channel not tried yet, not gated and not watched by another session."""
+async def open_next(session, recorder, tried, slot, load, fixed=None, shuffle=False):
+    """Opens the first directory channel not tried yet, not gated and not watched by another session (with `shuffle`,
+    the directory's cards in random order)."""
     cards = [fixed] if fixed else await directory(session)
-    ordered = cards[slot::3] + [c for i, c in enumerate(cards) if i % 3 != slot] if not fixed else cards
+    if shuffle and not fixed:
+        ordered = random.sample(cards, len(cards))
+    else:
+        ordered = cards[slot::3] + [c for i, c in enumerate(cards) if i % 3 != slot] if not fixed else cards
     taken = channels_in_use(recorder)
     # a channel given with --channel is opened even when another session watches it (same break, two modes)
     candidates = [c for c in ordered if fixed or (c not in tried and c not in taken)][:common.CANDIDATES]
@@ -328,7 +344,7 @@ async def soak(args, recorder, end):
                 load += 1
                 # --channel: the first load; with --rotate 0 every load (the channel is reopened after a failure)
                 fixed = args.channel if (load == 1 or not args.rotate) and args.channel not in offline else None
-                watch = await open_next(session, recorder, tried, args.slot, load, fixed)
+                watch = await open_next(session, recorder, tried, args.slot, load, fixed, shuffle=bool(args.hop))
                 if watch is None:
                     tried = set(args.avoid.split(',')) if args.avoid else set()
                     await asyncio.sleep(60)
@@ -352,6 +368,9 @@ async def soak(args, recorder, end):
             elif not watch.failing_since and time.time() - watch.last_live > NO_LIVE_AFTER:
                 reason = f'no live media playlist for {NO_LIVE_AFTER} s (offline, or a recorded video)'
                 offline.add(watch.channel)
+                tried.add(watch.channel)
+            elif args.hop and not watch.in_break and time.time() - max(watch.started, watch.last_break_end or 0) > args.hop:
+                reason = f'{args.hop} s after the load or the last break end (--hop)'
                 tried.add(watch.channel)
             elif args.rotate and minutes > args.rotate and not watch.stitched and not watch.in_break:
                 reason = f'{args.rotate} minutes without a stitched break'
@@ -414,6 +433,8 @@ def main():
                     help='end the session once N stitched breaks have ended (the time limit still applies)')
     ap.add_argument('--leave-after-breaks', type=int, default=0, metavar='N',
                     help='move to another channel once N stitched breaks have ended on this one')
+    ap.add_argument('--hop', type=float, default=0, metavar='SECONDS',
+                    help='leave each channel SECONDS after the load or the last break end, the directory in random order')
     ap.add_argument('--out', default=os.path.join(RECORDINGS, f'{datetime.date.today().isoformat()}-soak'))
     ap.add_argument('--visible', action='store_true')
     ap.add_argument('--setting', action='append', type=setting, metavar='KEY=JSON',

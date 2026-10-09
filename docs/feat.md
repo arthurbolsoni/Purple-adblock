@@ -49,7 +49,7 @@ Three groups: strategies that already exist (E-xx, none is removed), fixes to ex
 | F-06 | Backup GQL request executed in the page, worker request as fallback | Brave | - | T-402 |
 | F-07 | Updated `PlaybackAccessToken` hash, falling back to the full query (`playbackAccessToken_Template`, already in the code) | Brave + Purple | - | T-403 |
 | F-08 | Usher parameters from the original request reused for backups; `token` and `sig` encoded | Brave | - | T-404 |
-| F-09 | Configurable playerType list, with `autoplay` (360p) as last resort | Brave + Purple | `backupPlayerTypes`, `lowQualityFallback = true` | T-405 |
+| F-09 | Configurable playerType list, the types that give 720p first, then `picture-by-picture` (360p), with `autoplay` (360p) as last resort | Brave + Purple | `backupPlayerTypes`, `lowQualityFallback = true` | T-405, T-819 |
 | F-10 | The type that worked is tried first on the next break, except `autoplay` and `picture-by-picture` (360p, T-802); a type that returned ads is skipped for 5 s | Brave | `pinBackupPlayerType = true` | T-406, T-802 |
 | F-11 | Backup with the same codec and quality as the main stream | Brave | - | T-407 |
 | F-12 | Page token requested as `popout` and usher without `parent_domains` (PbP excluded to keep E10) | Brave | `forcePopoutToken = true` | T-408 |
@@ -94,7 +94,7 @@ A backup with a `twitch-maf-ad` marker over live segments replaces the playlist 
 
 ### F-09: default `backupPlayerTypes` order
 
-`site`, `popout`, `frontpage`, `picture-by-picture`, `mobile_web`, `embed`. With `lowQualityFallback`, `autoplay` (requested with `platform: "android"`) is appended.
+`site`, `popout`, `frontpage`, `mobile_web`, `embed`, `picture-by-picture`. With `lowQualityFallback`, `autoplay` (requested with `platform: "android"`) is appended. `picture-by-picture` came fourth until T-819: its masters have 360p only, and in a break whose backups announced breaks of their own Purple went from 720p to 360p and back every few seconds (25 switches in soaks h to l, one followed by 6 s of still video), while `mobile_web` gave 720p ([soak l](findings/2026-10-09-soak-l.md#the-decoder-log-and-the-frames-t-819)).
 
 ### F-05: page GQL headers
 

@@ -594,7 +594,8 @@ ${variant}
 
 // T-405: the backup chain walks the player types of F-09; autoplay (platform android) only with lowQualityFallback
 describe("backup player types", () => {
-  const DEFAULT_ORDER = ["site", "popout", "frontpage", "picture-by-picture", "mobile_web", "embed", "autoplay"];
+  // F-09; picture-by-picture (360p) after the types that give 720p since T-819
+  const DEFAULT_ORDER = ["site", "popout", "frontpage", "mobile_web", "embed", "picture-by-picture", "autoplay"];
 
   const breakWith = (backups: Record<string, string | null>, main = fixture("m3u8/media-ssai-midroll.m3u8")) => {
     const worker = createWorkerScope();
