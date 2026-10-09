@@ -42,6 +42,7 @@ New discoveries are added here as they happen. A later finding that contradicts 
 | [2026-10-09-sequence-numbering.md](2026-10-09-sequence-numbering.md) | Sequence numbers at a switch between the page's and the backups' playlists, and the still video they cause (T-816, B-054) | closed |
 | [2026-10-09-firefox-injection.md](2026-10-09-firefox-injection.md) | Purple's page hook on Firefox before the player workers: `<script src>` against a `MAIN` world content script in MV2, and the userscript, through WebDriver BiDi (T-111) | closed |
 | [2026-10-09-preroll-numbering.md](2026-10-09-preroll-numbering.md) | The page's playlist after a preroll played on backups numbers from 0: the player waited for good with E6 off; restart when the numbers go back (T-818, F-24) | closed |
+| [2026-10-09-soak-k.md](2026-10-09-soak-k.md) | Soak k: the 2026-10-09 defaults on 14 channel loads; ad blocking, still video, worker logs (T-818, T-819) | open |
 | [2026-10-09-reload-kinds.md](2026-10-09-reload-kinds.md) | Player reload kinds at a break's end and the new breaks after them (T-808, L3-13) | closed |
 | [2026-10-09-prewarm-at-load.md](2026-10-09-prewarm-at-load.md) | Backup tokens at the channel load, for midrolls in the first seconds of a load (T-812, F-22) | closed |
 | [../research.md](../research.md) | Brave's Twitch scriptlet | closed |

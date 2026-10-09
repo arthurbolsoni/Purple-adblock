@@ -6,7 +6,7 @@ For each session folder (e2e/soak.py, extension mode with debug): the channels w
 left, drain failures, errors); each stitched break as e2e/soak_report.py reads it (ad overlay seconds, ad segments
 listed to the player and fetched from the network, seconds not progressing from 10 s before to 60 s after it, page
 ad UI, MEDIA-SEQUENCE going down) with Purple's events in it; every still stretch of 2 s or more with the nearest
-stitched break; the player error overlay; uncaught errors, rejections and console errors from inside the workers
+stitched break, and one of 30 s or more still going when the load ended; the player error overlay; uncaught errors, rejections and console errors from inside the workers
 (the picture-by-picture player's "not a valid M3U8", E10, counted apart); the page's edge.ads.twitch.tv requests.
 """
 import collections
@@ -62,11 +62,26 @@ for name in sorted(os.listdir(folder)):
               f"sequence back {to_player.get('sequenceBack')}, events {dict(events)}")
 
     breaks = [(seconds_of(b['start']), b['channel']) for b in stitched]
-    since = None
-    for t in rows(os.path.join(path, 'transitions.jsonl')):
+    since, since_load, last_wall = None, None, {}
+    transitions = rows(os.path.join(path, 'transitions.jsonl'))
+    for t in transitions:
+        last_wall[t['load']] = t['wall']
+    for s in rows(os.path.join(path, 'samples.jsonl')):
+        last_wall[s['load']] = max(last_wall.get(s['load'], 0), soak_report.wall(s) * 1000)
+    def open_still(since, load):
+        # a still stretch that lasted until the load ended; under 30 s it is the session leaving the channel (the
+        # directory page has no <video>)
+        length = (last_wall[load] - since) / 1000
+        if length >= 30:
+            print(f"  still {clock(since)} until the load ended, {length:.0f} s or more")
+
+    for t in transitions:
+        if since is not None and t['load'] != since_load:
+            open_still(since, since_load)
+            since = None
         if t['key'] == 'progressing':
             if t['value'] is False:
-                since = t['wall']
+                since, since_load = t['wall'], t['load']
             elif since is not None:
                 length = (t['wall'] - since) / 1000
                 if length >= 2:
@@ -77,6 +92,8 @@ for name in sorted(os.listdir(folder)):
                 since = None
         elif t['key'] == 'playerError' and t['value']:
             print(f"  player error overlay {clock(t['wall'])} {t['channel']}")
+    if since is not None:
+        open_still(since, since_load)
 
     errors = collections.Counter()
     known = 0
