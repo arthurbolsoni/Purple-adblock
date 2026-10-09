@@ -5,7 +5,9 @@ import type { AppController } from "../../src/app.controller";
 import type { Player } from "../../src/modules/player/player";
 import { FakeTwitch } from "./fake-twitch";
 
-export function createWorkerScope(twitch = new FakeTwitch()) {
+// productDefaults: false (the default) keeps prewarmAtLoad off unless a test's settings set it. With it on by default
+// (F-22, T-812) every usher request asks backup tokens, and most tests count the token requests of one break.
+export function createWorkerScope(twitch = new FakeTwitch(), { productDefaults = false } = {}) {
   const target = new EventTarget();
   const posted: any[] = [];
   const scope: any = Object.assign(target, {
@@ -14,6 +16,12 @@ export function createWorkerScope(twitch = new FakeTwitch()) {
   });
 
   const { controller, router } = bootstrapWorker(scope);
+  const player = (controller as any).appService as Player;
+  if (!productDefaults) {
+    const setSettings = player.setSettings;
+    player.setSettings = (setting) => setSettings({ prewarmAtLoad: false, ...setting });
+    player.setSettings({ whitelist: [], toggleProxy: false, proxyUrl: "" });
+  }
 
   return {
     scope,
@@ -21,7 +29,7 @@ export function createWorkerScope(twitch = new FakeTwitch()) {
     router,
     posted,
     controller: controller as AppController,
-    player: (controller as any).appService as Player,
+    player,
     // page -> worker message, as index.ts sends it
     send: (funcName: string, value?: any) => target.dispatchEvent(new MessageEvent("message", { data: { funcName, value } })),
     // the hooked fetch, as the player calls it

@@ -255,9 +255,19 @@ describe("worker pipeline", () => {
       expect(worker.twitch.callsOf("gql").map((c) => c.playerType)).toEqual([StreamType.SITE, StreamType.FRONTPAGE]);
     });
 
-    test("without prewarmAtLoad (default), the usher request brings no token", async () => {
-      const worker = setup();
+    // on by default since T-812's scheduled joins (docs/findings/2026-10-09-prewarm-at-load.md)
+    test("without the setting, the usher request brings the tokens (default on)", async () => {
+      const worker = createWorkerScope(undefined, { productDefaults: true });
+      worker.twitch.master("channel", masterFor(""));
       prewarm(worker, true);
+      await worker.text(USHER);
+      await settle(() => worker.twitch.callsOf("gql").length === 2);
+      expect(worker.twitch.callsOf("gql").map((c) => c.playerType)).toEqual([StreamType.SITE, StreamType.FRONTPAGE]);
+    });
+
+    test("prewarmAtLoad off: the usher request brings no token", async () => {
+      const worker = setup();
+      worker.send("setSettings", { debug: true, whitelist: [], toggleProxy: false, proxyUrl: "", backupPlayerTypes: [StreamType.SITE, StreamType.FRONTPAGE], lowQualityFallback: false, prewarmAtLoad: false });
       await worker.text(USHER);
       await Bun.sleep(5);
       expect(worker.twitch.callsOf("gql")).toEqual([]);

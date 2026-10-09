@@ -76,10 +76,10 @@ export class Player {
     this.emit({ type: "backupsPrewarmed", count: types.length });
   };
 
-  // F-22 (T-812): with prewarmAtLoad (default off), the page's usher request for a channel brings the same prewarm,
+  // F-22 (T-812): with prewarmAtLoad (default on), the page's usher request for a channel brings the same prewarm,
   // for midrolls announced in the first seconds of a load
   prewarmAtLoad = () => {
-    if (this.setting?.prewarmAtLoad === true) this.prewarmBackups();
+    if (this.setting?.prewarmAtLoad !== false) this.prewarmBackups();
   };
 
   // F-15: a reload the page could not do (no player found) falls back to pause/play (E6)

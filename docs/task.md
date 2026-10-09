@@ -530,7 +530,7 @@ Odd behaviors seen in the runs. Each task ends with its cause in a finding (and 
 - Tests: TS-811, a join-on-break run
 
 ### T-812 Backup tokens at the channel load
-- [~] Status · F-19 · F-22 · 2026-10-09: `prewarmAtLoad` (default off) runs F-19's prewarm at the page's usher request (TS-409); the live comparison is open
+- [x] Status · F-19 · F-22 · done 2026-10-09: `prewarmAtLoad` runs F-19's prewarm at the page's usher request, on by default. Scheduled joins into `/channel-d` 5 to 7 s before its midrolls, with no picture-by-picture request before them: with it, a backup replaced the first poll with ad segments and the video never stood still (3 of 3); without it, 2 to 3 polls with ad segments reached the player, blanked, and the video stood still 6 s (2 of 2) ([finding](findings/2026-10-09-prewarm-at-load.md))
 - Origin: two of the four breaks in the first seconds after the page opened were midrolls announced 5 and 12 s after it, before any backup token was asked; their first ad segments were answered blank and the video stood still 7 s (T-810).
 - Files: `serviceWorker/src/modules/player/player.ts`, `serviceWorker/src/app.controller.ts`
 - Done when:
