@@ -1,0 +1,11 @@
+{
+  "id": "L2-11",
+  "description": "SSAI preroll on the page's token as in L2-02, the page's token (popout, F-12) numbering its playlist from 0 at its first poll (B-029, B-039) while the backup tokens number the live sequence: the page's playlist after the preroll lists numbers far below the backups'",
+  "channel": "simchannel",
+  "variants": [
+    { "name": "720p30", "resolution": "1280x720", "bandwidth": 3000000, "codecs": "avc1.4D401F,mp4a.40.2", "live": "live-720p", "ad": "ad-720p" },
+    { "name": "360p30", "resolution": "640x360", "bandwidth": 800000, "codecs": "avc1.4D401E,mp4a.40.2", "live": "live-360p", "ad": "ad-360p" }
+  ],
+  "breaks": [{ "at": 0, "segments": 8, "roll": "PREROLL", "title": "Amazon|SIMPREROLL" }],
+  "playerTypes": { "default": { "breaks": false }, "site": { "breaks": true }, "popout": { "breaks": true, "fromZero": true } }
+}

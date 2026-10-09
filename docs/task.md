@@ -574,6 +574,19 @@ Odd behaviors seen in the runs. Each task ends with its cause in a finding (and 
 - Done when: a level 1 test reproduces the switch with a backup numbered lower and passes with the shift; L2-09 with backups numbered lower (a `sim/` per-type sequence offset) stands still 0 s with E6 off; a soak pair compares it with E6 on; the setting and its default are in `docs/feat.md` (the default is the maintainer's decision).
 - Tests: unit, L2-09, soak
 
+### T-818 The player stands still for good after a preroll played on backups
+- [x] Status · B-029 · B-039 · F-24 · done 2026-10-09: a regression of d7ca73f (E6 at the break edges off). After a preroll Purple played on backups numbered from the live sequence (34636), the page's playlist came back at `MEDIA-SEQUENCE` 9 and the player waited for good (soak k, `/channel-i`, 17 minutes); E6's restart at the break end had covered it, and F-23 has no page segment to number the backups by during a preroll. `restartOnSequenceBack` (F-24, default on) restarts the player when a switch of source brings the numbers down: L2-11 plays at the end 3 of 3 with it, stands still 2 of 2 without ([finding](findings/2026-10-09-preroll-numbering.md))
+- Origin: soak k, 2026-10-09 17:32, ext-b.
+- Files: `serviceWorker/src/modules/player/player.ts`, `sequence.ts`, `sim/src/` (`fromZero`), `e2e/scenarios/l2_11.py`, `e2e/soak.py`
+- Tests: TS-818, L2-11
+
+### T-819 The decoder logs "AVC finishFrame called without active frame" after switches
+- [ ] Status · E6 · F-23
+- Origin: soaks h and j: 1.4 to 2 s after a switch of the playlist source with no restart (to or from `picture-by-picture` 360p, a backup back to the page's playlist), 7 times with E6 off and F-23 off, 8 with F-23 and E6 off, 1 to 3 with E6 on; no still video around them apart from known waits ([`decoder_error_probe.py`](findings/probes/decoder_error_probe.py)).
+- Check: whether frames are dropped or shown wrong then (the page player's `getDroppedFrames()` and `getDecodedFrames()` around the switches), and whether the switches to `picture-by-picture` 360p and back bring all of them.
+- Done when: the effect on the picture is in a finding; a fix task if frames are lost.
+- Tests: soak
+
 ### T-808 New preroll after a player reload
 - [x] Status · B-045 · Q-018 · done 2026-10-09: no reload kind avoided it. L3-13 reloaded the player at 6 break ends: a soft reload right away brought no new break (0 of 2; 1 of 4 with B-045's), a soft reload 15 s later a preroll (1 of 1), a new token a midroll (1 of 2), a new player and token a break (1 of 1). `reloadAfterAd` stays off ([finding](findings/2026-10-09-reload-kinds.md))
 - Origin: a soft reload with the same token at the first live poll after a preroll brought a new preroll in 1 of 2 reloads ([player reload](findings/2026-10-08-ad-break-reload.md)); `reloadAfterAd` stays off.

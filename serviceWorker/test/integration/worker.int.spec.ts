@@ -1056,3 +1056,67 @@ describe("backup sequence numbers", () => {
     expect(mediaSequence(out[3])).toBe(123);
   });
 });
+
+// F-24 (T-818): a pre-roll's page playlist numbers from 0 (B-029, B-039) and the backup tokens from the live sequence;
+// once the page's playlist came back after the pre-roll the player, which had the backups' numbers, waited for good
+describe("player restart when the numbers go back", () => {
+  const SEGMENTS = "https://edge.j.cloudfront.hls.ttvnw.net/v1/segment/";
+  const T0 = Date.parse("2026-10-09T20:32:05.000Z");
+  const PREROLL_BASE = T0; // the page's playlist: segment 0 at T0
+  const LIVE_BASE = T0 - 34636 * 2000; // the backups: segment 34636 at T0
+
+  const playlist = (prefix: string, first: number, count: number, base: number, { ads = [] as number[], prefetch = 2 } = {}) => {
+    const lines = ["#EXTM3U", "#EXT-X-VERSION:3", "#EXT-X-TARGETDURATION:6", `#EXT-X-MEDIA-SEQUENCE:${first}`];
+    for (let i = 0; i < count; i++) {
+      const n = first + i;
+      lines.push(`#EXT-X-PROGRAM-DATE-TIME:${new Date(base + n * 2000).toISOString()}`, `#EXTINF:2.000,${ads.includes(i) ? "Amazon|AD_ID" : "live"}`, `${SEGMENTS}${prefix}-${n}.ts`);
+    }
+    for (let p = 1; p <= prefetch; p++) lines.push(`#EXT-X-TWITCH-PREFETCH:${SEGMENTS}${prefix}-${first + count - 1 + p}.ts`);
+    return lines.join("\n");
+  };
+  const preroll = playlist("live", 0, 3, PREROLL_BASE, { ads: [0, 1, 2], prefetch: 0 });
+  const prerollGoingOn = playlist("live", 0, 8, PREROLL_BASE, { ads: [0, 1, 2, 3, 4, 5, 6, 7], prefetch: 0 });
+  const backup = playlist("backup", 34636, 14, LIVE_BASE - 26000);
+  const backupLater = playlist("backup", 34638, 14, LIVE_BASE - 26000);
+  const afterPreroll = playlist("live", 9, 15, PREROLL_BASE);
+
+  // the page's polls in order with the product defaults (E6 at the break edges off), the frontpage backup's polls
+  const run = async (settings: Record<string, unknown>, main: string[], backups: string[]) => {
+    const worker = createWorkerScope(undefined, { productDefaults: true });
+    worker.twitch.master("channel", masterFor(""));
+    worker.player.setSettings({ whitelist: [], toggleProxy: false, proxyUrl: "", backupPlayerTypes: [StreamType.FRONTPAGE], lowQualityFallback: false, prewarmAtLoad: false, ...settings });
+    worker.twitch.mediaPlaylist(MAIN, ...main);
+    worker.twitch.mediaPlaylist(FRONTPAGE, ...backups);
+    await worker.text(USHER);
+    worker.player.currentStream().setStreamAccess(masterFor("frontpage-"), StreamType.FRONTPAGE);
+    worker.player.currentStream().createStreamAccess = async () => {};
+    const out: string[] = [];
+    for (let i = 0; i < main.length; i++) out.push(await worker.text(MAIN));
+    return { out, edges: worker.posted.filter((m) => m.type === "pause" || m.type === "play").map((m) => m.type) };
+  };
+
+  test("the page's playlist after a pre-roll the player got on a backup: pause and play once", async () => {
+    const { out, edges } = await run({}, [preroll, prerollGoingOn, afterPreroll], [backup, backupLater]);
+
+    expect(out[2]).toBe(afterPreroll);
+    expect(edges).toEqual(["pause", "play", "play"]);
+  });
+
+  test("restartOnSequenceBack off: no pause or play", async () => {
+    const { edges } = await run({ restartOnSequenceBack: false }, [preroll, prerollGoingOn, afterPreroll], [backup, backupLater]);
+
+    expect(edges).toEqual([]);
+  });
+
+  test("a midroll whose backup gets the page's numbers: no pause or play at its edges", async () => {
+    const PAGE_BASE = T0 - 100 * 2000;
+    const free = playlist("live", 100, 14, PAGE_BASE);
+    const withAds = playlist("live", 101, 16, PAGE_BASE, { ads: [14, 15], prefetch: 0 });
+    const lowerBackup = playlist("backup", 100, 14, PAGE_BASE + 3000);
+    const freeAgain = playlist("live", 103, 14, PAGE_BASE);
+    const { out, edges } = await run({}, [free, withAds, freeAgain], [lowerBackup]);
+
+    expect(out[2]).toBe(freeAgain);
+    expect(edges).toEqual([]);
+  });
+});

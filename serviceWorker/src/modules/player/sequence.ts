@@ -19,6 +19,19 @@ const mediaSequence = (lines: string[]): number | null => {
   return Number.isInteger(value) ? value : null;
 };
 
+// F-24: the last number the player can fetch from a playlist, prefetch URIs included (it fetches them as soon as they
+// are listed): MEDIA-SEQUENCE + segments + EXT-X-TWITCH-PREFETCH lines - 1. null without MEDIA-SEQUENCE.
+export function newestNumber(text: string): number | null {
+  const lines = text.split("\n");
+  const first = mediaSequence(lines);
+  if (first == null) return null;
+  const count = lines.filter((raw) => {
+    const line = raw.trim();
+    return line.startsWith("#EXTINF:") || line.startsWith("#EXT-X-TWITCH-PREFETCH:");
+  }).length;
+  return first + count - 1;
+}
+
 // The newest segment that is not an ad and has a date-time; with `beforeAds`, the newest before the first ad segment
 export function sequenceReference(text: string, beforeAds = false): SequenceReference | null {
   const lines = text.split("\n");

@@ -5,7 +5,7 @@ import { Server, StreamUrl, type VariantTarget } from "../stream/interface/strea
 import { blankAds, mergeWithBackups, stripAdDateranges } from "./m3u8";
 import { AdClass, detectAds, isCleanBackup } from "./ad-detector";
 import { AdBreak } from "./ad-break";
-import { sequenceReference, sequenceShift, shiftSequence, type SequenceReference } from "./sequence";
+import { newestNumber, sequenceReference, sequenceShift, shiftSequence, type SequenceReference } from "./sequence";
 import { parseVariants } from "../stream/master";
 import type { PurpleEvent, WorkerContext } from "../../scope";
 
@@ -45,6 +45,8 @@ export class Player {
   private lastPrewarm = -Infinity; // F-19: time (ms) of the last prewarm
   private pageSequence: SequenceReference | null = null; // F-23: newest live segment of the last page playlist without ads
   private sequenceShifts = new Map<string, number>(); // F-23: backup variant URL (without query) -> shift, for this break
+  private source = MAIN_SOURCE; // F-24: where the playlist being built comes from: the page's, or a backup variant URL
+  private delivered: { source: string; newest: number } | null = null; // F-24: the last playlist given to the player
   // F-15 (T-601): pause/play at the edges of a break (E6); with reloadAfterAd, a reload at its end
   private adBreak = new AdBreak({
     pauseAndPlay: () => this.edgePauseAndPlay(),
@@ -159,6 +161,29 @@ export class Player {
 
   // `url`: the media playlist's URL, to resolve relative segment URIs (T-502)
   async onFetch(text: string, url: string = ""): Promise<string> {
+    this.source = MAIN_SOURCE;
+    const out = await this.playlistFor(text, url);
+    this.followSequence(out);
+    return out;
+  }
+
+  // F-24 (T-818): the player asks for the number after the last segment it fetched. When the playlist it gets now comes
+  // from another source than the last one and lists nothing up to that one's newest number (after a pre-roll the
+  // page's playlist numbers from 0, B-029, while the backups number from the live sequence), it would wait for numbers
+  // that do not come: with restartOnSequenceBack (default on) it is restarted, E6's pause and play, once
+  private followSequence(text: string) {
+    const newest = newestNumber(text);
+    if (newest == null) return;
+    const previous = this.delivered;
+    this.delivered = { source: this.source, newest };
+    if (!previous || previous.source === this.source || newest >= previous.newest) return;
+    if (this.setting?.restartOnSequenceBack === false) return;
+    this.scope.logger("sequence back", previous.newest, "->", newest);
+    this.emit({ type: "sequenceRestart", count: previous.newest - newest });
+    this.pauseAndPlay();
+  }
+
+  private async playlistFor(text: string, url: string): Promise<string> {
     // no stream stored for the channel yet (media playlist before the usher)
     if (!this.currentStream()) return text;
     if (this.isWhitelist()) {
@@ -201,6 +226,7 @@ export class Player {
         // F-10: autoplay and picture-by-picture (360p) are never pinned (T-802: the next midroll started on the 360p master)
         if (type !== StreamType.AUTOPLAY && type !== StreamType.PICTURE) this.pinnedType = type;
         this.emit({ type: "backupUsed", playerType: type, quality: backup.variant?.quality });
+        this.source = withoutQuery(backup.variant?.url ?? type);
         return this.alignSequence(backup.data, backup.variant, text);
       }
     }
@@ -307,9 +333,10 @@ export class Player {
   // Variants of a master the player requested: their media playlists are recognized by URL, whatever their path.
   setPlayerMaster(text: string) {
     for (const variant of parseVariants(text)) this.playerVariants.set(withoutQuery(variant.url), { stream: this.currentStream(), variant });
-    // F-23: a new page token numbers the stream from its own base
+    // F-23: a new page token numbers the stream from its own base; F-24: a new player starts from its first playlist
     this.pageSequence = null;
     this.sequenceShifts.clear();
+    this.delivered = null;
   }
 
   // T-407: the variant of the player's master a media playlist URL belongs to; else the quality the player reported
@@ -350,3 +377,5 @@ export class Player {
 }
 
 const withoutQuery = (url: string) => url.split(/[?#]/)[0];
+// F-24: the source of a playlist built from the page's own (as Twitch sent it, edited, merged or blanked)
+const MAIN_SOURCE = "page";

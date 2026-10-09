@@ -17,7 +17,9 @@ WATCH = 25
 async def run(session):
     w = await level2.watch(session, 'l2-05-csai', WATCH, extra='&csai=1')
     return level2.base_checks(w) + [
-        Check('no backup token request besides the page token', len(w.token_requests()) == 1, {'tokens': w.token_requests()}),
+        Check("no backup playlist polled; backup tokens only from the prewarm at the load (F-22)",
+              len(w.polled_sessions()) == 1 and len(w.token_requests()) == 1 + w.prewarmed(),
+              {'tokens': w.token_requests(), 'prewarmed': w.prewarmed(), 'sessions': w.log['sessions']}),
         Check('no ad handling (no adDetected, backupUsed or blankInserted)', not [e for e in w.events() if e['type'] in ('adDetected', 'backupUsed', 'blankInserted')],
               {'events': sorted({e['type'] for e in w.events()})}),
         Check('the page asked edge.ads.twitch.tv and Purple answered it in the page (csaiBlocked)', w.page.get('csai') is not None and bool(w.events('csaiBlocked')),

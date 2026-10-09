@@ -42,6 +42,14 @@ class Watch:
     def events(self, kind=None):
         return [e for e in self.state['events'] or [] if kind is None or e.get('type') == kind]
 
+    def prewarmed(self):
+        """Backup tokens F-22's prewarm asked at the page's usher request (backupsPrewarmed events)."""
+        return sum(e.get('count') or 0 for e in self.events('backupsPrewarmed'))
+
+    def polled_sessions(self):
+        """The usher sessions whose media playlist sim/ served at least once (the page's, and backups in use)."""
+        return [s for s in self.log['sessions'] if s.get('first') is not None]
+
     def worker_pauses(self):
         """`pause` messages the workers posted (E6, the break edges)."""
         return [m for w in self.state['workers'] or [] for m in w.get('messages') or [] if m.get('from') == 'worker' and m.get('type') == 'pause']

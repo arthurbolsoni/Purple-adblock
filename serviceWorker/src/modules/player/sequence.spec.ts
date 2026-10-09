@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { sequenceReference, sequenceShift, shiftSequence } from "./sequence";
+import { newestNumber, sequenceReference, sequenceShift, shiftSequence } from "./sequence";
 
 const T0 = Date.parse("2026-10-09T02:46:00.910Z");
 
@@ -68,5 +68,16 @@ describe("shiftSequence", () => {
   test("CRLF line ends stay", () => {
     const text = playlist(100, 3, T0, [], "\r\n");
     expect(shiftSequence(text, -1)).toBe(text.replace("#EXT-X-MEDIA-SEQUENCE:100\r\n", "#EXT-X-MEDIA-SEQUENCE:99\r\n"));
+  });
+});
+
+describe("newestNumber", () => {
+  test("MEDIA-SEQUENCE + segments + prefetch URIs - 1", () => {
+    expect(newestNumber(playlist(100, 14, T0))).toBe(114);
+    expect(newestNumber(playlist(0, 3, T0, [0, 1, 2]).replace(/#EXT-X-TWITCH-PREFETCH:.*/, ""))).toBe(2);
+  });
+
+  test("null without MEDIA-SEQUENCE", () => {
+    expect(newestNumber(playlist(100, 3, T0).replace(/#EXT-X-MEDIA-SEQUENCE:\d+\n/, ""))).toBeNull();
   });
 });

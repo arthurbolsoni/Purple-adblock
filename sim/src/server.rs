@@ -239,13 +239,18 @@ fn twitch(app: &App, method: &Method, t: &Target, body: &Bytes, now: i64, entry:
             return respond(StatusCode::NOT_FOUND, "text/plain", "no such session");
         };
         let first = *s.first.get_or_insert(newest);
+        let lag = scenario.lag_for(&s.player_type) as i64;
+        // the global segment the token's first playlist started at (`fromZero` numbers it 0 and starts there)
+        let from_zero = scenario.from_zero_for(&s.player_type);
+        let first_listed = if from_zero { first - lag } else { first - lag - scenario.window as i64 + 1 };
         let timeline = Timeline {
             session: id,
             epoch_ms: epoch,
             first,
             breaks: scenario.breaks_for(&s.player_type),
-            lag: scenario.lag_for(&s.player_type) as i64,
-            ahead: scenario.ahead_for(&s.player_type),
+            lag,
+            ahead: scenario.ahead_for(&s.player_type, first_listed),
+            from_zero,
         };
         entry.session = Some(id);
         entry.player_type = Some(s.player_type.clone());

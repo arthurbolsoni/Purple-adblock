@@ -64,6 +64,7 @@ Three groups: strategies that already exist (E-xx, none is removed), fixes to ex
 | F-21 | E6 at the break edges behind a setting; the pause/play after a failed reload (F-15) stays. E6's restart avoided the wait at a switch to a backup numbered lower (T-816), which F-23 removes, and left the player about 1 s of buffer (T-814): soak j, 13 s still with E6 on against 3 s with F-23 and E6 off ([finding](findings/2026-10-09-sequence-numbering.md#soaks-i-and-j-twitchtv)) | Purple | `pausePlayOnBreaks = false` (since T-809; `true` before) | T-809 |
 | F-22 | The page's usher request for a channel also brings F-19's prewarm (tokens for the backup types with no stored master), for midrolls announced in the first seconds of a load (T-810): no ad segment reached the player in 3 of 3 such midrolls with it, 2 to 3 polls and 6 s of still video in 2 of 2 without ([finding](findings/2026-10-09-prewarm-at-load.md)) | Purple | `prewarmAtLoad = true` (since T-812; `false` before) | T-812 |
 | F-23 | A backup replacing the page's playlist gets the sequence numbers the page's playlist gives the same date-time: the page's playlist numbers the stream ahead of backups asked before it after its stitched midrolls (B-054), and the player, which asks for the number after its last segment, waited at the switch until the backup's numbers caught up, 3 to 7 s still when that took 2 s or more (T-816, [finding](findings/2026-10-09-sequence-numbering.md)) | Purple | `alignBackupSequence = true` (since T-817) | T-817 |
+| F-24 | When the playlist given to the player comes from another source than the last one (the page's own or a backup variant) and its newest number is below the last one's, the player is restarted (E6's pause and play) once: after a preroll Purple played on backups, the page's playlist numbers from 0 (B-029, B-039) and the player waited for good with E6 off (soak k, 17 minutes; T-818, [finding](findings/2026-10-09-preroll-numbering.md)) | Purple | `restartOnSequenceBack = true` | T-818 |
 
 ### F-02: markers
 
@@ -144,6 +145,10 @@ The wait between `pause` and `play` at each break edge (F-15) comes from `pauseP
 
 `sequence.ts`. Each page playlist without ad segments (and each one that only announces a break) sets the reference: its newest live segment's sequence number, `PROGRAM-DATE-TIME` and duration; a new page master clears it. A poll with ad segments does not move it: inside a break the page's own numbers move (B-054). When a backup replaces the page's playlist (E4), its `MEDIA-SEQUENCE` moves by the shift that gives each of its segments the number the page's playlist gives the moment where that segment ends, rounded up past 0.05 segment of date-time jitter: a backup segment starting inside a page segment gets the next number, so the player, at the end of what it fetched, gets the backup segment covering what follows. With no reference yet, the newest live segment before the ads of the current page playlist is used. The shift is computed once per backup variant and break, so the backup's numbers do not move between polls; the page's playlist after the break comes back untouched. Only the `MEDIA-SEQUENCE` line changes: `EXT-X-TWITCH-LIVE-SEQUENCE` numbers the live stream alike on every token, and the page's playlist runs ahead of it by the same shift (0 to 2 on `/channel-d`, 0 to 8 on `/channel-b`). `sequenceShifted` (F-17) carries the shift.
 
+### F-24: restart when the numbers go back
+
+`player.ts` keeps the source and the newest number (`MEDIA-SEQUENCE` + segments + prefetch URIs - 1, `newestNumber` in `sequence.ts`) of the last playlist it gave the player; a new page master clears them. The source is the page's for a playlist built from the page's own (as Twitch sent it, with an announced break edited, merged or blanked) and the backup variant URL for a backup that replaced it (E4). When the source changes and the newest number goes down, `sequenceRestart` (F-17, with the drop) and `pauseAndPlay` (E6's pause and play, with `pausePlayDelayMs`). The same source going down (prefetch lines removed at a break announcement) and a switch to equal or higher numbers do nothing; F-23 keeps the switches of a midroll at +1 or more.
+
 ### F-10: pinned and contaminated types
 
 - With `pinBackupPlayerType`, the type of the last clean backup delivered moves to the front of the list; `autoplay` is never pinned and stays last. `picture-by-picture` (360p only) is not pinned either: a break that ended on it started the next midroll on its 360p master for 5 and 24 s (T-802).
@@ -170,8 +175,9 @@ The wait between `pause` and `play` at each break edge (F-15) comes from `pauseP
 | `pausePlayOnBreaks` | `boolean` | `false` | F-21 |
 | `prewarmAtLoad` | `boolean` | `true` | F-22 |
 | `alignBackupSequence` | `boolean` | `true` | F-23 |
+| `restartOnSequenceBack` | `boolean` | `true` | F-24 |
 
-The content script sends the stored `whitelist`, `toggleProxy`, `proxyUrl`, `debug`, `blockCsai`, `backupPlayerTypes`, `lowQualityFallback`, `pinBackupPlayerType`, `stripFallback`, `forcePopoutToken`, `reloadAfterAd`, `pausePlayDelayMs`, `prewarmBackups`, `stripAdMarkers`, `pausePlayOnBreaks`, `prewarmAtLoad` and `alignBackupSequence` when storage first answers, when a worker asks, and whenever one of them changes (T-602). The worker replaces its settings with each message it gets. The userscript uses the defaults.
+The content script sends the stored `whitelist`, `toggleProxy`, `proxyUrl`, `debug`, `blockCsai`, `backupPlayerTypes`, `lowQualityFallback`, `pinBackupPlayerType`, `stripFallback`, `forcePopoutToken`, `reloadAfterAd`, `pausePlayDelayMs`, `prewarmBackups`, `stripAdMarkers`, `pausePlayOnBreaks`, `prewarmAtLoad`, `alignBackupSequence` and `restartOnSequenceBack` when storage first answers, when a worker asks, and whenever one of them changes (T-602). The worker replaces its settings with each message it gets. The userscript uses the defaults.
 
 ## Out of scope
 

@@ -275,7 +275,9 @@ async def drain(session, recorder, watch, mode, final=False):
     progressing = not video.get('paused') and (video.get('currentTime') or 0) > (watch.last_time or 0)
     watch.last_time = video.get('currentTime')
     healthy = not data['playerError'] and not data['contentGate'] and bool(video) and (progressing or first)
-    if healthy or watch.in_break or final:
+    # a twitch-maf-ad slot does not stop the video: only a stitched break holds the failure clock (a channel stuck after
+    # a preroll stayed 18 minutes in soak k, its clock reset by a slot every 4 minutes)
+    if healthy or watch.in_stitched or final:
         watch.failing_since = None
     elif watch.failing_since is None:
         watch.failing_since = time.time()

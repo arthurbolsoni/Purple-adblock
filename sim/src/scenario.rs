@@ -87,6 +87,10 @@ pub struct PlayerType {
     /// midrolls, while backup tokens asked before keep 0 (B-054). Same segments and date-times, higher numbers.
     #[serde(default)]
     pub ahead: i64,
+    /// This type's `MEDIA-SEQUENCE` counts from 0 at its first poll, as the page's playlist does from a preroll on
+    /// (B-029, B-039), while the other tokens number the live sequence. Overrides `ahead`.
+    #[serde(default)]
+    pub from_zero: bool,
 }
 
 #[derive(Clone, Debug, Default, Deserialize, Serialize, PartialEq)]
@@ -135,13 +139,21 @@ impl Scenario {
             .unwrap_or(0)
     }
 
+    /// Whether the playlists of `player_type` start at its first segment, numbered 0 (`fromZero`, B-029).
+    pub fn from_zero_for(&self, player_type: &str) -> bool {
+        self.player_types.get(player_type).or_else(|| self.player_types.get("default")).map(|p| p.from_zero).unwrap_or(false)
+    }
+
     /// How far the `MEDIA-SEQUENCE` of `player_type` runs ahead of the live sequence (0 unless the scenario sets `ahead`).
-    pub fn ahead_for(&self, player_type: &str) -> i64 {
-        self.player_types
-            .get(player_type)
-            .or_else(|| self.player_types.get("default"))
-            .map(|p| p.ahead)
-            .unwrap_or(0)
+    /// With `fromZero`, the amount that makes its first poll's `MEDIA-SEQUENCE` 0, from the global segment its first
+    /// playlist starts at (`first_listed`).
+    pub fn ahead_for(&self, player_type: &str, first_listed: i64) -> i64 {
+        let p = self.player_types.get(player_type).or_else(|| self.player_types.get("default"));
+        match p {
+            Some(p) if p.from_zero => -(1000 + first_listed),
+            Some(p) => p.ahead,
+            None => 0,
+        }
     }
 
     pub fn variant(&self, name: &str) -> Option<&Variant> {
@@ -209,7 +221,15 @@ mod tests {
     fn ahead_is_read_per_player_type_with_the_default_and_zero_otherwise() {
         let text = MINIMAL.replace(r#""variants""#, r#""playerTypes":{"popout":{"breaks":true,"ahead":2}},"variants""#);
         let s = Scenario::from_json(&text).unwrap();
-        assert_eq!((s.ahead_for("popout"), s.ahead_for("site")), (2, 0));
+        assert_eq!((s.ahead_for("popout", 500), s.ahead_for("site", 500)), (2, 0));
+    }
+
+    #[test]
+    fn from_zero_numbers_the_first_poll_from_0() {
+        let text = MINIMAL.replace(r#""variants""#, r#""playerTypes":{"popout":{"breaks":true,"fromZero":true,"ahead":2}},"variants""#);
+        let s = Scenario::from_json(&text).unwrap();
+        assert_eq!(1000 + 500 + s.ahead_for("popout", 500), 0);
+        assert_eq!(s.ahead_for("site", 500), 0);
     }
 
     #[test]
