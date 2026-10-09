@@ -561,6 +561,18 @@ Odd behaviors seen in the runs. Each task ends with its cause in a finding (and 
 - Files: `e2e/sim.py`, `e2e/scenarios/l2_09.py`
 - Tests: L2-09
 
+### T-816 The player stands still about 3 s at a switch to a backup
+- [x] Status · B-048 · B-054 · E6 · done 2026-10-09: sequence numbers. The player asks for the number after the last segment it fetched; the page token's playlist numbers the stream ahead of backup tokens asked earlier (its base moves at each stitched midroll it gets, B-054), so after a few midrolls in a load the first backup playlist lists nothing past the player's number. In soaks d to h, of 20 such switches with no E6 restart, the 4 where the next number took 2.1 s or more stood the video still 3 to 7 s; the 15 where it came within 1.7 s did not. The page player keeps 1.1 to 2.3 s of buffer. E6's restart avoids the wait by starting the player over on the new playlist ([finding](findings/2026-10-09-sequence-numbering.md))
+- Origin: the maintainer: the 3 s stalls at breaks are old, and E6 came in to stop them; soak h's 4 s with E6 off (T-809).
+- Tests: probes over the soak recordings, L2-09
+
+### T-817 Backup playlists numbered as the page's playlist numbers the same date-time
+- [ ] Status · B-054 · F-13 · new strategy, behind a setting
+- Origin: T-816: the stall at a switch comes from the backup's lower sequence numbers for the same moment.
+- Check: while a backup replaces the main playlist, shift its `MEDIA-SEQUENCE` (one line, rule 3) so that its segments get the numbers the page's playlist gives their date-time, from the last main playlist's newest live segment; the main playlist after the break goes back untouched.
+- Done when: a level 1 test reproduces the switch with a backup numbered lower and passes with the shift; L2-09 with backups numbered lower (a `sim/` per-type sequence offset) stands still 0 s with E6 off; a soak pair compares it with E6 on; the setting and its default are in `docs/feat.md` (the default is the maintainer's decision).
+- Tests: unit, L2-09, soak
+
 ### T-808 New preroll after a player reload
 - [x] Status · B-045 · Q-018 · done 2026-10-09: no reload kind avoided it. L3-13 reloaded the player at 6 break ends: a soft reload right away brought no new break (0 of 2; 1 of 4 with B-045's), a soft reload 15 s later a preroll (1 of 1), a new token a midroll (1 of 2), a new player and token a break (1 of 1). `reloadAfterAd` stays off ([finding](findings/2026-10-09-reload-kinds.md))
 - Origin: a soft reload with the same token at the first live poll after a preroll brought a new preroll in 1 of 2 reloads ([player reload](findings/2026-10-08-ad-break-reload.md)); `reloadAfterAd` stays off.

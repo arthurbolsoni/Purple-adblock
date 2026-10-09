@@ -51,6 +51,10 @@ Not seen in that session: `#EXT-X-TWITCH-PREFETCH`, `#EXT-X-PART`, `#EXT-X-PRELO
 
 `EXT-X-TWITCH-PREFETCH` lines list the next segments before their `#EXTINF` lines; the player fetches the prefetch URI. On fMP4 streams the same position gets another URI when it becomes a segment line (B-046, 2026-10-08).
 
+### Sequence numbers and date-time
+
+Each token's playlist numbers the stream from its own base, a segment's `PROGRAM-DATE-TIME` minus its sequence number x 2 s. Tokens asked at the same time share it. The page token's base moves at each stitched midroll it gets; backup tokens asked before keep theirs, so they give the same moment a lower number (B-054, 2026-10-09, [finding](../findings/2026-10-09-sequence-numbering.md)). Segment boundaries of two tokens can be about 1 s apart (`.910` and `.875` past the second on `/channel-d`).
+
 ## Segment URIs
 
 - Absolute URLs on `*.j.cloudfront.hls.ttvnw.net`, `.ts`.

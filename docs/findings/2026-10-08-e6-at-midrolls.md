@@ -75,5 +75,5 @@ With E6 off, the first backup playlist ended at segment 12 with prefetch URIs 13
 
 ## Open
 
-- A restart only when Purple switches the player to a playlist whose newest sequence is not past the newest one it gave the player before (main to backup, backup to backup, backup to main), with E6 at the break edges off: the decision on `pausePlayOnBreaks`' default waits on it (T-809).
+- Why the backup's newest sequence can be the player's: the page's playlist numbers the stream ahead of the backups' after midrolls (B-054, [sequence numbering](2026-10-09-sequence-numbering.md), T-816). A fix at the switch, numbering the backup as the page's playlist (T-817) or a restart only when the new playlist lists nothing past the player's number, with E6 at the break edges off: the decision on `pausePlayOnBreaks`' default waits on it (T-809).
 - Still stretches after E6's restart at a break end (T-814).
