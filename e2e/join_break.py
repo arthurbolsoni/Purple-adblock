@@ -41,9 +41,11 @@ def stamp(ms=None):
 
 
 async def watcher_marks(tab):
-    """Kinds of ad markers in the media playlists the watcher got since the last read (and empties the list)."""
+    """Kinds of ad markers in the media playlists the watcher got since the last read (and empties the list); a
+    stitched break counts only as a MIDROLL: the watcher's own preroll at its load is not the channel's (B-052)."""
     entries = await lib.read(tab, '(window.__e2e && window.__e2e.server ? window.__e2e.server.splice(0) : [])') or []
-    return [m['kind'] for m in (ad_marks(e.get('playlist')) for e in entries) if m]
+    marks = [m for m in (ad_marks(e.get('playlist')) for e in entries) if m]
+    return [m['kind'] if 'MIDROLL' in (m.get('roll') or []) or m['kind'] not in STITCHED else m['kind'] + '/PREROLL' for m in marks]
 
 
 async def join(joiner, channel, strip):
@@ -80,7 +82,16 @@ async def main(args):
     end = time.time() + args.minutes * 60
     try:
         watcher = await lib.launch('record', profile=profiles[0])
-        joiner = await lib.launch('extension', profile=profiles[1], debug=True)
+        for attempt in range(3):  # a fresh profile sometimes enables the unpacked build too late (lib.EXTENSION_WAIT)
+            try:
+                joiner = await lib.launch('extension', profile=profiles[1], debug=True)
+                break
+            except RuntimeError as error:
+                print(f'[{stamp()}] joiner launch {attempt + 1} failed: {error}', flush=True)
+                shutil.rmtree(profiles[1], ignore_errors=True)
+                profiles[1] = tempfile.mkdtemp(prefix='purple-e2e-join-')
+        else:
+            raise RuntimeError('the joiner did not start')
         await joiner.navigate(DIRECTORY)
         await watcher.navigate(f'https://www.twitch.tv{args.channel}')
         print(f'[{stamp()}] watching {args.channel}', flush=True)

@@ -516,7 +516,7 @@ Odd behaviors seen in the runs. Each task ends with its cause in a finding (and 
 - Tests: TS-809, soak, L3-12
 
 ### T-810 The video stands still 7 to 8 s in a break that starts right after the page opens
-- [ ] Status · E6
+- [~] Status · E6 · 2026-10-08: in the four midrolls 5 to 12 s after the page opened, E6's pause took effect, both plays sent with it were ignored, and the player restarted on its own from position 0 6.7 to 8.1 s later; later in a load the same pause and play recover within 1 s. The variants (E6 off, a wait between pause and play) are open ([finding](findings/2026-10-08-early-break-stall.md))
 - Origin: the four breaks that started 5 to 12 s after the page opened (soaks e and f) stood still 7 to 8 s; midrolls later in a load 0 to 3 s ([backup behind](findings/2026-10-08-backup-behind.md#soaks)).
 - Check: the same in record mode (no Purple) and with Purple, at the page load; what the player does in those seconds (first variant, E6 at the load, the break's first polls).
 - Done when: the cause is in a finding; a fix task if Purple causes it.
