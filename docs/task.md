@@ -17,7 +17,7 @@ Phases run in order. Inside a phase, the "Depends on" column says what must come
 | 5. Playlist assembly | T-501, T-502 | T-101, T-201 |
 | 6. Player control and settings | T-601 to T-604 | T-107, T-201 |
 | 7. Build and release | T-701, T-702 | Phase 0 |
-| 8. Investigations | T-801 to T-812 | - |
+| 8. Investigations | T-801 to T-813 | - |
 
 ## Phase 0: test base
 
@@ -538,6 +538,12 @@ Odd behaviors seen in the runs. Each task ends with its cause in a finding (and 
   - soaks or joins compare, at midrolls in the first minute of a load, the blank segments and the still video with it and without it;
   - the default is recorded in `docs/feat.md`.
 - Tests: TS-409, soak
+
+### T-813 A fresh profile enables the unpacked build too late
+- [x] Status · harness · done 2026-10-09: handled in the harness. 3 of 37 L3-13 runs and 1 joiner launch stopped with "the unpacked Purple build is not enabled" after `lib.EXTENSION_WAIT` (45 s); `e2e/run.py` now gives a fresh-profile run one more launch on a new fresh profile (`launches` in the report), and `e2e/join_break.py` three. Why Edge sometimes takes longer on a fresh profile was not looked into.
+- Origin: the T-808 runs (`~/purple-recordings/2026-10-08-t808`) and the join runs of 2026-10-08.
+- Files: `e2e/run.py`, `e2e/join_break.py`
+- Tests: L2-01 after the change
 
 ### T-808 New preroll after a player reload
 - [x] Status · B-045 · Q-018 · done 2026-10-09: no reload kind avoided it. L3-13 reloaded the player at 6 break ends: a soft reload right away brought no new break (0 of 2; 1 of 4 with B-045's), a soft reload 15 s later a preroll (1 of 1), a new token a midroll (1 of 2), a new player and token a break (1 of 1). `reloadAfterAd` stays off ([finding](findings/2026-10-09-reload-kinds.md))
