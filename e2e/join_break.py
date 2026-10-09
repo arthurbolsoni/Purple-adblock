@@ -1,7 +1,8 @@
 """Opens a channel while its stitched midroll runs, so the player gets the break's first polls before any backup is
 ready (T-811: the page's ad UI on breaks whose ad segments reached the player).
 
-    python e2e/join_break.py <session> --channel /name [--joins N] [--minutes M] [--variants JSON] [--out DIR]
+    python e2e/join_break.py <session> --channel /name [--joins N] [--minutes M] [--variants JSON] [--schedule M:SS]
+                             [--out DIR]
 
 Two Edge sessions on fresh temporary profiles, logged out:
 - a watcher in record mode (no Purple) plays the channel; every few seconds it reads the media playlists Twitch
@@ -10,6 +11,9 @@ Two Edge sessions on fresh temporary profiles, logged out:
   JOIN_WATCH seconds: the ad overlay every second, then the media playlists the player got from Purple with ad
   segments or ad markers, the ad media it requested, and Purple's events. Then it goes back to the directory and waits
   for the watcher's break to end before the next one (two sessions on one channel get the same midrolls, B-049).
+
+With --schedule M:SS there is no watcher: the joiner opens the channel every 10 minutes at minute M (mod 10) and second
+SS, for channels whose midrolls keep to the clock (T-812: a midroll announced right after the page opened).
 
 The joins cycle through --variants, a JSON list of settings stored before the channel opens (default: stripAdMarkers
 on, then off). Results go to <out>/<session>.jsonl (default ~/purple-recordings/<date>-join/), outside the repo.
@@ -75,6 +79,7 @@ async def join(joiner, channel, settings):
     to_player = [m['kind'] for m in (ad_marks(d.get('playlist')) for d in delivered) if m]
     with_ad_dateranges = sum(1 for d in delivered if {'twitch-stitched-ad', 'twitch-ad-quartile'} & set((d.get('playlist') or {}).get('dateranges') or []))
     events = state.get('events') or []
+    first = lambda kinds: next((round((e['at'] - opened) / 1000, 1) for e in sorted(events, key=lambda e: e['at']) if e['type'] in kinds), None)
     await joiner.navigate(DIRECTORY)
     return {
         'settings': settings, 'opened': stamp(opened),
@@ -82,6 +87,8 @@ async def join(joiner, channel, settings):
         'toPlayer': {k: to_player.count(k) for k in set(to_player)}, 'toPlayerWithAdDateranges': with_ad_dateranges,
         'mainPollsWithAds': summary['main']['pollsWithAds'], 'adMedia': summary['adMedia'],
         'events': {t: sum(1 for e in events if e['type'] == t) for t in {e['type'] for e in events}},
+        'firstAdAfter': first(('adDetected', 'blankInserted')), 'firstBackupAfter': first(('backupUsed',)),
+        'blankSegments': sum(e.get('count') or 0 for e in events if e['type'] == 'blankInserted'),
         'playerError': state.get('playerError'),
     }
 
@@ -93,7 +100,8 @@ async def main(args):
     watcher = joiner = None
     end = time.time() + args.minutes * 60
     try:
-        watcher = await lib.launch('record', profile=profiles[0])
+        if not args.schedule:
+            watcher = await lib.launch('record', profile=profiles[0])
         for attempt in range(3):  # a fresh profile sometimes enables the unpacked build too late (lib.EXTENSION_WAIT)
             try:
                 joiner = await lib.launch('extension', profile=profiles[1], debug=True)
@@ -105,10 +113,27 @@ async def main(args):
         else:
             raise RuntimeError('the joiner did not start')
         await joiner.navigate(DIRECTORY)
-        await watcher.navigate(f'https://www.twitch.tv{args.channel}')
-        print(f'[{stamp()}] watching {args.channel}', flush=True)
         joins = 0
-        while joins < args.joins and time.time() < end:
+        if args.schedule:
+            minute, second = (int(x) for x in args.schedule.split(':'))
+            print(f'[{stamp()}] scheduled joins to {args.channel} at :{minute}:{second:02d} of every 10 minutes', flush=True)
+            while joins < args.joins and time.time() < end:
+                now = datetime.datetime.now()
+                at = now.replace(second=second, microsecond=0) + datetime.timedelta(minutes=(minute - now.minute) % 10)
+                while at <= now + datetime.timedelta(seconds=5):
+                    at += datetime.timedelta(minutes=10)
+                await asyncio.sleep((at - datetime.datetime.now()).total_seconds())
+                settings = args.variants[joins % len(args.variants)]
+                print(f'[{stamp()}] scheduled join with {settings}', flush=True)
+                result = {'channel': args.channel, 'join': joins + 1, **await join(joiner, args.channel, settings)}
+                with open(out, 'a', encoding='utf-8') as f:
+                    f.write(json.dumps(result) + '\n')
+                print(f'[{stamp()}] join {joins + 1}: {json.dumps(result)[:500]}', flush=True)
+                joins += 1
+        else:
+            await watcher.navigate(f'https://www.twitch.tv{args.channel}')
+            print(f'[{stamp()}] watching {args.channel}', flush=True)
+        while not args.schedule and joins < args.joins and time.time() < end:
             await asyncio.sleep(POLL)
             kinds = await watcher_marks(watcher.tab)
             # a running break: ad segments in a MIDROLL (joining at its announcement got the joiner nothing)
@@ -140,6 +165,7 @@ if __name__ == '__main__':
     ap.add_argument('--channel', required=True)
     ap.add_argument('--joins', type=int, default=6)
     ap.add_argument('--minutes', type=float, default=90)
+    ap.add_argument('--schedule', help='M:SS: join every 10 minutes at that minute (mod 10) and second, with no watcher')
     ap.add_argument('--variants', type=json.loads, default=[{'stripAdMarkers': True}, {'stripAdMarkers': False}],
                     help='JSON list of settings objects, one per join in turn')
     ap.add_argument('--out', default=os.path.join(os.path.expanduser('~/purple-recordings'), f'{datetime.date.today().isoformat()}-join'))
