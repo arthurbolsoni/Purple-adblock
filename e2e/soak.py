@@ -42,12 +42,44 @@ LIVE_CLASSES = ('timestamp', 'twitch-session', 'twitch-stream-source', 'twitch-t
 # Installed in the page after each load: transitions of the ad overlay, the player error, video progress
 # (currentTime of the first <video> advancing within the last second), the number of <video> elements and of
 # playing ones (a client-side ad plays in its own element), and page elements whose data-a-target or
-# data-test-selector names an ad or picture-by-picture, with wall-clock times. Drained with the rest.
+# data-test-selector names an ad or picture-by-picture, with wall-clock times. Every second also the page player's own
+# buffer, latency, low-latency mode and playback rate (T-814): the `props.mediaPlayerInstance` of the React component
+# with `setPlayerActive`, found by a fiber walk written here (docs/findings/probes/page_player_probe.py). Drained with
+# the rest.
 MONITOR = """(() => {
   if (window.__soak) return true;
   const S = %s;
   const AD_UI = /(^|[-_])ads?([-_]|$)|pbyp|picture-by-picture|commercial|stitched/i;
-  const soak = (window.__soak = { transitions: [] });
+  const soak = (window.__soak = { transitions: [], player: [] });
+  let instance = null;
+  const findPlayer = () => {
+    const root = document.querySelector('#root');
+    const key = root && Object.keys(root).find((k) => k.startsWith('__reactContainer') || k.startsWith('__reactFiber'));
+    const stack = key ? [root[key]] : [];
+    for (let n = 0; stack.length && n < 200000; n++) {
+      const fiber = stack.pop();
+      if (!fiber) continue;
+      const node = fiber.stateNode;
+      if (node && node.setPlayerActive && node.props && node.props.mediaPlayerInstance) {
+        const m = node.props.mediaPlayerInstance;
+        return m.playerInstance || m;
+      }
+      if (fiber.sibling) stack.push(fiber.sibling);
+      if (fiber.child) stack.push(fiber.child);
+    }
+    return null;
+  };
+  const round = (x) => (typeof x === 'number' ? Math.round(x * 1000) / 1000 : null);
+  const playerSample = (t) => {
+    try {
+      if (!instance || typeof instance.getBufferDuration !== 'function' || instance.getHTMLVideoElement?.() !== document.querySelector('video')) instance = findPlayer();
+      if (!instance) return;
+      soak.player.push({ wall: Date.now(), currentTime: t === null ? null : Math.round(t * 10) / 10, buffer: round(instance.getBufferDuration()),
+        latency: round(instance.getLiveLatency()), lowLatency: instance.isLiveLowLatency(), rate: instance.getPlaybackRate() });
+    } catch (e) {
+      instance = null;
+    }
+  };
   let last = {};
   let lastTime = null;
   const adUi = () => [...new Set([...document.querySelectorAll('[data-a-target],[data-test-selector]')]
@@ -67,6 +99,7 @@ MONITOR = """(() => {
       adUi: adUi(),
     };
     lastTime = t;
+    playerSample(t);
     for (const [key, value] of Object.entries(now)) {
       if (last[key] !== value) soak.transitions.push({ wall: Date.now(), key, value, currentTime: t === null ? null : Math.round(t * 10) / 10 });
     }
@@ -95,6 +128,7 @@ DRAIN_JS = """(() => {
     media: take('media'),
     events: window.__purple && Array.isArray(window.__purple.events) ? window.__purple.events.splice(0) : [],
     transitions: window.__soak ? window.__soak.transitions.splice(0) : [],
+    player: window.__soak ? window.__soak.player.splice(0) : [],
     workers: (e2e.workers || []).map((w) => ({ at: w.at, viaInjector: w.viaInjector, purpleCode: w.purpleCode, purpleBoot: w.purpleBoot, errors: w.errors,
       messages: (w.messages || []).slice(-20) })),
     video: v ? { readyState: v.readyState, currentTime: Math.round(v.currentTime * 10) / 10, paused: v.paused, muted: v.muted, error: v.error && v.error.code } : null,
@@ -191,7 +225,7 @@ async def drain(session, recorder, watch, mode, final=False):
     wall = stamp()
     base = {'drain': wall, 'channel': watch.channel, 'load': watch.load}
     watch.player_urls.update(d['url'] for d in data['delivered'] if (d.get('playlist') or {}).get('type') == 'media')
-    for name in ('server', 'delivered', 'serverTexts', 'workerLog', 'csai', 'csaiAnswers', 'media', 'events', 'transitions'):
+    for name in ('server', 'delivered', 'serverTexts', 'workerLog', 'csai', 'csaiAnswers', 'media', 'events', 'transitions', 'player'):
         for entry in data[name]:
             recorder.write(name, {**base, **entry})
     for entry in data['playlists']:

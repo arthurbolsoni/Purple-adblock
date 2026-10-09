@@ -64,18 +64,16 @@ With E6 off, the video played 1.3 s further behind the stream at the end than at
 
 ## Level 2
 
-L2-09 (a backup 3 or 5 segments behind the stream clock) on 2026-10-09 with `L2_SETTINGS={"pausePlayOnBreaks": false}`; reports in `~/purple-recordings/2026-10-09-t809`. `level2.watch` now samples the SDK player's buffer each second.
+L2-09 on 2026-10-09 after T-815: L2-03's midroll with the backups 3 segments behind the stream clock, E6 off through `L2_SETTINGS={"pausePlayOnBreaks": false}` and on by default. Reports in `~/purple-recordings/2026-10-09-t809` (`l2-09-fixed-*`). `level2.watch` samples the SDK player's buffer each second; [`l2_switch_probe.py`](probes/l2_switch_probe.py) prints the segments the player fetched next to it. The L2-09 runs before (T-804, and the first ones of this morning) used a `sim/` binary without `lag`, with no backup behind (T-815).
 
-| Backup behind | E6 | Runs | Longest still | `waiting` at the switch |
+| E6 | Runs | Longest still | Buffer before the break | Buffer after the break |
 | --- | --- | --- | --- | --- |
-| 3 segments | off | 4 | 0 to 1 s | 598 and 715 ms (2 of 4 runs) |
-| 5 segments | off | 2 | 1 s | none |
-| 5 segments | on | 1 | 0 s | none; restarts at the start and the end |
+| off | 3 | 3 s each | 3.4 to 4.4 s | 8.7 to 10.3 s |
+| on | 3 | 0 s | 3.3 to 4.5 s | 2.5 to 3.9 s |
 
-Outside the break the isolated player kept 3.3 to 5.9 s of buffer, and 2.5 to 3.7 s after E6's restart at the break end (one run). In every run the buffer drained to 0.3 to 0.4 s around the break's start and filled again within a second: the wait of soak h and soak d (3 s and more) did not come.
+With E6 off, the first backup playlist ended at segment 12 with prefetch URIs 13 and 14, and the player already had 14 from the main playlist, as in soak h at 23:47:55; the video stood still about 3 s. Back on the main playlist after the break, the player kept 9 to 10 s of buffer until the end of the run: about 5 s further behind the stream than before the break (the isolated player's `getLiveLatency()` reads 0). With E6 on, the player started over at each edge; after the restart at the end it kept about 1 s less buffer than before the break.
 
 ## Open
 
 - A restart only when Purple switches the player to a playlist whose newest sequence is not past the newest one it gave the player before (main to backup, backup to backup, backup to main), with E6 at the break edges off: the decision on `pausePlayOnBreaks`' default waits on it (T-809).
 - Still stretches after E6's restart at a break end (T-814).
-- Level 2 does not reproduce the wait at the switch (T-815).

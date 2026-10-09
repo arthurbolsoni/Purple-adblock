@@ -122,8 +122,9 @@ class Sim:
 @asynccontextmanager
 async def running(scenario):
     """sim/ on a free port with `scenario` (a file name in sim/scenarios without .json) loaded; stopped at the end."""
-    if not os.path.exists(BINARY):
-        build()
+    # every run: cargo rebuilds only what changed, and a release binary older than sim/src served the L2-09 runs of
+    # 2026-10-08 and 09 without the scenario's `lag` (T-815)
+    build()
     port = _free_port()
     process = subprocess.Popen([BINARY, '--port', str(port)], stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT)
     sim = Sim(port, process)

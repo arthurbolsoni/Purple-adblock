@@ -481,6 +481,7 @@ Odd behaviors seen in the runs. Each task ends with its cause in a finding (and 
 
 ### T-804 The video waits 8 s inside a break after a backup behind the main playlist
 - [x] Status · B-048 · done 2026-10-08: not reproduced. At level 2 (L2-09, `sim/` with backups 3 and 5 segments behind, 6 runs) the video never stood still; in soaks d to g it was the only stall of 7 s or more among 21 midrolls later in a load. The other long stalls came in breaks in the first 12 s after the page opened (T-810) ([finding](findings/2026-10-08-backup-behind.md))
+- Corrected 2026-10-09 (T-815): those level 2 runs used a `sim/` release binary built before `lag` existed, so no backup was behind. With `sim/` rebuilt, L2-09 reproduces the wait: E6 off, the video stood still 3 s (3 of 3); E6 on, 0 s (3 of 3). Soak d's 8 s came at a switch between two backups, where E6 does not run ([E6 at midrolls](findings/2026-10-08-e6-at-midrolls.md)); its fix goes with T-809.
 - Origin: soak d 09:44:54, 9 s into the break the `<video>` waited 8.1 s; just before, the first backup playlist had a `MEDIA-SEQUENCE` one below the main playlist's last poll ([pause length](findings/2026-10-08-pause-length.md#soak-d)).
 - Check: a level 2 scenario on `sim/` with a backup 1 to 5 segments behind at the break start.
 - Done when: reproduced or ruled out at level 2, with the cause in a finding; a fix task if Purple causes it.
@@ -554,10 +555,10 @@ Odd behaviors seen in the runs. Each task ends with its cause in a finding (and 
 - Tests: L2-09, soak
 
 ### T-815 Level 2 does not reproduce the wait at a switch to a backup behind
-- [ ] Status · B-048 · `sim/`
-- Origin: in soak h (E6 off) and soak d the player waited 3 s and more for a backup to list a sequence past the one it had; L2-09 with E6 off and backups 3 or 5 segments behind drained the buffer to 0.3 s and filled it again within a second ([finding](findings/2026-10-08-e6-at-midrolls.md#level-2)).
-- Check: the `sim/` request log of an L2-09 run with E6 off: which playlist and segments the player got from the switch until the buffer filled again, against soak h's sequence at 23:47:55.
-- Done when: L2-09 or a new scenario reproduces the wait, or the difference is in a finding.
+- [x] Status · B-048 · `sim/` · done 2026-10-09: a stale `sim/` build. `e2e/sim.py` ran `sim/target/release/sim.exe` without building it, and that binary (2026-10-08 13:54) was from before `lag` (18ed5fa): every L2-09 run had backups on the stream clock. `e2e/sim.py` now builds `sim/` before each run, and L2-09 checks that the first backup playlist ends behind the last main one (it failed on the old binary: backup segment 15, main 14). With the rebuilt `sim/`, E6 off: 3 s still in 3 of 3 runs, the backup's newest prefetch being the segment the player had; E6 on: 0 s in 3 of 3 ([E6 at midrolls](findings/2026-10-08-e6-at-midrolls.md#level-2))
+- Origin: in soak h (E6 off) and soak d the player waited 3 s and more for a backup to list a sequence past the one it had; L2-09 with E6 off and backups 3 or 5 segments behind drained the buffer to 0.3 s and filled it again within a second.
+- Check: the `sim/` request log of an L2-09 run with E6 off: which playlist and segments the player got from the switch until the buffer filled again, against soak h's sequence at 23:47:55 ([`l2_switch_probe.py`](findings/probes/l2_switch_probe.py)).
+- Files: `e2e/sim.py`, `e2e/scenarios/l2_09.py`
 - Tests: L2-09
 
 ### T-808 New preroll after a player reload
