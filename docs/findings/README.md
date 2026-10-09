@@ -40,6 +40,7 @@ New discoveries are added here as they happen. A later finding that contradicts 
 | [2026-10-08-ad-ui-on-early-breaks.md](2026-10-08-ad-ui-on-early-breaks.md) | The page's ad UI on breaks whose blanked ad segments reached the player, with and without the ad's DATERANGE lines (T-811, F-20) | closed |
 | [2026-10-08-e6-at-midrolls.md](2026-10-08-e6-at-midrolls.md) | E6 on and off at the same midrolls: still stretches over whole sessions, the wait at a switch to a backup behind, delay behind the stream (T-809, T-814, T-815) | closed |
 | [2026-10-09-sequence-numbering.md](2026-10-09-sequence-numbering.md) | Sequence numbers at a switch between the page's and the backups' playlists, and the still video they cause (T-816, B-054) | closed |
+| [2026-10-09-firefox-injection.md](2026-10-09-firefox-injection.md) | Purple's page hook on Firefox before the player workers: `<script src>` against a `MAIN` world content script in MV2, and the userscript, through WebDriver BiDi (T-111) | closed |
 | [2026-10-09-reload-kinds.md](2026-10-09-reload-kinds.md) | Player reload kinds at a break's end and the new breaks after them (T-808, L3-13) | closed |
 | [2026-10-09-prewarm-at-load.md](2026-10-09-prewarm-at-load.md) | Backup tokens at the channel load, for midrolls in the first seconds of a load (T-812, F-22) | closed |
 | [../research.md](../research.md) | Brave's Twitch scriptlet | closed |

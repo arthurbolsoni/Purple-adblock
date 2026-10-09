@@ -19,7 +19,7 @@ Jest is the fallback when `bun test` cannot cover a case (missing API or a runti
 Exceptions to Bun:
 
 - `sim/`, the level 2 server that reproduces Twitch's server behavior, is Rust (`cargo build`, `cargo test`).
-- Levels 2 and 3 drive Microsoft Edge with nodriver (Python) and the dedicated profile `~/nodriver/profile-edge-purple`, used only for these tests. No other extension runs under nodriver (`--disable-extensions` or `--disable-extensions-except=<our build>`, plus `--disable-component-extensions-with-background-pages`).
+- Levels 2 and 3 drive Microsoft Edge with nodriver (Python) and the dedicated profile `~/nodriver/profile-edge-purple`, used only for these tests. No other extension runs under nodriver (`--disable-extensions` or `--disable-extensions-except=<our build>`, plus `--disable-component-extensions-with-background-pages`). The Firefox checks (T-111) drive Firefox through WebDriver BiDi on a new temporary profile per run (`e2e/firefox.py`), with only the Purple build installed.
 
 Recorded Twitch sessions live in `~/purple-recordings/`, never in the repo.
 
@@ -88,7 +88,7 @@ python e2e/run.py <L2-xx|L3-xx|all>         # levels 2 and 3; --mode extension|u
 - `platform/src/`: content script and popup. Manifests in `platform/chromium` and `platform/firefox`. The builders copy it without `*.spec.ts` (`cli/files.js`).
 - `platform/tampermonkey/`: userscript build.
 - `sim/`: Rust server reproducing Twitch's server (`src/`), scenarios (`scenarios/*.json`), synthetic media (`cargo run --bin media`, into the gitignored `media/`), the isolated player page (`page/`, `bun install && bun run build` there for the IVS SDK). `e2e/sim.py` starts it and runs the CDP `Fetch` bridge; level 2 scenarios are `e2e/scenarios/l2_*.py`.
-- `e2e/`: nodriver drivers for levels 2 and 3. `lib.py` starts Edge on a hidden desktop in extension, userscript or record mode; `recorder.js` records workers and a log from inside them (`window.__e2e`); `scenarios/` holds one module per scenario; `record.py` is the level 3 recorder (CDP `Fetch`, T-005) and `soak.py` the long runs.
+- `e2e/`: nodriver drivers for levels 2 and 3. `lib.py` starts Edge on a hidden desktop in extension, userscript or record mode; `recorder.js` records workers and a log from inside them (`window.__e2e`); `scenarios/` holds one module per scenario; `record.py` is the level 3 recorder (CDP `Fetch`, T-005) and `soak.py` the long runs. `firefox.py` drives Firefox through WebDriver BiDi.
 
 ## Rules
 

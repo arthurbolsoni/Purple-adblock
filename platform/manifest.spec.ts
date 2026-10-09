@@ -24,12 +24,17 @@ describe("Chromium manifest", () => {
   });
 });
 
+// T-111: Firefox 128 and later run a MAIN world content script in MV2 too; earlier versions ignore `world` and the
+// content script adds the bundle itself (docs/findings/2026-10-09-firefox-injection.md)
 describe("Firefox manifest", () => {
   const manifest = read("firefox/manifest.json");
 
-  test("MV2: the content script adds the bundle, at document_start", () => {
+  test("MV2: app/bundle.js is a MAIN world content script at document_start, next to the isolated content script", () => {
     expect(manifest.manifest_version).toBe(2);
-    expect(manifest.content_scripts).toEqual([{ matches: TWITCH, run_at: "document_start", js: ["content-script.js"] }]);
+    expect(manifest.content_scripts).toEqual([
+      { matches: TWITCH, run_at: "document_start", js: ["content-script.js"] },
+      { matches: TWITCH, run_at: "document_start", world: "MAIN", js: ["app/bundle.js"] },
+    ]);
   });
 });
 

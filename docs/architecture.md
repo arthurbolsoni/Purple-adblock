@@ -4,8 +4,8 @@
 
 | Context | File | Runs in |
 | --- | --- | --- |
-| Content script | `platform/src/content-script.js` | extension isolated world; reads `storage` and answers `getSettings`; on Firefox (MV2) also adds `app/bundle.js` to the page |
-| Page | `serviceWorker/src/index.ts` (built into `bundle.js`) | twitch.tv main world, `document_start`: a `MAIN` world content script on Chromium, a `<script>` added by the content script on Firefox, `@run-at document-start` in the userscript |
+| Content script | `platform/src/content-script.js` | extension isolated world; reads `storage` and answers `getSettings`; on Firefox before 128 also adds `app/bundle.js` to the page |
+| Page | `serviceWorker/src/index.ts` (built into `bundle.js`) | twitch.tv main world, `document_start`: a `MAIN` world content script on Chromium and on Firefox 128 and later (MV2 too), a `<script>` added by the content script on earlier Firefox, `@run-at document-start` in the userscript |
 | Worker | `serviceWorker/src/app.worker.ts` → `bootstrap.ts` + modules (built into `app.worker.js`) | inside the Twitch player worker, ahead of the original script |
 | Popup | `platform/src/common/js/popup.js` | extension popup |
 
@@ -13,7 +13,7 @@ The userscript has no content script or popup: `bundle.js` is the whole script a
 
 ## Current flow
 
-1. `app/bundle.js` runs in the page before Twitch's scripts create the player workers (T-111). On Firefox the content script adds it as a `<script>` without waiting for `storage`.
+1. `app/bundle.js` runs in the page before Twitch's scripts create the player workers (T-111). On Firefox before 128, which ignores `world`, the content script adds it as a `<script>` without waiting for `storage`.
 2. `index.ts` replaces `window.Worker`. When a worker is created, it downloads the script with a synchronous XHR and builds a blob with `app.worker.js` followed by the original script. If the download fails, the worker starts from the original URL.
 3. The page answers `fetch` and XHR to `edge.ads.twitch.tv` with an empty 200 while `blockCsai` holds (`page/fetch-hook.ts`, `page/xhr-hook.ts`, T-301); on Chromium a static rule (`rules.json`, T-302) blocks what the hooks do not see. The content script sends the settings to the page as soon as storage answers, again when a worker asks, and whenever a stored setting changes (`storage.onChanged`, T-602).
 4. Every worker built this way joins a `WorkerRegistry` (`page/worker-registry.ts`) after the page's first message to it (the player's init), and leaves it on `terminate()` (T-107). Nothing from Purple reaches a worker before that message. On a direct channel load the player creates two workers. The page `fetch` hook (`page/fetch-hook.ts`, T-106) is installed when the bundle loads; it reads only the `https://gql.twitch.tv/integrity` response, from a clone, and the request headers of `https://gql.twitch.tv/gql` calls (F-05, T-401), and gives every response to the page unchanged. With `forcePopoutToken`, it rewrites the `playerType` of the page's `PlaybackAccessToken` operations to `popout`, `picture-by-picture` excepted (F-12, T-408).

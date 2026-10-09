@@ -1,10 +1,13 @@
 const storageArea = () => (typeof browser === "undefined" ? chrome.storage : browser.storage);
 const storage = () => storageArea().local;
 
-// Chromium runs app/bundle.js as a MAIN world content script at document_start, before Twitch creates the
-// player workers. Firefox MV2 has no MAIN world: the bundle is added here, without waiting for storage.
+// Chromium, and Firefox from 128 (also in MV2), run app/bundle.js as a MAIN world content script at document_start,
+// before Twitch creates the player workers. Firefox before 128 ignores `world` and runs it in this isolated world,
+// where it hooks nothing: the bundle is added to the page here, without waiting for storage (T-111).
+const firefoxVersion = () => Number((/Firefox\/(\d+)/.exec(navigator.userAgent) || [])[1]) || null;
 const bundleInMainWorld = () =>
-  (chrome.runtime.getManifest().content_scripts || []).some((s) => s.world === "MAIN" && (s.js || []).includes("app/bundle.js"));
+  (chrome.runtime.getManifest().content_scripts || []).some((s) => s.world === "MAIN" && (s.js || []).includes("app/bundle.js")) &&
+  !(firefoxVersion() && firefoxVersion() < 128);
 
 function injectBundle() {
   var s = document.createElement("script");

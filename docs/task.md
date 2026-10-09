@@ -222,7 +222,7 @@ Runs in parallel with phases 1 to 7. Phase 1 to 6 tasks list L2/L3 scenarios tha
 - Tests: TS-110
 
 ### T-111 Inject before the player creates its workers
-- [~] Status · C-11 · E1 · 2026-10-07: Chromium and userscript done and checked (L3-01, 8 of 8 and 5 of 5 direct loads in time); on Firefox the content script adds the bundle without waiting for `storage`, live check open (the harness drives Edge only) ([finding](findings/2026-10-07-e2e-harness.md))
+- [x] Status · C-11 · E1 · done 2026-10-09: Firefox: `app/bundle.js` a `MAIN` world content script at `document_start` in the MV2 manifest (Firefox 128 and later run it; the content script adds the bundle on earlier versions); on Firefox 157 through WebDriver BiDi (`e2e/firefox.py`), every player worker went through the injector in 8 of 8 direct loads, the hook at 74 to 145 ms (140 to 464 ms with the `<script src>`), the first worker at 569 to 752 ms; the userscript as a preload script 8 of 8 ([finding](findings/2026-10-09-firefox-injection.md)). 2026-10-07: Chromium and userscript done and checked (L3-01, 8 of 8 and 5 of 5 direct loads in time); on Firefox the content script adds the bundle without waiting for `storage`, live check open (the harness drives Edge only) ([finding](findings/2026-10-07-e2e-harness.md))
 - Files: `platform/chromium/manifest.json`, `platform/src/content-script.js`, `platform/firefox/manifest.json`, `platform/tampermonkey/build.js`, `cli/chrome_builder.js`
 - Context: on a direct channel load the player workers start at 0.45 to 0.8 s and Purple's hook at about 0.77 s, so Purple never runs in them ([finding](findings/2026-10-04-worker-injection-race.md)).
 - Done when:

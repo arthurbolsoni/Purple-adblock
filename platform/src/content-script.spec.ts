@@ -1,6 +1,7 @@
 // content-script.js runs as a classic script in the extension's isolated world; here it runs on happy-dom
-// with a chrome.storage mock. Firefox (MV2) manifest: there is no MAIN world content script, so the content
-// script adds app/bundle.js to the page itself, without waiting for storage (T-111), and answers getSettings (E7).
+// with a chrome.storage mock. Firefox (MV2) manifest on Firefox 115: versions before 128 ignore the MAIN world
+// content script, so the content script adds app/bundle.js to the page itself, without waiting for storage (T-111),
+// and answers getSettings (E7). Firefox 128 and later: content-script.firefox.spec.ts.
 import { beforeAll, describe, expect, test } from "bun:test";
 import { join } from "path";
 import { silenceConsole } from "../../serviceWorker/test/harness/console";
@@ -17,6 +18,7 @@ const appended: HTMLScriptElement[] = [];
 const replies: any[] = [];
 
 beforeAll(async () => {
+  Object.defineProperty(navigator, "userAgent", { value: "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:115.0) Gecko/20100101 Firefox/115.0", configurable: true });
   const source = await Bun.file(join(import.meta.dir, "content-script.js")).text();
   const appendChild = document.head.appendChild.bind(document.head);
   document.head.appendChild = ((node: any) => {
@@ -31,7 +33,7 @@ beforeAll(async () => {
 
 const getSettings = () => window.postMessage({ type: "getSettings", value: null }, "*");
 
-describe("content script on Firefox (MV2)", () => {
+describe("content script on Firefox 115 (MV2)", () => {
   test("reads the settings from storage", () => {
     expect(env.chrome.getCalls).toEqual([["whitelist", "toggleProxy", "proxyUrl", "debug", "blockCsai", "backupPlayerTypes", "lowQualityFallback", "pinBackupPlayerType", "stripFallback", "forcePopoutToken", "reloadAfterAd", "pausePlayDelayMs", "prewarmBackups", "stripAdMarkers", "pausePlayOnBreaks", "prewarmAtLoad", "alignBackupSequence"]]);
   });

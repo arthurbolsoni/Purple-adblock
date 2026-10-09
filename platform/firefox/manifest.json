@@ -25,6 +25,16 @@
             "js": [
                 "content-script.js"
             ]
+        },
+        {
+            "matches": [
+                "https://*.twitch.tv/*"
+            ],
+            "run_at": "document_start",
+            "world": "MAIN",
+            "js": [
+                "app/bundle.js"
+            ]
         }
     ]
 }
