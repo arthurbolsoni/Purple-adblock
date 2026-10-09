@@ -508,7 +508,7 @@ Odd behaviors seen in the runs. Each task ends with its cause in a finding (and 
 - Tests: probe over the soak recordings
 
 ### T-809 Still video at midroll edges with E6 on the main player
-- [ ] Status · E6 · F-18
+- [~] Status · E6 · F-18 · F-21 · 2026-10-09: soak h, the same three midrolls with E6 on and off on `/channel-d`: no ad media and no ad UI either way; the longest still stretch was 1, 1 and 1 s with E6 and 0, 0 and 4 s without (soak f, where E6 never reached the main player: 0 s in 12 midrolls). E6 is not needed to keep ad media out at midroll edges. Whether its default changes is the maintainer's decision (E6 is an existing strategy, rule 2) ([finding](findings/2026-10-08-e6-at-midrolls.md))
 - Origin: midrolls later in a load stood still 0 s in soak f, where E6's pause/play went to the picture-by-picture player (C-13), and about 1 s in soaks d and g, where they reached the main player; soak e, with the same C-13 bug, had 2 to 3 s ([backup behind](findings/2026-10-08-backup-behind.md#soaks)).
 - Check: midrolls with E6 on the main player (the C-13 build) and with E6 sent nowhere, on the same channels: still seconds, ad overlay, ad media reaching the player, and the player's position after each edge.
 - Done when: whether E6 is needed at midroll edges is in a finding; E6 stays (rule 2), and a change of when it runs goes behind a setting with its default recorded.
