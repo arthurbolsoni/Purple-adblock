@@ -84,6 +84,6 @@ L2-09 on 2026-10-09 after T-815: L2-03's midroll with the backups 3 segments beh
 
 With E6 off, the first backup playlist ended at segment 12 with prefetch URIs 13 and 14, and the player already had 14 from the main playlist, as in soak h at 23:47:55; the video stood still about 3 s. Back on the main playlist after the break, the player kept 9 to 10 s of buffer until the end of the run: about 5 s further behind the stream than before the break (the isolated player's `getLiveLatency()` reads 0). With E6 on, the player started over at each edge; after the restart at the end it kept about 1 s less buffer than before the break.
 
-## Open
+## Defaults
 
-- Why the backup's newest sequence can be the player's: the page's playlist numbers the stream ahead of the backups' after midrolls (B-054, [sequence numbering](2026-10-09-sequence-numbering.md), T-816). A fix at the switch, numbering the backup as the page's playlist (T-817) or a restart only when the new playlist lists nothing past the player's number, with E6 at the break edges off: the decision on `pausePlayOnBreaks`' default waits on it (T-809).
+Since 2026-10-09, `pausePlayOnBreaks` is off by default and `alignBackupSequence` on (F-21, F-23), the maintainer's decision on soak j. The backup's newest sequence was the player's because the page's playlist numbers the stream ahead of the backups' after its midrolls (B-054, T-816); F-23 numbers a backup as the page's playlist ([sequence numbering](2026-10-09-sequence-numbering.md#soaks-i-and-j-twitchtv)).

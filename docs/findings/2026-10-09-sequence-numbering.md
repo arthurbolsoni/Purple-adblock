@@ -74,6 +74,6 @@ Soak j, 14:29 to 16:10, `/channel-d`, two sessions with the same three stitched 
 
 The page's playlist had `MEDIA-SEQUENCE` 5 ahead of `EXT-X-TWITCH-LIVE-SEQUENCE` before the second and third midrolls and 8 after the third; the backups asked at the load 0, one asked later 3. The 6 s at 16:08:01 with E6 on came at a switch from `site` to `popout` (gap -3, the next number 14.7 s later), 4 s after E6's restart: E6 does not run at a switch between backups. The 2 s at 16:08:06 with `alignBackupSequence` came at a switch from `popout` to a `site` token asked 0.2 s before, whose playlist listed nothing newer than `popout`'s by date-time and moved 1.5 s later.
 
-## Open
+## Defaults
 
-- `alignBackupSequence`'s default, and with it E6's at the break edges (T-809): the maintainer's decision.
+Since soak j, `alignBackupSequence` is on by default and `pausePlayOnBreaks` off (F-21, F-23, T-809, T-817), the maintainer's decision.

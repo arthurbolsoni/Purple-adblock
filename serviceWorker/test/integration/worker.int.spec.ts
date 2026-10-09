@@ -559,9 +559,10 @@ ${variant}
     expect(worker.posted.filter((m) => m.type === "pause" || m.type === "reload")).toEqual([{ type: "pause" }, { type: "reload" }]);
   });
 
-  // T-809 (F-21): E6 at the break edges behind pausePlayOnBreaks (default on)
-  const breakEdges = async (settings: Record<string, unknown>) => {
-    const worker = setup();
+  // T-809 (F-21): E6 at the break edges behind pausePlayOnBreaks (default off since T-809; on before)
+  const breakEdges = async (settings: Record<string, unknown>, productDefaults = false) => {
+    const worker = createWorkerScope(undefined, { productDefaults });
+    worker.twitch.master("channel", masterFor(""));
     worker.player.setSettings({ whitelist: [], toggleProxy: false, proxyUrl: "", backupPlayerTypes: [], lowQualityFallback: false, ...settings });
     worker.twitch.mediaPlaylist(MAIN, fixture("m3u8/media-ssai-midroll.m3u8"));
     await worker.text(USHER);
@@ -571,8 +572,12 @@ ${variant}
     return worker.posted.filter((m) => m.type === "pause" || m.type === "play").map((m) => m.type);
   };
 
-  test("pause and play at the start and the end of a break by default", async () => {
-    expect(await breakEdges({})).toEqual(["pause", "play", "play", "pause", "play", "play"]);
+  test("no pause or play at the break edges by default", async () => {
+    expect(await breakEdges({}, true)).toEqual([]);
+  });
+
+  test("pausePlayOnBreaks on: pause and play at the start and the end of a break", async () => {
+    expect(await breakEdges({ pausePlayOnBreaks: true })).toEqual(["pause", "play", "play", "pause", "play", "play"]);
   });
 
   test("pausePlayOnBreaks off: no pause or play at the break edges", async () => {
@@ -974,8 +979,9 @@ describe("backup sequence numbers", () => {
   const otherLines = (text: string) => text.split("\n").filter((line) => !line.startsWith("#EXT-X-MEDIA-SEQUENCE:"));
 
   // the page's polls in order, the frontpage backup's polls (one per poll with ads); the playlists the player got
-  const polls = async (settings: Record<string, unknown>, main: string[], backup: string[]) => {
-    const worker = setup();
+  const polls = async (settings: Record<string, unknown>, main: string[], backup: string[], productDefaults = false) => {
+    const worker = createWorkerScope(undefined, { productDefaults });
+    worker.twitch.master("channel", masterFor(""));
     worker.player.setSettings({ whitelist: [], toggleProxy: false, proxyUrl: "", backupPlayerTypes: [StreamType.FRONTPAGE], lowQualityFallback: false, ...settings });
     worker.twitch.mediaPlaylist(MAIN, ...main);
     worker.twitch.mediaPlaylist(FRONTPAGE, ...backup);
@@ -1000,6 +1006,12 @@ describe("backup sequence numbers", () => {
     expect(mediaSequence(second)).toBe(102);
     expect(newest(second)).toBeGreaterThan(newest(free));
     expect(otherLines(second)).toEqual(otherLines(lowerBackup));
+  });
+
+  test("alignBackupSequence is on by default", async () => {
+    const [, second] = await polls({}, [free, withAds], [lowerBackup], true);
+
+    expect(mediaSequence(second)).toBe(102);
   });
 
   test("alignBackupSequence off: the backup comes out as Twitch sent it, with nothing past the player's last number", async () => {

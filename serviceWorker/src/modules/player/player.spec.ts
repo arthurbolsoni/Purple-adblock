@@ -146,7 +146,7 @@ describe("Player.isAds", () => {
     const context = makeContext();
     const player = new Player(context);
 
-    player.setSettings({ whitelist: [], toggleProxy: false, proxyUrl: "", pausePlayDelayMs: 1500 });
+    player.setSettings({ whitelist: [], toggleProxy: false, proxyUrl: "", pausePlayDelayMs: 1500, pausePlayOnBreaks: true });
     expect(player.isAds(ADS, true)).toBe(true);
     expect(player.playingAds).toBe(true);
     expect(context.posted).toEqual([{ type: "pause" }]);
@@ -196,7 +196,7 @@ describe("Player.isAds", () => {
     const context = makeContext();
     const events: any[] = [];
     const player = new Player({ ...context, emit: (event: any) => events.push(event) });
-    player.setSettings({ whitelist: [], toggleProxy: false, proxyUrl: "", reloadAfterAd: true });
+    player.setSettings({ whitelist: [], toggleProxy: false, proxyUrl: "", reloadAfterAd: true, pausePlayOnBreaks: true });
 
     player.isAds(ADS, true);
     jest.advanceTimersByTime(1500);
@@ -212,6 +212,7 @@ describe("Player.isAds", () => {
     jest.useFakeTimers();
     const context = makeContext();
     const player = new Player(context);
+    player.setSettings({ whitelist: [], toggleProxy: false, proxyUrl: "", pausePlayOnBreaks: true });
     player.isAds(ADS, true);
     player.isAds(LIVE, true);
     expect(context.posted.filter((m) => m.type === "pause")).toEqual([{ type: "pause" }, { type: "pause" }]);

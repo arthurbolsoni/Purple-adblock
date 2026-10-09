@@ -106,9 +106,10 @@ export class Player {
     this.play();
   };
 
-  // F-21 (T-809): E6 at the break edges, unless pausePlayOnBreaks is off (default on); the reload fallback (F-15) is not one
+  // F-21 (T-809): E6 at the break edges only with pausePlayOnBreaks (default off since T-809, with F-23 on: its restart
+  // left the player about 1 s of buffer); the reload fallback (F-15) is not one
   private edgePauseAndPlay = () => {
-    if (this.setting?.pausePlayOnBreaks === false) return;
+    if (this.setting?.pausePlayOnBreaks !== true) return;
     this.pauseAndPlay();
   };
 
@@ -223,11 +224,11 @@ export class Player {
   // break loses the ad's DATERANGE lines, which the page's ad UI starts from
   private adMarkers = (text: string) => (this.setting?.stripAdMarkers === false ? text : stripAdDateranges(text));
 
-  // F-23 (T-817): with alignBackupSequence, a backup replacing the page's playlist gets the numbers the page's playlist
+  // F-23 (T-817): with alignBackupSequence (default on), a backup replacing the page's playlist gets the numbers the page's playlist
   // gives the same date-time, from its last poll without ads (else the live segments before the ads of this one). The
   // shift is kept per backup variant for the break, so its numbers do not move between polls.
   private alignSequence(backup: string, variant: StreamUrl | undefined, main: string): string {
-    if (this.setting?.alignBackupSequence !== true) return backup;
+    if (this.setting?.alignBackupSequence === false) return backup;
     const key = withoutQuery(variant?.url ?? "");
     let shift = this.sequenceShifts.get(key);
     if (shift == null) {

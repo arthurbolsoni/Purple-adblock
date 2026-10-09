@@ -1,7 +1,7 @@
 """L3-12: the break edges with a given wait between pause and play (E6, F-18, T-604), fresh profile, logged out.
 
-extension, `debug` on, `pausePlayDelayMs` from the environment variable PURPLE_PAUSE_DELAY_MS (default 0) set in
-chrome.storage.local before the channel opens. For each `pause` the worker posts (a break edge): when the <video>
+extension, `debug` on, `pausePlayDelayMs` from the environment variable PURPLE_PAUSE_DELAY_MS (default 0) and
+`pausePlayOnBreaks` on (off by default since T-809) set in chrome.storage.local before the channel opens. For each `pause` the worker posts (a break edge): when the <video>
 fired `pause` and `playing`, the time between them and `currentTime` at `playing`. The video must play again after
 every edge, with no player error and, for a break recorded in the main stream, no ad overlay. The edges go in the
 details for the finding.
@@ -25,7 +25,8 @@ RECOVERED = 5000    # ms from the <video> pause to playing for an edge to count 
 async def run(session):
     tab = session.tab
     delay = int(os.environ.get('PURPLE_PAUSE_DELAY_MS', '0'))
-    await lib.set_storage(session, pausePlayDelayMs=delay)
+    # E6 at the break edges is off by default since T-809 (F-21)
+    await lib.set_storage(session, pausePlayDelayMs=delay, pausePlayOnBreaks=True)
     channels = await common.directory_channels(session)
     channel, outcome, gated = await common.open_channel(session, channels, shuffle=True)
     if not channel:

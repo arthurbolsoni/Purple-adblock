@@ -11,7 +11,7 @@ Three groups: strategies that already exist (E-xx, none is removed), fixes to ex
 | E3 | Backup stream by requesting `PlaybackAccessToken` with another playerType (`frontpage`, `picture-by-picture`) | `player.ts`, `stream.ts`, `twitch.service.ts` | fixed hash, no page headers, duplicate requests; the variant regex expects `https://video…` URLs, current masters may use `*.playlist.ttvnw.net` (Q-013) | T-104, T-105, T-401 to T-407 |
 | E4 | Replace the whole playlist with the first backup without ads | `player.ts` | kept | T-405 |
 | E5 | Replace ad segments with backup segments that have the same `PROGRAM-DATE-TIME` | `m3u8.ts` | drops tags; compares at whole-second precision | T-101, T-501 |
-| E6 | Pause and play when entering and leaving an ad (player's internal RPC) | `player.ts`, `index.ts` | kept | T-601 |
+| E6 | Pause and play when entering and leaving an ad (player's internal RPC) | `player.ts`, `index.ts` | kept; at the break edges behind `pausePlayOnBreaks`, off by default since T-809 (F-21) | T-601 |
 | E7 | Per-channel whitelist (popup + storage) | `popup.js`, `content-script.js` | never applied: the worker stored the whole `setSettings` message (C-10) and it would apply only after a page reload (both fixed by T-602); the popup read the channel from `www.twitch.tv/<channel>` only, with its case (fixed by T-603) | T-602, T-603 |
 | E8 | Backup in the quality selected in the player | `stream.types.ts`, `index.ts` | kept | T-407 |
 | E9 | Integrity token capture from the `/integrity` call | `index.ts`, `page/fetch-hook.ts` | the hook reads every page response and rebuilds it (a 204/304 body throws in browsers); installed with the first worker, so a token from before it is lost | T-106, T-401 |
@@ -61,9 +61,9 @@ Three groups: strategies that already exist (E-xx, none is removed), fixes to ex
 | F-18 | Wait between `pause` and `play` at the break edges (E6) from a setting | Purple | `pausePlayDelayMs = 0` | T-604 |
 | F-19 | Backup tokens requested when the page asks for a `picture-by-picture` master, a few seconds before a possible midroll (B-044), only for the backup types with no stored master (T-410). Soak e: the same blank segments, time to the first backup and token requests as without it at later midrolls. Soaks e and f, a channel's first midroll: `site` 720p as the first backup with it (7 of 7), the 360p `picture-by-picture` master without it (6 of 6) ([finding](findings/2026-10-08-prewarm-backups.md)) | Purple | `prewarmBackups = true` (since T-410; `false` before) | T-409, T-410 |
 | F-20 | The ad's own `DATERANGE` lines (`twitch-stitched-ad`, `twitch-ad-quartile`) leave a playlist Purple delivers with blanked ad segments or an announced break: the page's ad UI started in 4 of the 5 soak breaks whose ad segments reached the player; in joins into a running midroll it showed 3 of 3 times with them and 0 of 3 without (T-811, [finding](findings/2026-10-08-ad-ui-on-early-breaks.md)) | Purple | `stripAdMarkers = true` (since T-811; `false` before) | T-811 |
-| F-21 | E6 at the break edges can be turned off; the pause/play after a failed reload (F-15) stays | Purple | `pausePlayOnBreaks = true` | T-809 |
+| F-21 | E6 at the break edges behind a setting; the pause/play after a failed reload (F-15) stays. E6's restart avoided the wait at a switch to a backup numbered lower (T-816), which F-23 removes, and left the player about 1 s of buffer (T-814): soak j, 13 s still with E6 on against 3 s with F-23 and E6 off ([finding](findings/2026-10-09-sequence-numbering.md#soaks-i-and-j-twitchtv)) | Purple | `pausePlayOnBreaks = false` (since T-809; `true` before) | T-809 |
 | F-22 | The page's usher request for a channel also brings F-19's prewarm (tokens for the backup types with no stored master), for midrolls announced in the first seconds of a load (T-810): no ad segment reached the player in 3 of 3 such midrolls with it, 2 to 3 polls and 6 s of still video in 2 of 2 without ([finding](findings/2026-10-09-prewarm-at-load.md)) | Purple | `prewarmAtLoad = true` (since T-812; `false` before) | T-812 |
-| F-23 | A backup replacing the page's playlist gets the sequence numbers the page's playlist gives the same date-time: the page's playlist numbers the stream ahead of backups asked before it after its stitched midrolls (B-054), and the player, which asks for the number after its last segment, waited at the switch until the backup's numbers caught up, 3 to 7 s still when that took 2 s or more (T-816, [finding](findings/2026-10-09-sequence-numbering.md)) | Purple | `alignBackupSequence = false` (until the soak comparison, T-817) | T-817 |
+| F-23 | A backup replacing the page's playlist gets the sequence numbers the page's playlist gives the same date-time: the page's playlist numbers the stream ahead of backups asked before it after its stitched midrolls (B-054), and the player, which asks for the number after its last segment, waited at the switch until the backup's numbers caught up, 3 to 7 s still when that took 2 s or more (T-816, [finding](findings/2026-10-09-sequence-numbering.md)) | Purple | `alignBackupSequence = true` (since T-817) | T-817 |
 
 ### F-02: markers
 
@@ -132,7 +132,7 @@ As in Brave's script: the ad segments the merge left keep their lines in the pla
 
 ### F-15: ad break state machine
 
-`ad-break.ts` follows the main media playlist poll by poll: `idle` → `ad` on the first poll with ad segments, `ad` → `recovering` on the first poll without, `recovering` → `idle` after 10 s of polls without ad segments, `recovering` → `ad` when they come back first. The player gets pause/play (E6) on each change to `ad` and at the end of the break, as before: the worker posts `pause`, then `play` twice (right after it by default, `pausePlayDelayMs`, F-18). `MARKED_LIVE` polls are not part of it (T-202).
+`ad-break.ts` follows the main media playlist poll by poll: `idle` → `ad` on the first poll with ad segments, `ad` → `recovering` on the first poll without, `recovering` → `idle` after 10 s of polls without ad segments, `recovering` → `ad` when they come back first. With `pausePlayOnBreaks` (F-21, off by default since T-809), the player gets pause/play (E6) on each change to `ad` and at the end of the break: the worker posts `pause`, then `play` twice (right after it by default, `pausePlayDelayMs`, F-18). `MARKED_LIVE` polls are not part of it (T-202).
 
 With `reloadAfterAd`, the end of the break asks the page to reload the player instead of pause/play, once per break and at most once every 30 s; a later end in the same break, or one inside the 30 s, gets pause/play. The page looks for Twitch's player state in the React tree under `#root` (the lookup copied from Brave's script, with its notices, in `page/player-reload.ts`), keeps the current quality in `video-quality` and runs a soft `setSrc` (same player instance, same access token), then `play`. When it finds no player state it answers so, and the worker pauses and plays instead. Brave's script also does a hard reload with a new token after breaks it blanked, and skips the reload when the player is healthy; Purple does neither.
 
@@ -167,9 +167,9 @@ The wait between `pause` and `play` at each break edge (F-15) comes from `pauseP
 | `pausePlayDelayMs` | `number` | `0` | F-18 |
 | `prewarmBackups` | `boolean` | `true` | F-19 |
 | `stripAdMarkers` | `boolean` | `true` | F-20 |
-| `pausePlayOnBreaks` | `boolean` | `true` | F-21 |
+| `pausePlayOnBreaks` | `boolean` | `false` | F-21 |
 | `prewarmAtLoad` | `boolean` | `true` | F-22 |
-| `alignBackupSequence` | `boolean` | `false` | F-23 |
+| `alignBackupSequence` | `boolean` | `true` | F-23 |
 
 The content script sends the stored `whitelist`, `toggleProxy`, `proxyUrl`, `debug`, `blockCsai`, `backupPlayerTypes`, `lowQualityFallback`, `pinBackupPlayerType`, `stripFallback`, `forcePopoutToken`, `reloadAfterAd`, `pausePlayDelayMs`, `prewarmBackups`, `stripAdMarkers`, `pausePlayOnBreaks`, `prewarmAtLoad` and `alignBackupSequence` when storage first answers, when a worker asks, and whenever one of them changes (T-602). The worker replaces its settings with each message it gets. The userscript uses the defaults.
 

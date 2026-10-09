@@ -3,9 +3,9 @@
 sim/ scenario l2-10-page-numbered-ahead: L2-03's midroll, with the page's token (popout, F-12) numbering the stream 2
 segments ahead of the backups, as the page's playlist does after a few stitched midrolls in a load. No ad segment
 reaches the player, Purple plays the break on a backup, and the video plays after it. With alignBackupSequence on
-(L2_SETTINGS, F-23), the first backup playlist the player gets lists a number past the newest of the last page
-playlist; without it, that is only recorded. The longest still stretch, the <video> waiting events, E6's pauses and
-the player's buffer each second go in the details.
+(F-23, the default; L2_SETTINGS can turn it off), the first backup playlist the player gets lists a number past the
+newest of the last page playlist; without it, that is only recorded. The longest still stretch, the <video> waiting
+events, E6's pauses and the player's buffer each second go in the details.
 """
 import json
 import os
@@ -48,7 +48,7 @@ def switch(playlists):
 
 async def run(session):
     w = await level2.watch(session, SCENARIO, WATCH)
-    aligned = json.loads(os.environ.get('L2_SETTINGS') or '{}').get('alignBackupSequence') is True
+    aligned = json.loads(os.environ.get('L2_SETTINGS') or '{}').get('alignBackupSequence') is not False
     at_switch = switch(w.state.get('playlists') or [])
     detail = {'switch': at_switch, 'aligned': aligned, 'longestStill': longest_still(w.samples[5:]), 'waiting': waits(w.state['media'] or []),
               'backups': [e.get('playerType') for e in w.events('backupUsed')][:10], 'shifts': [e.get('count') for e in w.events('sequenceShifted')],
@@ -57,7 +57,7 @@ async def run(session):
     return level2.base_checks(w) + [
         Check('no ad segment requested from sim/', not w.ad_segments_requested(), {'ads': w.ad_segments_requested()[:5]}),
         Check('the break handled with a backup', bool(w.events('backupUsed')), detail),
-        Check('alignBackupSequence: the first backup playlist lists a number past the last page playlist', not aligned or past,
+        Check('alignBackupSequence (default on): the first backup playlist lists a number past the last page playlist', not aligned or past,
               {'switch': at_switch, 'shifts': detail['shifts']}, skipped=not aligned),
         Check('stalls during the run (observation)', True, detail),
     ]
