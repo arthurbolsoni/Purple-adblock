@@ -4,8 +4,9 @@
 Usage: python docs/findings/probes/startup_probe.py <soak session folder> [...]
 
 Per load (e2e/soak.py, extension mode with debug): the first master playlist delivered to the player, the first
-transition to progressing, and whether a stitched preroll started within 15 s of the master (e2e/soak_report.py's
-breaks). Loads behind the content classification gate are left out. Prints each load and the median per group.
+transition to progressing, and whether a stitched preroll (e2e/soak_report.py's breaks) started from 1 s before to
+15 s after the master. Loads behind the content classification gate are left out. Prints each load and the median per
+group.
 """
 import datetime
 import json
@@ -49,7 +50,8 @@ for folder in sys.argv[1:]:
     for load, master in sorted(masters.items()):
         if load in gated:
             continue
-        preroll = any(c == channels[load] and 0 <= at - master < 15000 for c, at in prerolls)
+        # the break's start is in whole seconds: up to 1 s before the master
+        preroll = any(c == channels[load] and -1000 <= at - master < 15000 for c, at in prerolls)
         play = first_play.get(load)
         if play is None:
             print(f'  load {load} {channels[load]} {clock(master)}: never moved')
