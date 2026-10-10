@@ -42,6 +42,8 @@ export function buildFirefox(dev, { out = "./dist", bundle = "./serviceWorker/di
     zipFile.pipe(stream);
   });
   zipFile.directory("./platform/src", false, (entry) => (isPackaged(entry.name) ? entry : false));
+  // the platform folder as in the unpacked build (rules.json on Chromium), with the versioned manifest
+  zipFile.directory("./platform/" + platform, false, (entry) => (entry.name === "manifest.json" ? false : entry));
   zipFile.file(bundle, { name: "app/bundle.js" });
   for (const notice of NOTICES) zipFile.file("./" + notice, { name: notice });
   zipFile.append(Buffer.from(JSON.stringify(manifest)), { name: "manifest.json" });
