@@ -1,0 +1,381 @@
+# Tests
+
+## Test levels
+
+| Level | What runs | Where | Tooling | Test IDs |
+| --- | --- | --- | --- | --- |
+| 1. Unit | Purple modules and the worker pipeline against the in-process `FakeTwitch` | Bun process | `bun test` (Jest fallback); `cargo test` for `sim/` | TS-xxx |
+| 2. Player + server | real player (Amazon IVS SDK) with Purple on an isolated local page, against `sim/`, our Rust server reproducing Twitch's server | Edge via nodriver, localhost only | `sim/`, nodriver | L2-xx |
+| 3. Live site | Purple on twitch.tv, using known techniques to trigger behaviors, with the recorder on | Edge via nodriver, twitch.tv | nodriver, recorder | L3-xx |
+
+Level 3 discovers behaviors and writes them to `docs/findings/` and `docs/server/`. Level 2 reproduces them deterministically in `sim/`. Level 1 covers the logic with fixtures taken from both.
+
+## Rules
+
+1. Every task in `docs/task.md` closes with its listed tests passing: TS-xxx under `bun test`, plus any L2-xx or L3-xx it lists.
+2. Tests run on this machine: `bun run check`, also run by the pre-commit hook (`.githooks/pre-commit`, installed with `bun run hooks:install`). No GitHub Actions workflow runs tests.
+3. Bug fix: first the failing test that reproduces the bug, then the fix.
+4. Logic that crosses page and worker, or spans more than one module, gets an integration test on top of unit tests.
+5. Level 1 never hits the network. Every Twitch response comes from the `FakeTwitch` harness and the fixtures.
+6. Level 2 never opens twitch.tv.
+7. Levels 2 and 3 add to level 1; they never replace it.
+8. Every discovery made while testing goes to `docs/findings/`; server behavior goes to `docs/server/`.
+
+## Tooling
+
+- Runner: `bun test`, APIs from `bun:test` (`describe`, `test`, `expect`, `mock`, `spyOn`, `beforeAll`, `afterEach`, `setSystemTime`, `jest.useFakeTimers`, `jest.advanceTimersByTime`). Checked on Bun 1.4.1: legacy decorators (`experimentalDecorators` in `tsconfig.json`), fake timers, the `?raw` plugin, and global `fetch`, `Response`, `addEventListener` and `Bun.YAML`.
+- Worker code runs on Bun's globals (`fetch`, `Response`, `Blob`, `URL.createObjectURL`, `EventTarget`).
+- Page and platform code (`index.ts`, `content-script.js`, `popup.js`) runs on happy-dom through `@happy-dom/global-registrator`, registered per file with `useDom()` from `harness/dom.ts` or `usePageEnv()` from `harness/page-env.ts` (register in `beforeAll`, unregister in `afterAll`). File loading is off, so nothing reaches the network. happy-dom calls `on*` handler properties without binding `this`; tests that depend on it call the handler with the element as `this`.
+- Package scripts (`bun run test`) used the `bun` binary from `node_modules/.bin` while the `bun` npm package was a dependency; since T-701 it is not one, and they use the installed Bun removes it.
+- `bunfig.toml` ignores `dist/**`, and the builders leave `*.spec.ts` out of the extension (`cli/files.js`): tests next to the platform scripts are neither run from the build output nor shipped.
+- `bun test` runs every file in one process. A test that changes a global restores it in `afterEach`; the harness helpers do this themselves.
+- There is no `isolateModules`/`resetModules`. Tests build fresh instances through `createRouter(controller)`, `bindMessages(scope, controller)` and `bootstrapWorker(scope)` (T-001) instead of re-importing modules.
+- `Date.now`-based logic (cooldowns) uses `setSystemTime`; `setTimeout`-based logic uses `jest.useFakeTimers()`.
+- Bun's `Response` accepts a body with status 204, while browsers throw. Page-hook tests assert that the original response object is returned with `bodyUsed === false`.
+
+### Jest fallback
+
+`bun test` is the default. A test file may use Jest when `bun test` cannot cover the case (missing API, or a runtime difference that changes the result). In that case:
+
+- the file is named `*.jest.spec.ts` and starts with a comment giving the reason;
+- `jest` and `@swc/jest` are added to `devDependencies` with a `test:jest` script, and `bun test` ignores `*.jest.spec.ts`;
+- `bun run check` runs both `bun test` and `bun run test:jest`;
+- the file is listed below.
+
+| File | Reason |
+| --- | --- |
+| (none yet) | |
+
+### `bunfig.toml`
+
+```toml
+[test]
+preload = ["./serviceWorker/test/preload.ts"]
+```
+
+### `serviceWorker/test/preload.ts`
+
+Resolves Vite's `?raw` imports (used by `index.ts`) to `test/stubs/worker-bundle.ts`, which exports a fixed string; tests import the same stub to compare against it.
+
+```ts
+import { plugin } from "bun";
+import { join } from "path";
+
+const STUB = join(import.meta.dir, "stubs", "worker-bundle.ts");
+
+plugin({
+  name: "raw-suffix",
+  setup(build) {
+    build.onResolve({ filter: /\?raw$/ }, () => ({ path: STUB }));
+  },
+});
+```
+
+## Layout
+
+```
+serviceWorker/
+  src/**/x.spec.ts                 # unit tests next to the code
+  test/
+    preload.ts
+    stubs/worker-bundle.ts         # stands in for the built worker (`?raw`)
+    integration/*.int.spec.ts      # integration tests (worker pipeline, page)
+    fixtures/README.md             # provenance of every fixture
+    fixtures/m3u8/*.m3u8
+    fixtures/gql/*.json
+    repo/local-checks.spec.ts      # scripts, pre-commit hook, workflows without tests (TS-003)
+    harness/                       # each piece is covered by a spec here or in integration/
+      fake-twitch.ts
+      worker-scope.ts
+      page-env.ts
+      dom.ts
+      sanitize.ts
+      fixtures.ts                  # fixture(), fixtureJson(), listFixtures()
+      console.ts                   # silenceConsole() for the whole file
+platform/src/**/x.spec.ts          # platform scripts (happy-dom)
+sim/                               # level 2 server (Rust)
+  Cargo.toml
+  src/                             # cargo test
+  scenarios/*.json                 # one scenario per reproduced behavior set
+  media/                           # generated with ffmpeg (cargo run --bin media), gitignored
+  page/                            # isolated player page (Purple bundle + IVS SDK)
+e2e/                               # levels 2 and 3 drivers (Python + nodriver + Edge)
+  run.py                           # entry: python e2e/run.py <scenario|all> [--mode extension|userscript|record]
+  lib.py                           # Edge on a hidden desktop, dedicated profile, modes, JSON reads
+  recorder.js                      # page and worker state recorder (window.__e2e)
+  worker-logger.js                 # runs first in every worker: fetches, what Twitch answered, what the player got
+  worker-logger.spec.ts            # bun test: the digest's ad segment paths (segment, map and prefetch lines)
+  record.py                        # level 3 recorder, CDP Fetch (T-005)
+  soak.py, soak_report.py          # long runs and their report
+  server.py                        # summary of what Twitch's server did during a load (run report, docs/server/)
+  twitch_selectors.py              # not selectors.py: that name shadows the standard library module asyncio imports
+  scenarios/                       # one module per scenario (l3_01.py, l3_02.py) and common.py
+  requirements.txt
+```
+
+Scripts under `platform/src` load as classic scripts in the browser. To test them, pure functions are exported with `if (typeof module !== "undefined") module.exports = { ... }`, which does not change browser behavior.
+
+## Fixtures
+
+### `fixtures/m3u8`
+
+| File | Content |
+| --- | --- |
+| `master-site-v2.m3u8` | captured: the page's v2 master, no `EXT-X-MEDIA`, `IVS-NAME` and `STABLE-VARIANT-ID` per variant, 24 `SESSION-DATA` lines |
+| `master-frontpage-v1.m3u8` | captured: a v1 backup master with `#EXT-X-TWITCH-INFO` and `EXT-X-MEDIA` |
+| `master-avc.m3u8` | master with `EXT-X-MEDIA` (`NAME`) and chunked, 720p60, 480p30, 360p30, 160p30 variants, `avc1` codecs, URLs on `edge.playlist.ttvnw.net` (B-003) |
+| `master-video-weaver.m3u8` | same variants on `video-weaver.example.hls.ttvnw.net`, the host Purple 2.6.7's variant regex reads |
+| `master-hevc.m3u8` | master with HEVC and AV1 variants besides AVC |
+| `master-empty.m3u8` | master with no variants |
+| `media-live-ts.m3u8` | live TS media playlist with `PROGRAM-DATE-TIME` and `EXT-X-TWITCH-PREFETCH` |
+| `media-live-fmp4.m3u8` | live fMP4 media playlist with `EXT-X-MAP` |
+| `media-ll-hls.m3u8` | media playlist with `EXT-X-PART` and `EXT-X-PRELOAD-HINT` |
+| `media-ssai-preroll.m3u8` | every segment is an ad: `DATERANGE` `twitch-stitched-ad`, `twitch-trigger`, `twitch-ad-quartile` with `X-TV-TWITCH-AD-*`, `Amazon\|AD_ID` titles, `/adsquared/` URIs |
+| `media-ssai-midroll.m3u8` | live and ad segments mixed |
+| `media-marked-live.m3u8` | `DATERANGE` `twitch-maf-ad` over live segments (`MARKED_LIVE`) |
+| `media-midroll-numeric.m3u8` | midroll whose ad segments are titled with a 10-digit number, on plain URIs (B-035) |
+| `media-preroll-ft.m3u8` | fMP4 preroll titled `FT\|1-2-3` (B-035, B-039) |
+| `media-false-positive.m3u8` | `stitched` outside the segment title, `twitch-session`, `twitch-stream-source` |
+| `backup-clean.m3u8` | backup without ads, aligned by `PROGRAM-DATE-TIME` with `media-ssai-midroll.m3u8` |
+| `backup-ads.m3u8` | backup with ads |
+| `backup-announced-break.m3u8` | backup with live segments and its own break announced after them (B-034, B-036) |
+| `backup-fmp4-other-map.m3u8` | fMP4 backup with a different `EXT-X-MAP` than the main playlist |
+
+### `fixtures/gql`
+
+| File | Content |
+| --- | --- |
+| `token-ok.json` | `{ data: { streamPlaybackAccessToken: { value, signature } } }` |
+| `token-flat.json` | `{ streamPlaybackAccessToken: { value, signature } }` (shape seen for `embed`) |
+| `persisted-not-found.json` | `PersistedQueryNotFound` error |
+| `token-integrity-error.json` | integrity error |
+| `page-gql-init.json` | `init` of a page GQL request carrying the F-05 headers |
+| `page-token-batch.json` | batched body with `PlaybackAccessToken` and other operations |
+
+Provenance (observed, reported by Brave, or synthetic) is in `serviceWorker/test/fixtures/README.md`. The current files are hand-written from `docs/server/`; captures from the recorder (T-005) replace them once they exist.
+
+### Sanitizing
+
+Fixtures captured from Twitch go through `harness/sanitize.ts` before commit (`sanitizeFile(name, text)`):
+
+- query `token`, `sig`, `user_id`, `device_id`, `play_session_id` → `TOKEN`, `SIG`, `USER_ID`, `DEVICE_ID`, `PLAY_SESSION_ID`;
+- `X-TV-TWITCH-AD-*` attributes that identify the ad or the viewer → the attribute name (`AD_SESSION_ID`, `CREATIVE_ID`, ...); break descriptors (`ROLL-TYPE`, `POD-*`, `QUARTILE`, ...) stay;
+- other `X-TV-TWITCH-*ID` attributes → the attribute name; `Amazon|<id>` titles → `Amazon|AD_ID`;
+- master session data (`SESSION-DATA` and `#EXT-X-TWITCH-INFO`): `SERVING-ID`, `VIDEO-SESSION-ID`, `BROADCAST-ID` → the key name, `USER-COUNTRY` → `XX`, `C` and `E` (base64 URLs) → `C`, `E`;
+- `video-edge-*` hosts → `video-edge.example`; IPv4 → `203.0.113.1`; `OAuth <token>` → `OAuth OAUTH`; path components of 32 or more opaque characters → `opaque-<n>`;
+- JSON by key: token `value`, `signature`, ids and the F-05 headers (`Client-Integrity`, `X-Device-Id`, `Authorization`, `Client-Version`, `Client-Session-Id`); the public `Client-ID` stays.
+
+Every committed fixture satisfies `sanitizeFile(name, text) === text` (checked by `harness/fixtures.spec.ts`).
+
+To capture: turn `debug` on and copy the playlist printed by the logger.
+
+## Harness
+
+### `fake-twitch.ts`
+
+In-memory Twitch exposed as a `fetch(input, init)` function (string, `URL` or `Request` input):
+
+- usher (`/api/channel/hls/` and `/api/v2/channel/hls/`) → master per channel and playerType (`master(channel, text, playerType = "site")`); the playerType comes from the token FakeTwitch issued (`TOKEN-<playerType>`), so a backup usher request gets the backup master;
+- media playlist → queue of responses per URL, query ignored (`mediaPlaylist(url, ...responses)`); one per poll, the last one repeats;
+- `gql.twitch.tv/gql` → `PlaybackAccessToken` per `playerType` in the body, single or batched; `token(playerType, body, status)` overrides the reply (errors, other shapes);
+- `gql.twitch.tv/integrity` → integrity token; `edge.ads.twitch.tv` → empty 200;
+- any other URL → 404;
+- `calls` / `callsOf(kind)`: every call with kind, URL, method, lower-case headers, body, channel and playerType.
+
+### `worker-scope.ts`
+
+Builds a fake worker scope and boots the worker code on it, the way it runs inside Twitch:
+
+- `createWorkerScope(twitch = new FakeTwitch(), { productDefaults = false })`: the scope is an `EventTarget` with `postMessage` (records worker → page messages) and `fetch` set to `FakeTwitch.fetch`; unless `productDefaults`, every settings message gets `TEST_SETTINGS` under it (`prewarmAtLoad` off, `alignBackupSequence` off, `pausePlayOnBreaks` on: the settings most tests were written for), and the tests of the defaults pass `productDefaults: true`;
+- calls `bootstrapWorker(scope)` (T-001), which creates the controller, the router and the message bindings for that scope only;
+- exposes `send(funcName, value)` (page → worker), `posted` (worker → page), `fetch(url)` and `text(url)` (the hooked `fetch`), `player`, `controller`, `router`, `twitch`.
+
+### `page-env.ts`
+
+- `usePageEnv({ url, chrome, fetchRoutes })`: registers happy-dom and installs the fakes below in `beforeAll`; restores them and unregisters happy-dom in `afterAll`;
+- `FakeWorker`: records `postMessage`, `emit(data)` sends a message as the worker, counts `terminate`; installed as `Worker` before `index.ts` is imported;
+- `FakeXMLHttpRequest`: synchronous XHR for the worker script (`scripts` map, `requests` log);
+- fake page `fetch` (`pageFetch.calls`, responses by URL prefix);
+- `URL.createObjectURL` recording blobs (`blobText(url)`);
+- `chrome.storage.local` mock with `get`, `set` and `onChanged`; `chrome.runtime.getURL`.
+
+`index.ts` keeps module state (the first worker is the main worker), so only `integration/page.int.spec.ts` imports it.
+
+### `dom.ts`
+
+`useDom()` registers happy-dom in `beforeAll` and unregisters it in `afterAll`, with JavaScript, CSS and iframe file loading disabled.
+
+## Matrix
+
+| Test | Task | Type | Cases |
+| --- | --- | --- | --- |
+| TS-001 | T-001 | unit | `Player.setChannel` creates and reuses a stream; `isWhitelist`; `Stream.removeServer`; `getStreamByStreamType`; decorators store metadata and `createRouter` returns routes in declaration order; two `bootstrapWorker` calls on two scopes do not share state |
+| TS-002 | T-002 | unit + int | every fixture loads in `m3u8-parser` without warnings, is sanitized and is listed in the fixtures README; `FakeTwitch` serves usher, media, GQL (single and batch), integrity and ads; `sanitize` removes token, sig, ids and hosts and is idempotent; worker pipeline on `worker-scope` + `FakeTwitch` (routes, usher, no-ad poll, backup by playerType, merge by `PROGRAM-DATE-TIME`, picture-by-picture); `index.ts` on `page-env` (injection, settings, quality, pause/play, integrity); `content-script.js` on `page-env` |
+| TS-003 | T-003 | unit | `test`, `test:coverage`, `check` and `hooks:install` scripts; `.githooks/pre-commit` runs `bun run check` with LF endings; the `bun` npm package is not older than the runtime; no workflow in `.github/workflows` runs tests (read with `Bun.YAML.parse`) |
+| TS-101 | T-101 | unit + int | `media-live-ts`, `media-live-fmp4` and `media-ll-hls` without ads come out byte-identical through the worker; with ads, output keeps `EXT-X-VERSION`, `EXT-X-MAP`, `PROGRAM-DATE-TIME`, `TWITCH-PREFETCH`, `PRELOAD-HINT`, `PART`, `DATERANGE`, `DISCONTINUITY` and an unknown tag; `#EXTINF` has the comma |
+| TS-102 | T-102 | unit | channel `nullbyte` goes through the usher hook; a media playlist URL containing "null" is handled; `fetch(new Request(url))` and `fetch(new URL(url))` are routed and reach the network as the same object; an unrouted call reaches `global.request` with every argument |
+| TS-103 | T-103 | unit + int | usher v1 and v2 store the channel; channel with a query string; a media playlist before the usher comes back unchanged and does not throw; an error while handling a media playlist returns the original playlist |
+| TS-104 | T-104 | unit + int | `master-avc` yields variants with quality, resolution, codecs and URL; `master-hevc` with codecs; `master-empty` creates no `Server`; the captured `master-frontpage-v1` and `master-site-v2` (quality from `NAME` and from `IVS-NAME`) on `*.playlist.ttvnw.net` are read; regex used only when the parser finds no variants; `bestQuality()` is the highest bandwidth; a network failure or an error status on one backup moves on to the next; media playlist recognized by its master URL without the `v1/playlist` pattern |
+| TS-105 | T-105 | int | two concurrent polls make one GQL request per playerType; no duplicate `Server`; a rejected GQL request does not throw and reaches the logger |
+| TS-106 | T-106 | unit + int | a non-target URL returns the same `Response` with `bodyUsed === false`; 204 and 304 pass through; binary body intact; integrity captured from a clone and the page gets the original response; URL inside a `Request` or a `URL` recognized; a failure in the hook logic and a network error reach the page as they would without it; an `/integrity` response from before the first worker reaches it |
+| TS-107 | T-107 | unit (happy-dom) | nothing from Purple reaches a worker before the page's first message to it; two workers get `setSettings`; `terminate` removes from the registry; a worker created later gets the current settings, integrity and quality; pause, play and state from worker B are answered to B; quality reaches every worker; worker options reach the native `Worker`; an XHR that fails or answers 404 creates the worker with the original URL, unregistered |
+| TS-108 | T-108 | unit | URIs with `?`, `+`, `(` and `[` keep the right title |
+| TS-109 | T-109 | unit + int | with `debug` off, a full poll does not call `console.log`; with it on, it does; no `console.log` outside the logger in `serviceWorker/src` (file scan) |
+| TS-110 | T-110 | unit (happy-dom) + int | with `debug` off the worker posts no events; with it on, each event type reaches `window.__purple.events` with channel and timestamp; buffer keeps the last 500 |
+| TS-111 | T-111 | unit | the Chromium manifest declares `app/bundle.js` as a `MAIN` world content script at `document_start` and no longer exposes it to web pages; the Firefox (MV2) manifest declares it the same way next to the isolated content script; the isolated content script appends no `<script src>` on Chromium and on Firefox 157, and on Firefox 115 (before 128, which ignores `world`) appends it before `storage` answers; on all, a `getSettings` sent before `storage` answers gets the settings once it does |
+| TS-201 | T-201 | unit | each F-02 marker detected; non-ad markers give `NONE`, including `twitch-trigger` with only a trigger URL (B-021); `stitched` outside the title gives `NONE`; `stitched`, `Amazon` and `DCM,` in the title give `SSAI`; URI patterns give `SSAI`; correct indexes on `media-ssai-midroll` and `media-ssai-preroll`; `media-marked-live` gives `MARKED_LIVE`; `Player.hasAds` is `SSAI` only |
+| TS-202 | T-202 | int | `media-marked-live` comes out identical, zero GQL calls, no pause/play messages; during an ad break, a `MARKED_LIVE` backup replaces the playlist |
+| TS-203 | T-203 | unit + int | with a stitched-ad marker, each signal alone makes a segment an ad (title not `live`, range covering more than half of it, stream source not `live`); a range 0.234 s longer than its segment takes no extra segment; without a stitched-ad marker a numeric title is not an ad; `twitch-maf-ad` keeps `MARKED_LIVE`; `media-midroll-numeric` gives segments 3 to 5 and `media-preroll-ft` all 6; the merge replaces the numeric-title segments and skips a backup's own numeric-title segments; both fixtures go through the backup chain in the worker |
+| TS-204 | T-204 | unit + int | `isCleanBackup`: `backup-announced-break` and backups with ad segments are not clean, `backup-clean` and `media-marked-live` are; in the worker, `popout` announcing its own break is skipped for a clean `frontpage`; with every backup announcing, their live segments replace the ads and no other backup line reaches the player |
+| TS-301 | T-301 | unit (happy-dom) | `fetch` to `edge.ads.twitch.tv` never reaches the real `fetch` and gets an empty 200; XHR ends with `readyState 4`, status 200 and `onload` without network; with `blockCsai` off it passes; counters for `preroll` and `midroll` |
+| TS-302 | T-302 | unit | `rules.json` is valid, with a `block` action and `urlFilter` `\|\|edge.ads.twitch.tv^`; the manifest declares `declarativeNetRequestWithHostAccess` (not `declarativeNetRequest`) and the file |
+| TS-401 | T-401 | unit (happy-dom) + int | a page GQL request sends its headers once and again, merged, when one changes; the page gets the original response unread; headers from a plain object, a `Headers` object, pairs or a `Request`; `Device-ID` as alternate name; other URLs send nothing; `/integrity` capture still works; in the page the headers reach the worker and are replayed to a later one; the worker's token requests carry them, with the page's `Client-Integrity` as the newest integrity token (checked in `FakeTwitch.calls`) |
+| TS-402 | T-402 | unit (happy-dom) + int | `PageGql`: before the page offers the bridge the request goes from the worker; with it, `gqlRequest` with id, body and headers, the page's answer becomes the response; two answers out of order; no answer within 5 s (fake timers) falls back to the direct request and a late answer is ignored; an answer with status 0 falls back too. `runGqlRequest`: the page's fetch gets the body and headers, the answer carries id, status and body, a failure status 0 and the error. Page: the bridge is offered to every worker (and replayed), a `gqlRequest` runs with the page's original fetch, unchanged by the popout rewrite, and the answer goes to that worker. Worker: with the bridge, backup token requests go to the page, no request reaches `gql.twitch.tv` from the worker, and the page's answers give the tokens |
+| TS-403 | T-403 | unit | default body carries the new hash; `PersistedQueryNotFound` triggers a second call with the full query; `token-flat.json` accepted |
+| TS-404 | T-404 | unit + int | `usherUrl`: the page's parameters kept in order and as written (including `supported_codecs`, `play_session_id`, `acmb`), only `token`, `sig` and `p` replaced, `p` added when missing; `token` with `&`, `#` and `+` and `sig` with `+`, `/`, `=` encoded; v2 and v1 paths kept; without the page's request, Purple's parameters on v1. Worker: after a v2 usher request the backups use `/api/v2/` with the page's `supported_codecs` and `play_session_id` and their own tokens |
+| TS-405 | T-405, T-819 | unit + int | `site` with ads and `popout` clean returns the `popout` playlist; order follows `backupPlayerTypes`; the default order puts `picture-by-picture` after `mobile_web` and `embed`, `autoplay` last; `frontpage` and `picture-by-picture` stay in the chain; all with ads plus `lowQualityFallback` requests `autoplay` with `platform: "android"`; without the flag it does not |
+| TS-406 | T-406 | unit + int | the pinned type is first on the next break, and not with `pinBackupPlayerType` off; `autoplay` is never pinned; a type with ads or its own break announced is skipped before 5 s with no token request and retried after (`setSystemTime`); a type whose other server gave a clean backup is not skipped |
+| TS-407 | T-407 | unit + int | codec families (`avc1`/`avc3`, `hvc1`/`hev1`, `av01`); on `master-hevc`: an AVC or AV1 1080p60 player gets its own family's 1080p60; the `(source)` suffix is ignored; then same resolution with another codec, highest bandwidth first; then the best variant of the family; an unknown family or a quality name only falls back to the name, then `bestQuality()`. Worker: a player on the AVC 1080p60 variant of a mixed master gets the backup's AVC 1080p60 (not its HEVC source or AV1 1080p60), and `backupUsed` carries quality `1080p60` |
+| TS-408 | T-408 | unit (happy-dom) + int | single and batched bodies switch to `popout`, only in the `PlaybackAccessToken` operation and nothing else in the body; a `picture-by-picture` operation is unchanged, alone or in a batch; flag off, other URLs, other operations, `Request` bodies and non-JSON bodies go as the page made them; in the page a `setSettings` turns it off and on; in the worker `parent_domains` leaves the page's usher request (other parameters as written) and the backups', and stays with the flag off |
+| TS-409 | T-409, T-410, T-812 | int | the page's usher request brings tokens for the backup types by default (`prewarmAtLoad`), and none with it off (the worker harness keeps it off unless a test sets it, `productDefaults`); with `prewarmBackups`, the page's picture-by-picture usher request brings a GQL token for every backup type with no stored master, in the list order, and stores the new masters, with a `backupsPrewarmed` event; a type with a master gets none, and with every type stored there is no request and no event; with it off, no token request; without the setting, the default (on) applies; a second request within 60 s brings none, one after 61 s brings them for the types still without a master |
+| TS-501 | T-501 | unit | backups 400 and 900 ms off, either way, replace the three ad segments of `media-ssai-midroll` with the nearest live ones; 1 s off on 2 s segments and a single segment 1.5 s after the last ad segment match none; two segments from `backup-fmp4-other-map` bring `init-backup.mp4` before the first and `init-main.mp4` back before the next main segment (two lines added, nothing removed, same segments and `MEDIA-SEQUENCE`); a replaced last segment gets the main `EXT-X-MAP` back before the prefetch line; an fMP4 backup in a TS playlist and a TS backup in an fMP4 one are not used |
+| TS-502 | T-502 | unit + int | the blank segment is the 1137 bytes of Brave's `BLANK_MP4` (SHA-256 checked); `blankAds`: `media-ssai-preroll` keeps its text and lists its 6 ad URIs; prefetch lines stay after a live tail and go after an ad tail or an announced break, or with an ad URI; the parts of an ad segment go; the `EXT-X-MAP` only ad segments use is listed; relative URIs resolved; the merge reports the ad segments it left. Worker: with every backup in its own preroll the playlist keeps its lines, an ad URI gets the blank segment with no request to Twitch, `blankInserted` counts 6 once; `stripFallback` off sends the request to Twitch; an ad URI stays blank for 120 s after the last poll that listed it; a main playlist announcing its break loses the two prefetch lines to its ad segments, which are answered blank (`blankInserted` 2), with no token request and no pause/play, and comes out identical with `stripFallback` off |
+| TS-601 | T-601 | unit + int | transitions `idle` → `ad` → `recovering` → `idle`, and back to `ad` while recovering; pause/play on each, as before; with `reloadAfterAd`, a reload instead of pause/play at the end, one per break and at most one every 30 s (injected clock); without the flag, no reload; the setting read at each end; the page finds the player state under `#root` (React fiber and legacy root), keeps the quality, runs a soft `setSrc` and answers `reloadResult`; no player state, or a `setSrc` that throws, answers `ok: false` and the worker pauses and plays |
+| TS-602 | T-602 | unit (happy-dom) + int | `AppController` passes the `setSettings` value to the player; the content script reads `backupPlayerTypes` and `lowQualityFallback` with the other keys, sends the new settings to the page when a stored setting changes and nothing for other keys (the page already sends `setSettings` to every worker, TS-107); in the worker, settings sent as a message set the backup list, and a channel added to the whitelist mid-session gets Twitch's playlist on the next poll with no backup fetched |
+| TS-603 | T-603 | unit (happy-dom) | the popup (its markup, `chrome.tabs.query` answering the active tab's URL) shows the channel of `www.twitch.tv/<channel>`, `m.twitch.tv/<channel>`, `www.twitch.tv/popout/<channel>/chat`, URLs with a query string or a later path part, in lower case; a whitelisted channel shows as disabled from each form; `www.twitch.tv/`, another site and a browser page show "Waiting for channel" with the button off |
+| TS-604 | T-604 | unit | `pauseAndPlay` posts `play` twice after `pausePlayDelayMs` (500 and 1500 ms, fake timers); with 0, without the setting, or with a negative or non-number value, `pause` and both `play` in the same turn |
+| TS-802 | T-802 | int | (`worker.int.spec.ts`) a clean `picture-by-picture` backup is played and not pinned: on the next break the list order is unchanged |
+| TS-809 | T-809 | int | (`worker.int.spec.ts`) no pause or play at the break edges by default; pause and play at both edges with `pausePlayOnBreaks` on; a failed reload still falls back to pause/play with it off |
+| TS-811 | T-811 | unit + int | `stripAdDateranges` removes only the `twitch-stitched-ad` and `twitch-ad-quartile` `DATERANGE` lines and returns a playlist without them unchanged; with `stripAdMarkers` (default on), a playlist with blanked ad segments and an announced break lose them, every other line stays; with it off they stay |
+| TS-817 | T-817 | unit + int | (`sequence.spec.ts`) the reference is the newest live segment, the newest before the ads with `beforeAds`, none without `MEDIA-SEQUENCE` or a date-time; the shift is 0 for the same base, 2 for a backup 1.5 segments lower (soak h), 1 for one just under a segment lower, 0 within 60 ms; only the `MEDIA-SEQUENCE` line moves, CRLF kept. (`worker.int.spec.ts`) `alignBackupSequence` is on by default; with it, a backup numbering the same moment 1.5 segments lower comes out with the page's numbers, past the player's last number, every other line as Twitch sent it; off (default), it comes out unchanged; a backup numbered like the page's is unchanged; a poll with ads does not move the reference; with no poll without ads before the break, the live segments before the ads are the reference; the page's playlist after the break is untouched and the next break uses its new numbering |
+| TS-818 | T-818 | unit + int | (`sequence.spec.ts`) `newestNumber` counts segments and prefetch URIs from `MEDIA-SEQUENCE`, null without it. (`worker.int.spec.ts`, product defaults) the page's playlist after a preroll the player got on a backup numbered from the live sequence brings pause and play once; none with `restartOnSequenceBack` off; none at the edges of a midroll whose backup F-23 numbered |
+| TS-820 | T-820 | int | (`worker.int.spec.ts`, product defaults) at the switch to backups, a first type whose playlist lists nothing past the player's newest number and a second ahead of it: the second is delivered; with `skipBackupBehind` off, the first; with no type ahead, the first |
+| TS-823 | T-823 | int | (`worker.int.spec.ts`, "backup types asked together", product defaults, each type's playlist answered after a delay) the first type with ads: the other three asked at once (3 in flight) and the first clean one in F-09's order used, though a later one answered first; with `parallelBackupFetch` off, one at a time and the types after the one used not asked; the first type clean: no other asked; F-25 across the types asked together (a behind type waits for an ahead one after it, and is used when none is ahead); each type that gave no clean backup gets a new token, also after the one used |
+| TS-801 | T-801 | int | (`page.int.spec.ts`) pause and play go to the first player the page created in the worker; a player created after it (picture-by-picture) does not take them, also after its own `delete`; after the first player's `delete`, the next player created does |
+| TS-701 | T-701 | int | `package.json` has no `ts-node`, `jest`, `bun` package or `preinstall` (and `cli/preinstall.js` is gone); `build` and `dev` scripts as in T-701; no ESLint or Prettier (T-705); `m3u8-parser` the only dependency, Vite and `terser` in `devDependencies`, no `terser-webpack-plugin`, `ts-loader`, `webpack`, `concurrently` or `dotenv` (T-705); each builder, given a temp folder and a stub bundle, writes `purple-adblock-<version>-<platform>.zip` and the unpacked `purple-adblock-<platform>` with the package version in the manifest and no spec file; the userscript header has `@version` from `package.json` even with another `npm_package_version`, and the committed `platform/tampermonkey/dist/purpleadblocker.user.js`, from which installed userscripts update, has the package version (`platform/tampermonkey/build.spec.ts`). The full `bun run build` is checked by hand, since the check runs before every commit and the build rewrites the committed userscript |
+| TS-702 | T-702 | unit | (`cli/workflows.spec.ts`, read with `Bun.YAML.parse`) the two workflows run only on a push, to `main` or of a tag, never on `pull_request`; no step runs tests (`bun test`, `bun run check`, jest, `cargo test`, `e2e/run.py`); `actions/checkout@v4`, `oven-sh/setup-bun`, no `setup-node`, `npm`, `npx`, `yarn` or `node`; `bun install --frozen-lockfile` and `bun run build`; `softprops/action-gh-release`, no `marvinpinto/`; `permissions` limited to `contents: write` |
+| TS-703 | T-703 | unit | (`cli/publish.spec.ts`, web-ext, git and the stores replaced by fakes) the Firefox version: the package version for a release, `<version>.<n>` for a `<version>-<label>.<n>` tag, other tags refused; web-ext `sign` arguments per channel (`--approval-timeout` 0 for `listed`), the AMO key and secret only in its environment; the unpacked build gets the version, a manifest without the AMO add-on ID or missing credentials stop it before any command, the signed `.xpi` lands in `dist/`; Chrome Web Store token from a refresh token and from a service account (RS256 JWT verified with the key pair), errors without credentials; upload, `fetchStatus` while `IN_PROGRESS`, `publish`, a failed upload not published, HTTP errors without the token. (`cli/workflows.spec.ts`) `release.yml` sends a new version to both stores after the GitHub release, each when its secrets are set; `pre-release.yml` signs the tag's Firefox build as unlisted and attaches the `.xpi`; secrets only in a step's `env`, no expression inside a command. (`platform/manifest.spec.ts`) the Firefox manifest has the AMO add-on ID and `data_collection_permissions: none` |
+| TS-704 | T-704 | unit | (`cli/build.spec.ts`) both zips list `LICENSE`, `NOTICE` and `THIRD-PARTY-NOTICES.md`, the unpacked builds have them as in the repository; `THIRD-PARTY-NOTICES.md` names both TwitchAdSolutions repositories and has their MIT copyright and permission notice; following the imports of `m3u8-parser`'s ES build reaches exactly `m3u8-parser`, `@videojs/vhs-utils`, `global` and `@babel/runtime`, and each has its version and its installed license text in it; `blank-segment.ts` and `player-reload.ts` carry TwitchAdSolutions' MIT notice and source URLs, no MPL notice, and are named in it. (`platform/tampermonkey/build.spec.ts`) the userscript has the notices, with both repositories, `m3u8-parser` and its three packages and the MIT permission notice, between its header and the bundle |
+| TS-706 | T-706 | unit | (`cli/build.spec.ts`) `LICENSE` is the Apache License 2.0 text, `NOTICE` starts with the project and its copyright, `package.json` says `Apache-2.0`; both zips and the unpacked builds carry `LICENSE`, `NOTICE` and `THIRD-PARTY-NOTICES.md`. (`platform/tampermonkey/build.spec.ts`) the userscript has `@license Apache-2.0` and Purple's Apache notice. (`cli/publish.spec.ts`) web-ext gets `--amo-metadata` with the package's license and the reviewers' build steps |
+
+## Browser setup (levels 2 and 3)
+
+Both levels run in Python with nodriver driving Microsoft Edge.
+
+| Item | Value |
+| --- | --- |
+| Browser | `C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe` (Edge 154 on 2026-10-03) |
+| Profile | `~/nodriver/profile-edge-purple`, used only by these tests and logged out, with Edge's tracking prevention at Balanced, Edge's default (Strict until 2026-10-08); never the general `~/nodriver/profile-edge`. Logged-in runs (TR-007, L3-09): `--profile` with a separate test profile, logged in once |
+| Library | nodriver 0.50.3 on Python 3.14 (its `cdp/network.py` ships in cp1252 and must be re-saved as UTF-8 after install or upgrade) |
+| Code | `e2e/` (T-004) |
+| Desktop | on Windows, a separate hidden Win32 desktop (`CreateDesktopW`, not headless): no window on the user's screen, no physical input; pages get focus emulation. `--visible` runs on the user's desktop for debugging |
+
+No other extension runs under nodriver. Every launch passes `--disable-component-extensions-with-background-pages` and `--disable-sync` (the profile picked up the Microsoft account's extensions through sync, see [findings/2026-10-07-e2e-harness.md](findings/2026-10-07-e2e-harness.md)), plus:
+
+| Mode | Extra flags | Used by |
+| --- | --- | --- |
+| Extension | `--load-extension=<build> --disable-extensions-except=<build>` (`<build>` = `<repo>/dist/purple-adblock-chromium`) | level 3 |
+| Userscript | `--disable-extensions`; the built userscript (`<repo>/dist/purpleadblocker.user.js`) is injected with `Page.addScriptToEvaluateOnNewDocument` (main world, document start, like Tampermonkey with `@run-at document-start` and `@grant none`), only on URLs its `@match` covers | levels 2 and 3 |
+| Record | `--disable-extensions` (Purple off) | level 3 recorder |
+
+Edge facts these modes rely on are in [findings/2026-10-03-edge-nodriver.md](findings/2026-10-03-edge-nodriver.md): only Purple enabled in extension mode, warm-up launch for a fresh profile, stopping leftover `msedge.exe` processes on this profile (and only those), `RemoteObject` handling. The warm-up launch turns on developer mode, without which Edge disables the unpacked build after a profile's first launch, and leaves `purple-e2e-warm-up` in the profile ([findings/2026-10-07-e2e-harness.md](findings/2026-10-07-e2e-harness.md)).
+
+### Running
+
+```bash
+bun run e2e:build                 # extension build, and the userscript in dist/ (the committed release userscript stays as is)
+python e2e/run.py L3-01           # every mode the scenario lists
+python e2e/run.py all --mode extension --repeat 3 --report report.json
+```
+
+Each run prints one line per check (`skip` for an ad check on a load without a break) and one `server` line per load, and exits with 0 when every check passed. A scenario with `FRESH_PROFILE` (L3-02) gets a new profile under `%TEMP%` for every run, unless `--profile` is given. In extension mode the harness sets the build's `debug` setting before the run (from its popup page): on for scenarios with `DEBUG` (L3-02, which reads `window.__purple.events`), off otherwise, so L3-01 runs with the defaults users get. Every level 3 run also records what Twitch's server did: the report's `server` field (masters, media playlists of the main stream and of the backups, what reached the player, token answers and flags, requests to `edge.ads.twitch.tv`); new or confirmed behaviors go to `docs/server/`. `--report` writes every check with its details (worker log included) as JSON. In Git Bash, set `MSYS_NO_PATHCONV=1` before passing a `/directory/...` path to a probe: Git Bash rewrites it into a Windows path.
+
+### Reading state
+
+- Page state is read as JSON through `tab.evaluate(..., return_by_value=True)` around `JSON.stringify(...)`.
+- `Worker.toString().includes("[Purple]")`: page hook installed.
+- `window.__e2e.media`: `<video>` events and the outcome of every `play()` call; `window.__e2e.playlists`: the last 60 media playlists the player got from Purple's hook (the only bodies the recorder reads, from a clone).
+- `window.__e2e` (`e2e/recorder.js`, added before any page script): per worker, creation time, whether it came through Purple's injector, whether its script holds Purple's code, the end of its script (a player worker imports `amazon-ivs-wasmworker`) and Purple's boot message; `workerLog`: from inside each worker, the fetches it made on the network, what the player got from Purple's hook, Purple's console lines, errors and rejections (URLs without the query string).
+- `document.querySelector("video")`: `readyState`, `currentTime` advancing between two reads, `paused`.
+- `window.__purple.events` (T-110): what the worker did.
+- Level 2: the `sim/` request log (`/_sim/log`) says exactly which URLs the player and Purple requested.
+- Level 3: Twitch's ad overlay, player error overlay and content classification gate, with selectors kept in `e2e/twitch_selectors.py`.
+- No screenshots unless the problem is visual.
+
+## Level 2: player + server
+
+An isolated local page runs the real player with Purple against `sim/`, our Rust server that reproduces Twitch's server behavior. twitch.tv is never opened.
+
+### Components
+
+| Component | Content |
+| --- | --- |
+| `sim/` (Rust) | Implements the behaviors in [server/behaviors.md](server/behaviors.md) as scenarios (`sim/scenarios/*.json`). Endpoints follow [server/endpoints.md](server/endpoints.md): usher v1 and v2, media playlists on a live clock, segments, GQL `PlaybackAccessToken` per `playerType`, `/integrity`, `edge.ads.twitch.tv`. Control and log API under `/_sim/` (load a scenario, read the request log). Serves the isolated page and the player SDK files. Covered by `cargo test`. |
+| Media | Synthetic, generated with ffmpeg into `sim/media/` (gitignored): live and ad renditions in H.264/AAC MPEG-TS; an HEVC rendition in fMP4 with `EXT-X-MAP`. No Twitch media. |
+| Player | Public Amazon IVS player SDK (`amazon-ivs-player`, installed with bun, never committed). Its `.wasm` contains Twitch's HLS parser (`twitch::hls`, `EXT-X-TWITCH-PREFETCH`, `stitched-ad-break-*`); see [findings/2026-10-03-ivs-player-sdk.md](findings/2026-10-03-ivs-player-sdk.md). |
+| Page | `sim/page/`: Purple's bundle runs first (userscript mode), then the SDK loads `https://usher.ttvnw.net/api/channel/hls/<scenario channel>.m3u8`. Purple runs with the defaults; `L2_SETTINGS` (JSON, for instance `{"pausePlayOnBreaks": false}`) adds settings the page sends it, as the content script would. Each second `level2.watch` samples the `<video>` and the SDK player's `getBufferDuration()`, `getLiveLatency()` and `isLiveLowLatency()`. `e2e/sim.py` runs `cargo build --release` for `sim/` before every run (T-815: a release binary older than `sim/src` served L2-09 without its `lag`). |
+| Routing (T-009) | CDP `Fetch` on the page's tab pauses every request to `*.twitch.tv`, `*.ttvnw.net` and `*.live-video.net`, the SDK worker's included, forwards it to `sim/` with the original URL in `X-Sim-Url` and answers with `Fetch.fulfillRequest` (`e2e/sim.py`); CORS preflights are paused and answered too. Edge runs with `--host-resolver-rules` that leave only `127.0.0.1` resolvable, so a request the bridge misses fails instead of reaching Twitch. Level 2 runs on fresh profiles: until 2026-10-08 the level 3 profile had Edge's tracking prevention at Strict, which blocks the page's request to `usher.ttvnw.net` (a third-party tracker host for `127.0.0.1`) before it reaches `Fetch`; at Balanced the same page plays on it ([finding](findings/2026-10-08-level2-player-page.md)). |
+| Routing (plan) | Requests to `*.ttvnw.net`, `gql.twitch.tv` and `edge.ads.twitch.tv` must reach `sim/` under their real hostnames, so Purple's URL matching runs unchanged. Preferred: Edge host mapping (open, see [findings/2026-10-03-host-resolver-mapping.md](findings/2026-10-03-host-resolver-mapping.md)). Fallback: CDP `Fetch` bridge that answers those requests from `sim/` with `Fetch.fulfillRequest` (mechanism checked on live Twitch). |
+
+### Scenarios
+
+"Ad URI requested" is read from the `sim/` request log: the scenario knows which segment URIs are ads.
+
+| ID | Scenario | Behaviors | Asserts | Covers |
+| --- | --- | --- | --- | --- |
+| L2-01 | Clean live stream | B-001, B-003, B-004, B-006 | hook attached to the SDK worker; video playing; playlists reach the player unchanged; only the page's playlist polled, backup tokens only from the prewarm at the load (F-22) | E1, T-101, T-812 |
+| L2-02 | SSAI preroll | B-007 to B-010 | no ad URI requested; playback continues; events show a backup, a merge or blank segments | F-02 to F-14 |
+| L2-03 | SSAI midroll inside a clean stream | B-007 to B-010 | as L2-02; no pause/play at the break edges by default (T-809), and with `{"pausePlayOnBreaks": true}` in `L2_SETTINGS` pause/play at both edges with the `<video>` reacting | T-601, T-809 |
+| L2-04 | Every backup `playerType` returns ads | B-012 | blank segments replace the ads; no ad URI requested | F-14 |
+| L2-05 | CSAI: markers with live segments | B-011 | playlist untouched; no backup playlist polled, backup tokens only from the prewarm at the load (F-22); no request reaches `edge.ads.twitch.tv` | T-202, F-04, T-812 |
+| L2-06 | HEVC in fMP4 with `EXT-X-MAP` | Q-007 (until observed) | video playing; no player error (issue #105) | T-101, T-407 |
+| L2-07 | GQL errors: `PersistedQueryNotFound`, `embed` server error | B-014, B-015 | fallback query used; next `playerType` tried | T-403 |
+| L2-08 | L2-02 to L2-05 without Purple | - | ad URIs requested (control case) | - |
+| L2-09 | L2-03's midroll with every backup 3 segments behind the stream clock (`sim/` `lag`, B-048); `L2_09_SCENARIO` runs the same checks on another scenario | B-048 | as L2-03 for the break and the video; a backup behind the main playlist: the first backup playlist ends behind the last main one, or, with F-25 on, a lagging backup skipped (`backupBehind`) for the `popout` backup, which has no lag (`sim/` applied the `lag`; skipped for another scenario); the longest still stretch, the `waiting` events, E6's pauses and the player's buffer each second in the details | T-804, T-809, T-815 |
+| L2-10 | L2-03's midroll with the page's token numbering the stream 2 segments ahead of the backups (`sim/` `ahead`, B-054) | B-054 | as L2-03 for the break and the video; unless `L2_SETTINGS` turns `alignBackupSequence` off, the first backup playlist lists a number past the last page playlist's newest; the longest still stretch, the `waiting` events, E6's pauses, the shifts and the player's buffer each second in the details | T-817 |
+| L2-11 | L2-02's preroll with the page's token numbering its playlist from 0 and starting it at its first segment (`sim/` `fromZero`, B-029, B-039), the backups the live sequence | B-029, B-039 | as L2-02 for the break and the video playing at the end; unless `L2_SETTINGS` turns `restartOnSequenceBack` off, a `sequenceRestart` event; the restarts, the longest still stretch and the `waiting` events in the details | T-818 |
+| L2-12 | A preroll on every web token, backups included (B-052), only `autoplay` live, each media playlist answered 440 ms after it was asked (`sim/` `playlistDelayMs`, B-056) | B-052, B-056 | as L2-02 for the break and the video; the first backup is `autoplay`; with `parallelBackupFetch` (default on) it comes within 1.5 s of the first playlist with ads, and with it off (`L2_SETTINGS`) 2.5 s or more after; the first media playlist request of each backup session in the details | T-823 |
+
+## Level 3: live site
+
+Purple on twitch.tv, using known techniques to make Twitch show a behavior, with the recorder on. Each run states the techniques used ([server/techniques.md](server/techniques.md)) and the behaviors or questions it targets ([server/behaviors.md](server/behaviors.md), [server/open-questions.md](server/open-questions.md)). Results go to `docs/findings/` and `docs/server/`.
+
+Firefox: `e2e/firefox.py` drives Firefox through WebDriver BiDi on its own remote port (no driver binary), on a new temporary profile and a hidden desktop: `webExtension.install` loads the Firefox build as a temporary add-on, `script.addPreloadScript` adds `e2e/recorder.js` (and, for the userscript, the built userscript) before any page script, `script.evaluate` reads the page state. `docs/findings/probes/firefox_injection_probe.py` runs L3-01's worker check on direct loads in extension or userscript mode (T-111). The `e2e/run.py` scenarios run on Edge.
+
+Recorder (T-005):
+
+- intercepts usher, media playlists, segments, GQL `PlaybackAccessToken` and `edge.ads.twitch.tv` with CDP `Fetch` and keeps every request flowing;
+- writes to `~/purple-recordings/<date>-<channel>[-n]/` (`manifest.json`, `page.json` and bodies), outside the repo; recordings carry tokens, ad ids and Twitch media and are never committed;
+- `e2e/record.py` (`--help` for the options); segment bodies only with `--segment-bodies`;
+- sanitized excerpts (no tokens, ids or media) go to `docs/server/` and, as playlists, to level 1 fixtures through `harness/sanitize.ts`.
+
+Long runs (`e2e/soak.py`): one Edge per session on a fresh temporary profile, in any mode, watching a live channel until a set time; several sessions run in parallel as separate processes and avoid each other's channels. Every 30 s the session empties `window.__e2e` (and `window.__purple.events` with `--debug`) into JSONL files under `~/purple-recordings/<date>-soak/<session>/`, together with a page monitor (ad overlay, player error, video progress, `<video>` elements, ad or picture-by-picture elements, sampled every second) and, in `player.jsonl`, the page player's buffer, latency, low-latency mode and playback rate each second (its `mediaPlayerInstance` from the React tree, T-814). The worker logger also keeps the full text of every server media playlist with ad markers (`serverText`). Breaks on the main stream and `edge.ads.twitch.tv` requests are logged as they happen; the channel changes when it goes offline, the player fails for 3 minutes, the page moves (raid), the player gets no live media playlist for 3 minutes (an offline channel's page plays a recorded video; that channel is not reopened, even with `--rotate 0`), or after `--rotate` minutes without a break. `--leave-after-breaks N` moves to another channel once N stitched breaks have ended on the current one. `--stop-after-breaks N` ends the session once N stitched breaks have ended, with `--until`/`--minutes` as the limit. `--setting KEY=JSON` stores an extension setting before the first channel. `e2e/soak_report.py <dir>` prints watch time per channel and every break poll by poll, without ids, tokens or URLs.
+
+```bash
+python e2e/soak.py ext-a --mode extension --debug --until 02:30 --slot 0
+python e2e/soak.py rec-c --mode record --until 02:30 --slot 2
+python e2e/soak.py ext-b --mode extension --debug --minutes 120 --stop-after-breaks 3 --setting prewarmBackups=true
+python e2e/soak_report.py ~/purple-recordings/2026-10-07-soak
+```
+
+Ads are not deterministic. Every scenario asserts what always holds (hook installed, playback, no player error); ad-specific checks apply to the breaks recorded during the run.
+
+| ID | Scenario | Mode | Asserts | Covers |
+| --- | --- | --- | --- | --- |
+| L3-01 | Open a live channel picked from the directory, by direct load and by client-side navigation; channels behind the content classification gate are skipped | extension, userscript | every player worker created through the injector and running Purple's code (boot message seen); video playing; no player error | E1, T-101, T-103, T-107, T-111 |
+| L3-02 | Preroll (TR-001, TR-005: fresh profile per run, a random channel among the first directory cards, 40 s watched) | extension | every player worker runs Purple; no player error; video playing at the end; for a break recorded in the main stream: no ad overlay in any second, and no ad segment in the playlists the player got or none fetched from the network (ad segments answered blank in the worker, T-502; `adMedia` in the run summary) | F-02 to F-14 |
+| L3-03 | Soak: one channel for 20 minutes (TR-002), fresh profile, recorded like `e2e/soak.py` | extension | player progressing at the end; every break recorded on the main stream reached the player without ad media: no ad segment listed, or none of those the player requested fetched from the network (a backup, a merge or blank segments) | midrolls, T-601 |
+| L3-04 | HEVC/AV1 channel (TR-006) | extension | master has an HEVC or AV1 variant; video playing; no player error | T-101, T-407 |
+| L3-05 | Popout player (TR-003) | extension | L3-01 checks on the popout URL | F-12 |
+| L3-06 | Switch channel by clicking, without reload (TR-004) | extension | second channel playing; events tagged with the new channel | T-107 |
+| L3-07 | Whitelist changed through `chrome.storage.local` from the extension popup page in another tab while a channel plays (`debug` on) | extension | no `whitelisted` event before; `whitelisted` events for the channel after it is added, same page; no `adDetected`, `backupUsed` or `segmentsReplaced` while listed; none after it is removed; video playing at the end | E7, T-602 |
+| L3-08 | CSAI: the directory page, which requests `edge.ads.twitch.tv` right after loading (B-025) | extension, userscript; record as the control | no request to `edge.ads.twitch.tv` leaves the page; with `debug` on, `csaiBlocked` events; record: the requests leave the page | F-04, T-301, T-302 |
+| L3-09 | Logged in (TR-007) | extension | L3-01 and L3-02 checks | F-05 |
+| L3-10 | Behavior hunt: `python e2e/record.py <channel or -> --seconds N [--fresh-profile] [--technique TR-xxx]` with Purple off, techniques chosen for open questions; `python docs/findings/probes/record_manifest_probe.py <recording>` reads it | record | new finding written; behaviors and questions updated | `docs/server/` |
+| L3-11 | Reload at the end of a break (`reloadAfterAd` set in storage before the channel opens; fresh profile, random directory channel, 60 s watched) | extension | every player worker runs Purple; video playing at the end; no player error; for a break Purple handled that ended in the run: `reloadRequested`, then `playerReloaded` with `ok`, no ad overlay; seconds the video stood still in the details | T-601 |
+| L3-12 | Break edges with the pause/play wait set in storage from `PURPLE_PAUSE_DELAY_MS` (default 0) and `pausePlayOnBreaks` on (off by default since T-809; fresh profile, random directory channel, 60 s watched) | extension | every player worker runs Purple; video playing at the end; no player error; the video plays again within 5 s of each edge; no ad overlay for a break recorded in the main stream; each edge (worker `pause`, `<video>` `pause` and `playing`, `currentTime`) in the details | T-604 |
+| L3-13 | Player reload kinds at the end of a break, run by the scenario from the page (`PURPLE_RELOAD_KIND`: `soft`, `soft-late`, `token`, `instance`; Purple's own reload off; fresh profile, random directory channel) | extension | every player worker runs Purple; the page found the player and reloaded it; video playing at the end; no player error; whether the main playlist had ad segments again after the reload, and the roll type, in the details | T-808 |
+
+Before ticking a task that changes behavior on twitch.tv (phases 1 to 6), run its level 2 scenarios and the level 3 scenarios in its Covers column. Before a release, run all of them. Results go in the PR description.
+
+Not planned: decompiling the `.wasm`. The file name changes with each player release; level 2 answers behavior questions (discontinuities, `EXT-X-MAP` changes, missing segments) by observation.

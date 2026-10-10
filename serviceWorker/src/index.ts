@@ -1,26 +1,62 @@
 //this line gonna import the content from compile worker as string
 //@ts-expect-error
 import txt from "../dist/app.worker.js?raw";
+import { createFetchHook } from "./page/fetch-hook";
+import { runGqlRequest } from "./page/gql-bridge";
+import { installXhrHook } from "./page/xhr-hook";
+import { reloadTwitchPlayer } from "./page/player-reload";
+import { WorkerRegistry } from "./page/worker-registry";
 
-const logger = (...args: any[]) => console.log("[Purple]:", ...args);
+declare global {
+  var request: any;
+  // F-17: the worker's debug events, created only with `debug` on
+  var __purple: { events: any[] } | undefined;
+}
 
-let ok = false;
+const EVENT_LIMIT = 500;
+// the `debug` setting, from the content script's setSettings (the userscript has no settings: off)
+let debug = false;
+const logger = (...args: any[]) => debug && console.log("[Purple]:", ...args);
+// F-04: answer edge.ads.twitch.tv in the page (default on, so the userscript blocks too)
+let blockCsai = true;
+// F-12: the page's PlaybackAccessToken asks for popout (default on, so the userscript does it too)
+let forcePopoutToken = true;
+const csaiBlocked: Record<string, number> = {};
+
 (function () {
-  let mainWorkers: any[] = [];
-  let mainWorker: any;
+  // every worker created through the injector; on a direct channel load the player creates two
+  const registry = new WorkerRegistry();
 
-  window.Worker = class WorkerInjector extends Worker {
-    constructor(url: string | URL) {
-      console.log("[Purple]: init " + url.toString());
-
+  // the original worker script, or null when it cannot be downloaded
+  const readScript = (url: string): string | null => {
+    try {
       const xhr = new XMLHttpRequest();
-      xhr.open("GET", url.toString(), false);
+      xhr.open("GET", url, false);
       xhr.send();
+      return xhr.status >= 200 && xhr.status < 300 && typeof xhr.responseText === "string" ? xhr.responseText : null;
+    } catch {
+      return null;
+    }
+  };
 
-      const script = xhr.responseText;
+  class WorkerInjector extends Worker {
+    private injected = false;
+    private started = false;
+    // E6: the id of the first player the page created in this worker (its "create" message); the worker dispatches
+    // pause and play by it. 1 until a create is seen, as before (the main player's id on twitch.tv).
+    // C-13: a player created later in the same worker (the picture-by-picture one) does not take it; once the page
+    // deletes that player, the next one it creates does
+    playerId = 1;
+    private playerCreated = false;
+    // what the registry sends to: Purple's messages to its code in this worker
+    readonly purple = { postMessage: (message: any) => this.sendFromPurple(message) };
 
-      if (typeof script !== "string") {
-        super(url);
+    constructor(url: string | URL, options?: WorkerOptions) {
+      logger("init " + url.toString());
+
+      const script = readScript(url.toString());
+      if (script === null) {
+        super(url, options);
         return;
       }
 
@@ -28,99 +64,137 @@ let ok = false;
       ${script}`;
 
       const newBlob = URL.createObjectURL(new Blob([newBlobStr], { type: "text/javascript" }));
-      super(newBlob);
+      super(newBlob, options);
+      this.injected = true;
 
-      mainWorkers.push(this);
+      this.addEventListener("message", (event) => onWorkerMessage(this, event));
+    }
 
-      if (!ok) {
-        mainWorker = this;
-        mainWorker.declareEventWorker();
-        mainWorker.declareEventWindow();
-        mainWorker.integrity();
-        ok = true;
+    // The page's own messages (the player's RPC). The first one is the player's init: nothing from Purple may reach
+    // the worker before it (a setIntegrity sent first killed the player worker on twitch.tv), so the worker joins
+    // the registry, and gets the current settings, integrity and quality, only then.
+    postMessage(message: any, ...rest: any[]) {
+      if (message?.funcName === "create" && message.id != null && !this.playerCreated) {
+        this.playerId = message.id;
+        this.playerCreated = true;
       }
-
+      if (message?.funcName === "delete" && message.id === this.playerId) this.playerCreated = false;
+      super.postMessage(message, ...(rest as [any]));
+      if (this.injected && !this.started) {
+        this.started = true;
+        registry.add(this.purple);
+      }
     }
 
-    async integrity() {
-      global.request = fetch
-      global.fetch = async (url: any, options: any) => {
-        const response = await global.request(url, options);
-        const body = await response.text();
-
-        if (url == "https://gql.twitch.tv/integrity") {
-          mainWorker.postMessage({ funcName: "setIntegrity", value: body });
-        }
-
-        return new Response(body, response);
-      };
+    // Purple's messages; dropped until the player has sent its first one
+    sendFromPurple(message: any) {
+      if (this.started) super.postMessage(message);
     }
 
+    terminate() {
+      registry.remove(this.purple);
+      super.terminate();
+    }
+  }
+  window.Worker = WorkerInjector;
 
-    declareEventWorker() {
-      this.addEventListener("message", (event) => {
+  function integrity() {
+    global.request = fetch;
+    // T-402: every worker may send its GQL requests through the page (replayed to workers created later)
+    registry.broadcast({ funcName: "setGqlBridge", value: true });
+    global.fetch = createFetchHook(global.request, {
+      onIntegrity: (body) => registry.broadcast({ funcName: "setIntegrity", value: body }),
+      onGqlHeaders: (headers) => registry.broadcast({ funcName: "setGqlHeaders", value: headers }),
+      forcePopoutToken: () => forcePopoutToken,
+      blockCsai: () => blockCsai,
+      onCsaiBlocked,
+    });
+    installXhrHook(XMLHttpRequest, () => blockCsai, onCsaiBlocked);
+  }
 
-        switch (event?.data?.type) {
-          case "getSettings": {
-            window.postMessage({ type: "getSettings", value: null });
-            break;
-          }
-          case "PlayerQualityChanged": {
-            mainWorker.postMessage({ funcName: "setQuality", value: event.data.arg.name });
-            break;
-          }
-          case "pause": {
-            mainWorker.postMessage({ funcName: "pause", args: undefined, id: 1 });
-            break;
-          }
-          case "play": {
-            mainWorker.postMessage({ funcName: "play", args: undefined, id: 1 });
-            break;
-          }
-          default: {
-            break;
-          }
-        }
+  // T-301: blocked requests counted per break type (`bp`: preroll, midroll)
+  function onCsaiBlocked(url: string) {
+    let bp = "other";
+    try {
+      bp = new URL(url).searchParams.get("bp") || "other";
+    } catch {}
+    csaiBlocked[bp] = (csaiBlocked[bp] ?? 0) + 1;
+    logger("CSAI request blocked:", bp, csaiBlocked);
+    recordEvent({ type: "csaiBlocked", bp, count: csaiBlocked[bp], at: Date.now() });
+  }
 
-        switch (event?.data?.arg?.key) {
-          case "quality": {
-            if (!event.data.arg.value.name) break;
-            console.log("Changed quality by player: " + event.data.arg.value.name);
-            mainWorker.postMessage({ funcName: "setQuality", value: event.data.arg.value.name });
-            break;
-          }
-          case "state": {
-            mainWorker.postMessage({ funcName: event.data.arg.value });
-          }
-          default: {
-            break;
-          }
-        }
-
-        switch (event?.data?.arg?.name) {
-          case "pause": {
-            break;
-          }
-          case "play": {
-            break;
-          }
-          default: {
-            break;
-          }
-        }
-      });
+  // Requests from one worker are answered to that worker; settings and quality go to every worker.
+  function onWorkerMessage(worker: WorkerInjector, event: MessageEvent) {
+    switch (event?.data?.type) {
+      case "purpleEvent": {
+        recordEvent(event.data.event);
+        break;
+      }
+      case "getSettings": {
+        window.postMessage({ type: "getSettings", value: null });
+        break;
+      }
+      // T-402 (F-06): a GQL request run with the page's fetch from before Purple's hook, answered to that worker
+      case "gqlRequest": {
+        runGqlRequest(global.request, event.data).then((answer) => worker.sendFromPurple({ funcName: "gqlResponse", value: answer }));
+        break;
+      }
+      case "PlayerQualityChanged": {
+        registry.broadcast({ funcName: "setQuality", value: event.data.arg.name });
+        break;
+      }
+      case "pause": {
+        worker.sendFromPurple({ funcName: "pause", args: undefined, id: worker.playerId });
+        break;
+      }
+      case "play": {
+        worker.sendFromPurple({ funcName: "play", args: undefined, id: worker.playerId });
+        break;
+      }
+      // T-601 (F-15): reload of the player at the end of a break; the worker pauses and plays if it was not done
+      case "reload": {
+        worker.sendFromPurple({ funcName: "reloadResult", value: { ok: reloadTwitchPlayer() } });
+        break;
+      }
     }
 
-    declareEventWindow() {
-      //Event listener from window and extension.
-      window.addEventListener("message", (event) => {
-        switch (event.data.type) {
-          case "setSettings": {
-            //send settings to worker
-            mainWorker.postMessage({ funcName: "setSettings", value: event.data.value });
-          }
-        }
-      });
+    switch (event?.data?.arg?.key) {
+      case "quality": {
+        if (!event.data.arg.value.name) break;
+        logger("Changed quality by player: " + event.data.arg.value.name);
+        registry.broadcast({ funcName: "setQuality", value: event.data.arg.value.name });
+        break;
+      }
+      case "state": {
+        worker.sendFromPurple({ funcName: event.data.arg.value });
+        break;
+      }
     }
-  };
+  }
+
+  function recordEvent(purpleEvent: any) {
+    if (!debug || !window.__purple) return;
+    const events = window.__purple.events;
+    events.push(purpleEvent);
+    if (events.length > EVENT_LIMIT) events.splice(0, events.length - EVENT_LIMIT);
+  }
+
+  // installed when the bundle loads: settings and an /integrity response that come before the first worker are
+  // kept by the registry and sent to the workers when they are created
+  declareEventWindow();
+  integrity();
+
+  function declareEventWindow() {
+    //Event listener from window and extension.
+    window.addEventListener("message", (event) => {
+      if (event.data?.type === "setSettings") {
+        debug = event.data.value?.debug === true;
+        blockCsai = event.data.value?.blockCsai !== false;
+        forcePopoutToken = event.data.value?.forcePopoutToken !== false;
+        if (debug && !window.__purple) window.__purple = { events: [] };
+        //send settings to every worker
+        registry.broadcast({ funcName: "setSettings", value: event.data.value });
+      }
+    });
+  }
 })();

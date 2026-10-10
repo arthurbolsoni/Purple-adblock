@@ -1,26 +1,34 @@
+# Line endings. Text files are normalized in the repository; the types listed with `lf` are also checked out with
+# LF on Windows (Bun, the userscript build and the e2e drivers read them as written), batch files with CRLF.
+[attr]lf text eol=lf
+[attr]crlf text eol=crlf
+
 * text=auto
+.githooks/* lf
+LICENSE lf
+NOTICE lf
+*.css lf
+*.ejs lf
+*.gitattributes lf
+*.gitignore lf
+*.html lf
+*.js lf
+*.json lf
+*.m3u8 lf
+*.md lf
+*.py lf
+*.sh lf
+*.toml lf
+*.ts lf
+*.yml lf
+*.bat crlf
 
-LICENSE text eol=lf
-*.bat text eol=crlf
-*.css text eol=lf
-*.eslintrc text eol=lf
-*.ejs text eol=lf
-*.gitattributes text eol=lf
-*.gitignore text eol=lf
-*.html text eol=lf
-*.js text eol=lf
-*.json text eol=lf
-*.prettierrc text eol=lf
-*.sh text eol=lf
-*.ts text eol=lf
-*.md text eol=lf
-*.yml text eol=lf
-
-*.bmp binary
-*.gif binary
-*.jpeg binary
-*.jpg binary
-*.map binary
-*.png binary
-*.tar.gz binary
-*.zip binary
+# Never converted, diffed or merged as text
+*.bmp -text -diff -merge
+*.gif -text -diff -merge
+*.jpeg -text -diff -merge
+*.jpg -text -diff -merge
+*.map -text -diff -merge
+*.png -text -diff -merge
+*.tar.gz -text -diff -merge
+*.zip -text -diff -merge

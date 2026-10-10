@@ -1,0 +1,12 @@
+{
+  "id": "L2-12",
+  "description": "SSAI preroll on every web token, backups included (B-052), only autoplay live, each media playlist answered 440 ms after it was asked (B-056): the backup loop's first clean backup is the last type in F-09's order",
+  "channel": "simchannel",
+  "playlistDelayMs": 440,
+  "variants": [
+    { "name": "720p30", "resolution": "1280x720", "bandwidth": 3000000, "codecs": "avc1.4D401F,mp4a.40.2", "live": "live-720p", "ad": "ad-720p" },
+    { "name": "360p30", "resolution": "640x360", "bandwidth": 800000, "codecs": "avc1.4D401E,mp4a.40.2", "live": "live-360p", "ad": "ad-360p" }
+  ],
+  "breaks": [{ "at": 0, "segments": 8, "roll": "PREROLL", "title": "Amazon|SIMPREROLL" }],
+  "playerTypes": { "autoplay": { "breaks": false } }
+}

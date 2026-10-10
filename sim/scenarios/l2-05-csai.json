@@ -1,0 +1,10 @@
+{
+  "id": "L2-05",
+  "description": "CSAI slot (B-011, B-032): a twitch-maf-ad marker over live segments, no ad segment; the page's client-side ad request would go to edge.ads.twitch.tv",
+  "channel": "simchannel",
+  "variants": [
+    { "name": "720p30", "resolution": "1280x720", "bandwidth": 3000000, "codecs": "avc1.4D401F,mp4a.40.2", "live": "live-720p", "ad": "ad-720p" },
+    { "name": "360p30", "resolution": "640x360", "bandwidth": 800000, "codecs": "avc1.4D401E,mp4a.40.2", "live": "live-360p", "ad": "ad-360p" }
+  ],
+  "breaks": [{ "at": 3, "segments": 30, "kind": "maf" }]
+}

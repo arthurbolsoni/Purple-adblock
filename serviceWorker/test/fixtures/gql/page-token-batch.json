@@ -1,0 +1,42 @@
+[
+  {
+    "operationName": "ChannelShell",
+    "variables": {
+      "login": "channel"
+    },
+    "extensions": {
+      "persistedQuery": {
+        "version": 1,
+        "sha256Hash": "OTHER_HASH"
+      }
+    }
+  },
+  {
+    "operationName": "PlaybackAccessToken",
+    "variables": {
+      "isLive": true,
+      "login": "channel",
+      "isVod": false,
+      "vodID": "",
+      "playerType": "site"
+    },
+    "extensions": {
+      "persistedQuery": {
+        "version": 1,
+        "sha256Hash": "0828119ded1c13477966434e15800ff57ddacf13ba1911c129dc2200705b0712"
+      }
+    }
+  },
+  {
+    "operationName": "UseLive",
+    "variables": {
+      "channelLogin": "channel"
+    },
+    "extensions": {
+      "persistedQuery": {
+        "version": 1,
+        "sha256Hash": "OTHER_HASH"
+      }
+    }
+  }
+]

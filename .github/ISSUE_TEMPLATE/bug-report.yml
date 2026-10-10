@@ -1,0 +1,76 @@
+name: Ad got through or the player stopped
+description: An ad, an ad overlay, a still or black video, or a player error while Purple is on
+title: "[Bug] "
+labels: ["bug"]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: Ad video, ad overlay or countdown, still or black video, purple screen, player error (with its number).
+    validations:
+      required: true
+  - type: input
+    id: channel
+    attributes:
+      label: Channel
+      placeholder: twitch.tv/channel
+    validations:
+      required: true
+  - type: input
+    id: time
+    attributes:
+      label: Time, with time zone
+      placeholder: 2026-10-10 15:04 UTC-3
+  - type: dropdown
+    id: moment
+    attributes:
+      label: When in the stream
+      options:
+        - When the channel opened (preroll)
+        - In the middle of the stream (midroll)
+        - Not sure
+  - type: dropdown
+    id: install
+    attributes:
+      label: Purple
+      options:
+        - Firefox add-on
+        - Chrome Web Store extension
+        - Userscript
+        - Built from source
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Purple version
+      placeholder: "2.7.0"
+  - type: input
+    id: browser
+    attributes:
+      label: Browser and version
+      placeholder: Firefox 157, Chrome 141, Edge 141
+    validations:
+      required: true
+  - type: textarea
+    id: others
+    attributes:
+      label: Other extensions or scripts running on twitch.tv
+  - type: checkboxes
+    id: account
+    attributes:
+      label: Account
+      options:
+        - label: Logged in to Twitch
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to see it again
+      description: The channel or page opened, what was clicked, how long it played before.
+  - type: textarea
+    id: console
+    attributes:
+      label: Browser console
+      description: Lines from the page's console, if any. Remove tokens and ids before posting.
+      render: text

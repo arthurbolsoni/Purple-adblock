@@ -1,0 +1,7 @@
+{
+  "streamPlaybackAccessToken": {
+    "value": "TOKEN",
+    "signature": "SIG",
+    "__typename": "PlaybackAccessToken"
+  }
+}

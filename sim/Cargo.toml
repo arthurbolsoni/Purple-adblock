@@ -1,0 +1,18 @@
+[package]
+name = "sim"
+version = "0.1.0"
+edition = "2021"
+description = "Level 2 server: reproduces Twitch's server behavior (docs/server/) for Purple's tests"
+publish = false
+
+[dependencies]
+axum = "0.8"
+tokio = { version = "1", features = ["macros", "rt-multi-thread", "net", "fs", "signal", "time"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+chrono = { version = "0.4", default-features = false, features = ["clock", "std"] }
+percent-encoding = "2"
+
+[dev-dependencies]
+tower = { version = "0.5", features = ["util"] }
+http-body-util = "0.1"

@@ -1,0 +1,11 @@
+{
+  "id": "L2-10",
+  "description": "SSAI midroll 30 s into the session as in L2-03; the page's token (popout, F-12) numbers the stream 2 segments ahead of the live sequence, as after a few stitched midrolls in a load, and the backup tokens 0 (B-054): a backup gives the same moment a number 2 lower",
+  "channel": "simchannel",
+  "variants": [
+    { "name": "720p30", "resolution": "1280x720", "bandwidth": 3000000, "codecs": "avc1.4D401F,mp4a.40.2", "live": "live-720p", "ad": "ad-720p" },
+    { "name": "360p30", "resolution": "640x360", "bandwidth": 800000, "codecs": "avc1.4D401E,mp4a.40.2", "live": "live-360p", "ad": "ad-360p" }
+  ],
+  "breaks": [{ "at": 15, "segments": 8, "roll": "MIDROLL", "title": "3935266624" }],
+  "playerTypes": { "default": { "breaks": false }, "site": { "breaks": true }, "popout": { "breaks": true, "ahead": 2 } }
+}

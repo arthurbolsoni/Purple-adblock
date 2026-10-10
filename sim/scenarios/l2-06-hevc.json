@@ -1,0 +1,10 @@
+{
+  "id": "L2-06",
+  "description": "HEVC in fMP4 with EXT-X-MAP (Q-007 until observed): a preroll on the page's token, frontpage live",
+  "channel": "simchannel",
+  "variants": [
+    { "name": "720p30", "resolution": "1280x720", "bandwidth": 2500000, "codecs": "hvc1.1.6.L93.B0,mp4a.40.2", "live": "live-720p-hevc", "ad": "ad-720p-hevc", "fmp4": true }
+  ],
+  "breaks": [{ "at": 0, "segments": 8, "roll": "PREROLL", "title": "Amazon|SIMPREROLL" }],
+  "playerTypes": { "default": { "breaks": false }, "site": { "breaks": true }, "popout": { "breaks": true } }
+}

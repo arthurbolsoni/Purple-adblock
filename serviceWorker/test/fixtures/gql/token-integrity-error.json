@@ -1,0 +1,18 @@
+{
+  "errors": [
+    {
+      "message": "failed integrity check",
+      "path": [
+        "streamPlaybackAccessToken"
+      ]
+    }
+  ],
+  "data": {
+    "streamPlaybackAccessToken": null
+  },
+  "extensions": {
+    "durationMilliseconds": 12,
+    "operationName": "PlaybackAccessToken",
+    "requestID": "REQUEST_ID"
+  }
+}

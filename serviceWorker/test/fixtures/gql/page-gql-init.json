@@ -1,0 +1,13 @@
+{
+  "method": "POST",
+  "headers": {
+    "Client-ID": "kimne78kx3ncx6brgo4mv6wki5h1ko",
+    "Client-Integrity": "INTEGRITY",
+    "X-Device-Id": "DEVICE_ID",
+    "Authorization": "OAuth OAUTH",
+    "Client-Version": "CLIENT_VERSION",
+    "Client-Session-Id": "SESSION_ID",
+    "Content-Type": "text/plain;charset=UTF-8"
+  },
+  "body": "{\"operationName\":\"PlaybackAccessToken\",\"variables\":{\"isLive\":true,\"login\":\"channel\",\"isVod\":false,\"vodID\":\"\",\"playerType\":\"site\"},\"extensions\":{\"persistedQuery\":{\"version\":1,\"sha256Hash\":\"0828119ded1c13477966434e15800ff57ddacf13ba1911c129dc2200705b0712\"}}}"
+}

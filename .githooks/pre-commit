@@ -1,0 +1,3 @@
+#!/bin/sh
+# Runs the local checks before every commit (T-003). Tests run on this machine, not on GitHub Actions.
+exec bun run check

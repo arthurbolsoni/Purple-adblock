@@ -1,13 +1,31 @@
 import { Controller } from "./decorator/controller.decorator";
 import { Fetch, Message } from "./decorator/handler.decorator";
 import { Player } from "./modules/player/player";
+import { blankSegment } from "./modules/player/blank-segment";
 import { StreamType } from "./modules/stream/interface/stream.enum";
+import type { WorkerContext } from "./scope";
+import { urlOf } from "./url";
+
+// /api/channel/hls/<channel>.m3u8 or /api/v2/channel/hls/<channel>.m3u8; the query string is ignored
+const channelFromUsher = (url: string) => decodeURIComponent(new URL(url).pathname.split("/").pop()!.replace(/\.m3u8$/, ""));
+
+// T-408 (F-12): the usher URL without parent_domains, the other parameters as written. Brave's scriptlet: "parent_domains
+// is used to determine if the player is embeded and stripping it gets rid of fake ads" (behavior reimplemented)
+export const withoutParentDomains = (url: string) => {
+  const at = url.indexOf("?");
+  if (at < 0) return url;
+  const params = url.slice(at + 1).split("&").filter((pair) => pair && decodeURIComponent(pair.split("=")[0]) !== "parent_domains");
+  return url.slice(0, at) + (params.length ? "?" + params.join("&") : "");
+};
 
 @Controller()
 export class AppController {
-  getSettings = () => global.postMessage({ type: "getSettings" });
+  getSettings = () => this.scope.postMessage({ type: "getSettings" });
 
-  constructor(private readonly appService: Player) {
+  constructor(
+    private readonly appService: Player,
+    private readonly scope: WorkerContext,
+  ) {
     this.getSettings();
   }
 
@@ -16,46 +34,98 @@ export class AppController {
     this.appService.setIntegrityToken(JSON.parse(data.value).token);
   }
 
+  // T-402 (F-06): the page executes GQL requests for this worker from now on
+  @Message("setGqlBridge")
+  async setGqlBridge() {
+    this.scope.pageGql?.enable();
+  }
+
+  @Message("gqlResponse")
+  async gqlResponse(data: any) {
+    this.scope.pageGql?.answer(data?.value);
+  }
+
+  // T-401 (F-05): headers of the page's GQL requests; a Client-Integrity among them is the newest integrity token
+  @Message("setGqlHeaders")
+  async setGqlHeaders(data: any) {
+    const headers: Record<string, string> = data?.value ?? {};
+    this.scope.gqlHeaders = headers;
+    if (headers["Client-Integrity"]) this.appService.setIntegrityToken(headers["Client-Integrity"]);
+  }
+
+  // F-14 (T-502): an ad segment the player was left with gets the blank segment; the request never reaches Twitch
+  @Fetch(function (this: AppController, url: string) {
+    return this.appService.isBlankSegment(url);
+  })
+  async onBlankSegment(): Promise<Response> {
+    return blankSegment();
+  }
+
   @Fetch("usher.ttvnw.net/api/channel/hls/", "picture-by-picture")
-  async onChannel(url: string, options: any): Promise<Response> {
-    const response: Response = await global.request(url, options);
+  @Fetch("usher.ttvnw.net/api/v2/channel/hls/", "picture-by-picture")
+  async onChannel(input: any, options: any): Promise<Response> {
+    // T-408: with forcePopoutToken (default on), parent_domains leaves the request, and so the backups' requests (F-08)
+    const original = urlOf(input);
+    const url = this.appService.setting?.forcePopoutToken === false ? original : withoutParentDomains(original);
+    const target = url === original ? input : input instanceof Request ? new Request(url, input) : url;
+    const response: Response = await this.scope.request(target, options);
     if (!response.ok) {
-      console.log("Error on channel load");
+      this.scope.logger("Error on channel load", response.status);
       return response;
     }
 
     const text = await response.text();
-    const channelName = /hls\/(.*).m3u8/gm.exec(url) || [];
 
-    await this.appService.setChannel(channelName[1]);
+    await this.appService.setChannel(channelFromUsher(url));
+    this.appService.setUsherUrl(url);
+    this.appService.setPlayerMaster(text);
+    this.appService.prewarmAtLoad();
     return new Response(text);
   }
 
   @Fetch("ttvnw.net/v1/playlist/")
-  async onFetch(url: string, options: any): Promise<Response> {
-    const body: string = await (await request(url, options)).text();
-    const playlist = await this.appService.onFetch(body);
-    return new Response(playlist);
+  @Fetch(function (this: AppController, url: string) {
+    return this.appService.isPlayerPlaylist(url);
+  })
+  async onFetch(input: any, options: any): Promise<Response> {
+    const body: string = await (await this.scope.request(input, options)).text();
+    try {
+      return new Response(await this.appService.onFetch(body, urlOf(input)));
+    } catch (e) {
+      // a failure in the blocking logic must not stop the player: it gets Twitch's playlist
+      this.scope.logger(e);
+      return new Response(body);
+    }
   }
 
   @Fetch("picture-by-picture")
-  async onChannelPicture(url: string, options: any): Promise<Response> {
-    const response: Response = await global.request(url, options);
+  async onChannelPicture(input: any, options: any): Promise<Response> {
+    const response: Response = await this.scope.request(input, options);
     if (!response.ok) {
-      console.log("Error on channel load");
+      this.scope.logger("Error on picture-by-picture load", response.status);
       return response;
     }
 
     const text = await response.text();
 
     await this.appService.currentStream().setStreamAccess(text, StreamType.PICTURE);
-    console.log("picture-by-picture", text);
+    this.scope.logger("picture-by-picture master stored");
+    // F-19: a midroll may follow in a few seconds (B-044)
+    this.appService.prewarmBackups();
     return new Response();
   }
 
+  // T-602: the player keeps the message's value, the stored settings (C-10); every message replaces them whole
   @Message("setSettings")
   async setSettings(data: any) {
-    this.appService.setSettings(data);
+    this.scope.debug = data?.value?.debug === true;
+    this.appService.setSettings(data?.value ?? {});
+  }
+
+  // T-601 (F-15): the page's answer to a reload request
+  @Message("reloadResult")
+  async reloadResult(data: any) {
+    this.appService.onReloadResult(data?.value?.ok === true);
   }
 
   @Message("setQuality")

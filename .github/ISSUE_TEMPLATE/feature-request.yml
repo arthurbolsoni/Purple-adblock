@@ -1,0 +1,21 @@
+name: Idea or change
+description: Something Purple could block, handle or show differently
+title: "[Idea] "
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: case
+    attributes:
+      label: The case
+      description: What Twitch does and what you see today (a kind of ad, a channel, a page, a setting).
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: What Purple could do
+  - type: textarea
+    id: where
+    attributes:
+      label: Where it was seen
+      description: Channel, browser, time; links to other projects that handle it, if any.

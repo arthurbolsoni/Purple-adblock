@@ -1,0 +1,14 @@
+{
+  "data": {
+    "streamPlaybackAccessToken": {
+      "value": "TOKEN",
+      "signature": "SIG",
+      "__typename": "PlaybackAccessToken"
+    }
+  },
+  "extensions": {
+    "durationMilliseconds": 40,
+    "operationName": "PlaybackAccessToken",
+    "requestID": "REQUEST_ID"
+  }
+}

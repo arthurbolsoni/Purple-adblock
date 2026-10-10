@@ -1,0 +1,12 @@
+{
+  "errors": [
+    {
+      "message": "PersistedQueryNotFound"
+    }
+  ],
+  "extensions": {
+    "durationMilliseconds": 2,
+    "operationName": "PlaybackAccessToken",
+    "requestID": "REQUEST_ID"
+  }
+}

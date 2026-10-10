@@ -1,16 +1,69 @@
-export const Fetch = (match: string, ignore: string | null = null): MethodDecorator => {
+import type { WorkerScope } from "../scope";
+
+// A route matches a URL containing `match`, or, for a function, a URL it accepts (called on the controller).
+export type FetchMatch = string | ((this: any, url: string) => boolean);
+export type FetchRoute = { propertyKey: string; match: FetchMatch; ignore: string | null };
+export type MessageRoute = { propertyKey: string; match: string };
+// handlers get the fetch input as the caller passed it (string, URL or Request)
+export type FetchHandler = (input: any, options: any) => Promise<Response>;
+
+const FETCH_ROUTES = Symbol("purple:fetch-routes");
+const MESSAGE_ROUTES = Symbol("purple:message-routes");
+
+// Metadata lives on the class, so every instance gets its own router and listeners.
+function ownList<T>(target: any, key: symbol): T[] {
+  const ctor = target.constructor;
+  if (!Object.prototype.hasOwnProperty.call(ctor, key)) {
+    Object.defineProperty(ctor, key, { value: [...(ctor[key] ?? [])], enumerable: false });
+  }
+  return ctor[key];
+}
+
+export const Fetch = (match: FetchMatch, ignore: string | null = null): MethodDecorator => {
   return (target, propertyKey) => {
-    if (!global.routerList) global.routerList = [];
-    global.routerList.push({ propertyKey: propertyKey as string, match: match, ignore: ignore });
+    ownList<FetchRoute>(target, FETCH_ROUTES).push({ propertyKey: propertyKey as string, match: match, ignore: ignore });
   };
 };
 
 export const Message = (match: string): MethodDecorator => {
   return (target, propertyKey) => {
-    global.addEventListener("message", (e: any) => {
-      if (e?.data?.funcName == match) {
-        global.appController[propertyKey](e.data);
-      }
-    });
+    ownList<MessageRoute>(target, MESSAGE_ROUTES).push({ propertyKey: propertyKey as string, match: match });
   };
 };
+
+export const getFetchRoutes = (controller: object): FetchRoute[] => [...((controller.constructor as any)[FETCH_ROUTES] ?? [])];
+
+export const getMessageRoutes = (controller: object): MessageRoute[] => [...((controller.constructor as any)[MESSAGE_ROUTES] ?? [])];
+
+export type Router = {
+  routes: FetchRoute[];
+  routeFor: (url: string) => FetchRoute | undefined;
+  resolve: (url: string) => FetchHandler | undefined;
+};
+
+// Routes are checked in declaration order; the first match wins.
+export function createRouter(controller: any): Router {
+  const routes = getFetchRoutes(controller);
+  const matches = (route: FetchRoute, url: string) => (typeof route.match === "function" ? route.match.call(controller, url) : url.includes(route.match));
+  const routeFor = (url: string) => routes.find((route) => matches(route, url) && (route.ignore == null || !url.includes(route.ignore)));
+  return {
+    routes,
+    routeFor,
+    resolve(url: string) {
+      const route = routeFor(url);
+      return route && ((input: any, options: any) => controller[route.propertyKey](input, options));
+    },
+  };
+}
+
+// One listener on the scope dispatches page -> worker messages by `funcName`.
+export function bindMessages(scope: Pick<WorkerScope, "addEventListener">, controller: any): void {
+  const routes = getMessageRoutes(controller);
+  scope.addEventListener("message", (e: any) => {
+    for (const route of routes) {
+      if (e?.data?.funcName == route.match) {
+        controller[route.propertyKey](e.data);
+      }
+    }
+  });
+}
