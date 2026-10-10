@@ -78,6 +78,12 @@ describe("extension builds (T-701)", () => {
     for (const notice of NOTICES) expect(readFileSync(join(folder, notice), "utf8")).toBe(readFileSync(join(ROOT, notice), "utf8"));
   });
 
+  test("Apache License 2.0: the LICENSE text, NOTICE and package.json, as AMO names it (T-706)", () => {
+    expect(readFileSync(join(ROOT, "LICENSE"), "utf8")).toMatch(/Apache License\s+Version 2\.0, January 2004/);
+    expect(readFileSync(join(ROOT, "NOTICE"), "utf8").split("\n").slice(0, 2)).toEqual(["Purple Adblock", "Copyright 2021-present Arthur Bolsoni"]);
+    expect(pkg.license).toBe("Apache-2.0");
+  });
+
   test("THIRD-PARTY-NOTICES.md credits both TwitchAdSolutions repositories and carries their MIT notice (T-704)", () => {
     const notices = readFileSync(join(ROOT, "THIRD-PARTY-NOTICES.md"), "utf8");
     expect(notices).toContain("https://github.com/pixeltris/TwitchAdSolutions");

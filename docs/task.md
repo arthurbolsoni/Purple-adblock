@@ -16,7 +16,7 @@ Phases run in order. Inside a phase, the "Depends on" column says what must come
 | 4. Backup streams | T-401 to T-410 | T-104, T-105, T-106, T-107 |
 | 5. Playlist assembly | T-501, T-502 | T-101, T-201 |
 | 6. Player control and settings | T-601 to T-604 | T-107, T-201 |
-| 7. Build and release | T-701, T-702, T-703 | Phase 0 |
+| 7. Build and release | T-701 to T-706 | Phase 0 |
 | 8. Investigations | T-801 to T-813 | - |
 
 ## Phase 0: test base
@@ -469,6 +469,12 @@ Runs in parallel with phases 1 to 7. Phase 1 to 6 tasks list L2/L3 scenarios tha
 - [x] Status · done 2026-10-10: the popup's status texts are "Purple on: ", "Purple off: " and "Open a Twitch channel"; the issue templates are GitHub issue forms (a bug report and an idea) and the pull request template follows CONTRIBUTING.md; `.gitignore` lists what the project installs and generates (the same paths ignored before and after), `.gitattributes` uses `lf`/`crlf` macros (the same attributes on every tracked file); `FUNDING.yml`, the README header and the `package.json` fields (`repository`, `bugs`, `homepage`) are rewritten. The ESLint config named plugins that were never installed, so `lint` failed: it, `eslint`, `lint-staged` and the `pre-commit` key left. Prettier ran nowhere (36 files did not follow it, not in `check` or the hook) and left too; the style follows the surrounding code. `.editorconfig`, which no tool of the project read, left. `.env.sample` lists the variables of `cli/publish.ts`
 - Origin: the maintainer, 2026-10-10.
 - Tests: TS-701 (no ESLint or Prettier), `platform/src/common/js/popup.spec.ts` (the status texts), `serviceWorker/test/repo/local-checks.spec.ts` (the issue forms)
+
+### T-706 Apache License 2.0
+- [x] Status · done 2026-10-10: Purple is licensed under the Apache License 2.0 from 2.7.0 (GPL-3.0 before). `LICENSE` has the license text, `NOTICE` Purple's copyright and the TwitchAdSolutions credit, `package.json` says `Apache-2.0`. Both files go with `THIRD-PARTY-NOTICES.md` into every package; the userscript has `@license Apache-2.0` and the notices after its header. Each addons.mozilla.org submission sends the license (AMO's slug `Apache-2.0`, from `package.json`) and the build steps for its reviewers (`--amo-metadata`). README, `THIRD-PARTY-NOTICES.md`, `docs/research.md` and CONTRIBUTING (contributions under the license's section 5) follow it
+- Origin: the maintainer, 2026-10-10.
+- Files: `LICENSE`, `NOTICE`, `package.json`, `cli/files.js`, `cli/publish.ts`, `platform/tampermonkey/build.js`
+- Tests: TS-706
 
 ## Phase 8: investigations
 

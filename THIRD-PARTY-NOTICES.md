@@ -1,6 +1,6 @@
 # Third-party notices
 
-Purple Adblock is licensed under the GNU General Public License v3.0 ([LICENSE](LICENSE)). It carries code from the projects below, under their own licenses.
+Purple Adblock is licensed under the Apache License 2.0 ([LICENSE](LICENSE), [NOTICE](NOTICE)). It carries code from the projects below, under their own licenses.
 
 ## TwitchAdSolutions
 

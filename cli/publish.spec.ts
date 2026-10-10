@@ -14,6 +14,7 @@ import {
   publishChrome,
   serviceAccountAssertion,
   signFirefox,
+  amoMetadata,
   webExtSign,
 } from "./publish";
 
@@ -38,14 +39,14 @@ describe("Firefox version", () => {
 });
 
 describe("web-ext sign", () => {
-  const paths = { sourceDir: "dist/sign/purple-adblock-firefox", artifactsDir: "dist/sign/artifacts", sourceArchive: "dist/src.zip" };
+  const paths = { sourceDir: "dist/sign/purple-adblock-firefox", artifactsDir: "dist/sign/artifacts", sourceArchive: "dist/src.zip", metadata: "dist/sign/amo-metadata.json" };
   const env = { AMO_JWT_ISSUER: "user:1:2", AMO_JWT_SECRET: "s3cret" };
 
   test("listed: submitted with the source, no wait for the review", () => {
     const { args } = webExtSign({ channel: "listed", ...paths, env });
     expect(args).toEqual([
       "sign", "--channel", "listed", "--source-dir", paths.sourceDir, "--artifacts-dir", paths.artifactsDir,
-      "--upload-source-code", paths.sourceArchive, "--approval-timeout", "0", "--no-input",
+      "--upload-source-code", paths.sourceArchive, "--amo-metadata", paths.metadata, "--approval-timeout", "0", "--no-input",
     ]);
   });
 
@@ -73,7 +74,7 @@ describe("signFirefox", () => {
   // a repository root with package.json; build() writes the unpacked extension as buildFirefox(true) does
   const setup = (id = AMO_ADDON_ID) => {
     root = mkdtempSync(join(tmpdir(), "purple-publish-"));
-    writeFileSync(join(root, "package.json"), JSON.stringify({ version: "2.7.0" }));
+    writeFileSync(join(root, "package.json"), JSON.stringify({ version: "2.7.0", license: "Apache-2.0" }));
     const calls: { cmd: string[]; env?: Record<string, string | undefined> }[] = [];
     const deps = {
       build: async (out: string) => {
@@ -104,6 +105,18 @@ describe("signFirefox", () => {
     expect(calls[1].env).toEqual({ WEB_EXT_API_KEY: "user:1:2", WEB_EXT_API_SECRET: "s3cret" });
     expect(signed).toBe(join(root, "dist", "purple-adblock-2.7.0.3-firefox.xpi"));
     expect(readFileSync(signed!, "utf8")).toBe("signed");
+  });
+
+  test("AMO gets the license from package.json and the build steps for its reviewers (T-706)", async () => {
+    const { calls, deps } = setup();
+    await signFirefox({ channel: "listed", env, root }, deps);
+
+    const path = calls[1].cmd[calls[1].cmd.indexOf("--amo-metadata") + 1];
+    const metadata = JSON.parse(readFileSync(path, "utf8"));
+    expect(metadata).toEqual(amoMetadata({ version: "2.7.0", license: "Apache-2.0" }));
+    expect(metadata.version.license).toBe("Apache-2.0");
+    expect(metadata.version.approval_notes).toContain("bun install --frozen-lockfile");
+    expect(metadata.version.approval_notes).toContain("bun run build");
   });
 
   test("release: listed, the package version, no file to collect", async () => {

@@ -46,7 +46,7 @@ const required = (env: Env, names: string[]): string[] => {
 };
 
 // web-ext reads WEB_EXT_<OPTION> from the environment: the key and secret never reach the command line
-export function webExtSign(options: { channel: "listed" | "unlisted"; sourceDir: string; artifactsDir: string; sourceArchive: string; env: Env }) {
+export function webExtSign(options: { channel: "listed" | "unlisted"; sourceDir: string; artifactsDir: string; sourceArchive: string; metadata: string; env: Env }) {
   const [issuer, secret] = required(options.env, ["AMO_JWT_ISSUER", "AMO_JWT_SECRET"]);
   const args = [
     "sign",
@@ -54,6 +54,7 @@ export function webExtSign(options: { channel: "listed" | "unlisted"; sourceDir:
     "--source-dir", options.sourceDir,
     "--artifacts-dir", options.artifactsDir,
     "--upload-source-code", options.sourceArchive,
+    "--amo-metadata", options.metadata,
     "--approval-timeout", String(options.channel === "listed" ? 0 : UNLISTED_APPROVAL_MS),
     "--no-input",
   ];
@@ -75,6 +76,20 @@ const defaultFirefoxDeps = (): FirefoxDeps => ({
   log: (line) => console.log(line),
 });
 
+// What AMO gets with each version (web-ext --amo-metadata, the version's fields): the license, an AMO slug from
+// package.json (T-706), and how its reviewers rebuild the minified bundle from the attached source
+export function amoMetadata(packageJson: { version: string; license: string }) {
+  return {
+    version: {
+      license: packageJson.license,
+      approval_notes:
+        "Built from the attached source with Bun 1.4.1: `bun install --frozen-lockfile`, then `bun run build`. " +
+        `The package is dist/purple-adblock-${packageJson.version}-firefox.zip, with the files of this upload ` +
+        "(app/bundle.js is the minified worker bundle from serviceWorker/src). Third-party code: THIRD-PARTY-NOTICES.md.",
+    },
+  };
+}
+
 // The unpacked build (the release zip's content) with the Firefox version, the repository's source for AMO's review
 // (the bundle is minified), then web-ext sign. Unlisted: the signed .xpi goes to dist/purple-adblock-<version>-firefox.xpi
 export async function signFirefox(
@@ -82,14 +97,15 @@ export async function signFirefox(
   deps: FirefoxDeps = defaultFirefoxDeps(),
 ): Promise<string | null> {
   const root = options.root ?? ".";
-  const packageVersion = JSON.parse(readFileSync(join(root, "package.json"), "utf8")).version;
-  const version = firefoxVersion(packageVersion, options.tag);
+  const packageJson = JSON.parse(readFileSync(join(root, "package.json"), "utf8"));
+  const version = firefoxVersion(packageJson.version, options.tag);
   const work = join(root, "dist", "sign");
   const sourceDir = join(work, unpackedName("firefox"));
   const artifactsDir = join(work, "artifacts");
   // in the work folder, so the release workflows do not attach it with dist/*.zip
   const sourceArchive = join(work, `purple-adblock-${version}-source.zip`);
-  const sign = webExtSign({ channel: options.channel, sourceDir, artifactsDir, sourceArchive, env: options.dryRun ? { AMO_JWT_ISSUER: "-", AMO_JWT_SECRET: "-" } : options.env });
+  const metadata = join(work, "amo-metadata.json");
+  const sign = webExtSign({ channel: options.channel, sourceDir, artifactsDir, sourceArchive, metadata, env: options.dryRun ? { AMO_JWT_ISSUER: "-", AMO_JWT_SECRET: "-" } : options.env });
 
   deps.log(`Firefox ${version}, ${options.channel}${options.dryRun ? " (dry run)" : ""}`);
   rmSync(work, { recursive: true, force: true });
@@ -100,6 +116,7 @@ export async function signFirefox(
   if (manifest.browser_specific_settings?.gecko?.id !== AMO_ADDON_ID) throw new Error(`manifest add-on ID is not ${AMO_ADDON_ID}`);
   manifest.version = version;
   writeFileSync(manifestPath, JSON.stringify(manifest));
+  writeFileSync(metadata, JSON.stringify(amoMetadata(packageJson), null, 2));
   await deps.run(["git", "archive", "--format=zip", `--output=${sourceArchive}`, "HEAD"]);
 
   const command = ["bun", "--bun", "x", "web-ext", ...sign.args];

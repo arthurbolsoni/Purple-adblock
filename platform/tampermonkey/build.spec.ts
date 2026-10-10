@@ -34,6 +34,9 @@ describe("userscript build", () => {
     expect(text).toContain(`// @version      ${VERSION}\n`);
     expect(text).toEndWith(BUNDLE);
     expect(existsSync(join(cwd, "platform"))).toBe(false);
+    // T-706: the license in the header and Purple's own notice
+    expect(text).toContain("// @license      Apache-2.0\n");
+    expect(text).toContain("// Copyright 2021-present Arthur Bolsoni. Licensed under the Apache License, Version 2.0:\n");
     // T-704: TwitchAdSolutions' MIT notice, after the header and before the bundle
     const notice = text.slice(text.indexOf("// ==/UserScript==\n"), text.indexOf(BUNDLE));
     expect(notice).toContain("https://github.com/pixeltris/TwitchAdSolutions");

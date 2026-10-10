@@ -12,7 +12,10 @@ console.log("building userScript version: " + version);
 let raw = fs.readFileSync(bundle);
 
 // T-704: the userscript carries TwitchAdSolutions' code (THIRD-PARTY-NOTICES.md), so it carries its MIT notice
-const NOTICE = `// Purple Adblock, https://github.com/arthurbolsoni/Purple-adblock, GNU General Public License v3.0.
+const NOTICE = `// Purple Adblock, https://github.com/arthurbolsoni/Purple-adblock
+// Copyright 2021-present Arthur Bolsoni. Licensed under the Apache License, Version 2.0:
+// https://www.apache.org/licenses/LICENSE-2.0
+//
 // Includes code from TwitchAdSolutions (https://github.com/pixeltris/TwitchAdSolutions and its fork
 // https://github.com/ryanbr/TwitchAdSolutions) under the MIT License:
 //
@@ -48,6 +51,7 @@ const build = `// ==UserScript==
 // @match        *://*.twitch.tv/*
 // @run-at       document-start
 // @grant        none
+// @license      Apache-2.0
 // ==/UserScript==
 
 ${NOTICE}

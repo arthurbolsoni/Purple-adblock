@@ -98,7 +98,7 @@ The "Brave Twitch Adblock Rules" list (`brave-lists/brave-twitch.txt`) has the s
 
 ## Licenses
 
-- Purple Adblock: GPL-3.0.
+- Purple Adblock: Apache-2.0 from 2.7.0 (GPL-3.0 before).
 - `brave/adblock-resources`: MPL-2.0 (repository license; the script file has no header of its own).
 - `ryanbr/TwitchAdSolutions` (upstream of the script, the maintained fork of `pixeltris/TwitchAdSolutions`, archived): MIT, Copyright (c) 2020-present TwitchAdSolutions Contributors, the same license in both repositories. Brave's `vaft-ublock-origin.js` is ryanbr's file without its first line (the uBO resource header), checked 2026-10-10 against ryanbr's commit `74f1248`.
 - Purple reimplements the behavior described here. Code copied verbatim from the script goes in its own file with the source URL and the MIT and MPL-2.0 notices, and is listed in `THIRD-PARTY-NOTICES.md`, which goes into every extension package; the userscript carries the MIT notice after its header (T-704).

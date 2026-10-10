@@ -79,6 +79,9 @@ Levels 2 and 3 use the Edge profile `~/nodriver/profile-edge-purple`, kept for t
 
 ## Commits and pull requests
 
+Contributions are licensed under the Apache License 2.0, as section 5 of the license sets.
+
+
 Commit subjects start with the kind of change, as in the history: `feat:`, `fix:`, `docs:`, `test:`, `refactor:`, with the task or feature ID when there is one (`feat: ... (F-26, T-823)`). The body says why.
 
 Pull requests follow the [template](.github/PULL_REQUEST_TEMPLATE.md).

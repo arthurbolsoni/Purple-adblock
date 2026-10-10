@@ -6,6 +6,7 @@
 * text=auto
 .githooks/* lf
 LICENSE lf
+NOTICE lf
 *.css lf
 *.ejs lf
 *.gitattributes lf

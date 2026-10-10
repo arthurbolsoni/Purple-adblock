@@ -120,4 +120,4 @@ The IDs point to [docs/feat.md](docs/feat.md); B-xxx are Twitch server behaviors
 
 ## License and third-party notices
 
-GNU General Public License v3.0 ([LICENSE](LICENSE)). Third-party code and its notices: [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md), also included in every extension package and in the userscript.
+Apache License 2.0 ([LICENSE](LICENSE), [NOTICE](NOTICE)), from version 2.7.0; earlier versions were released under the GNU General Public License v3.0. Third-party code and its notices: [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md). The three files are in every extension package, and the userscript carries their notices.
