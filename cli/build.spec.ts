@@ -2,7 +2,7 @@
 // (vite, both zips, the userscript) is checked by hand when the scripts change (docs/task.md, T-701). The userscript
 // header is covered in platform/tampermonkey/build.spec.ts.
 import { afterAll, describe, expect, test } from "bun:test";
-import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "fs";
+import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from "fs";
 import { tmpdir } from "os";
 import { dirname, join } from "path";
 import { buildChrome } from "./chrome_builder.js";
@@ -19,6 +19,18 @@ const bundle = join(tmp, "bundle.js");
 writeFileSync(bundle, "/* worker bundle stub */");
 
 afterAll(() => rmSync(tmp, { recursive: true, force: true }));
+
+// entry names from a zip's central directory (its end record gives the count and the offset)
+const zipEntries = (zip: Buffer): string[] => {
+  const end = zip.lastIndexOf(Buffer.from([0x50, 0x4b, 0x05, 0x06]));
+  const names: string[] = [];
+  for (let i = 0, at = zip.readUInt32LE(end + 16); i < zip.readUInt16LE(end + 10); i++) {
+    const [name, extra, comment] = [28, 30, 32].map((offset) => zip.readUInt16LE(at + offset));
+    names.push(zip.subarray(at + 46, at + 46 + name).toString());
+    at += 46 + name + extra + comment;
+  }
+  return names;
+};
 
 describe("package.json scripts (T-701)", () => {
   test("no ts-node, jest, bun package or preinstall hook", () => {
@@ -75,6 +87,31 @@ describe("extension builds (T-701)", () => {
     expect(zip.subarray(0, 2).toString()).toBe("PK");
     // T-704: entry names are stored as plain text in the zip
     for (const notice of NOTICES) expect(zip.includes(Buffer.from(notice))).toBe(true);
+  });
+
+  // the 2.7.0 Chromium zip lacked platform/chromium/rules.json, which the unpacked build (levels 2 and 3) had: the
+  // manifest's rule file was missing and the Chrome Web Store's install test failed
+  test.each([
+    ["chromium", buildChrome],
+    ["firefox", buildFirefox],
+  ])("%s: the zip has the files of the unpacked build, every file the manifest names among them", async (platform, build: any) => {
+    const out = mkdtempSync(join(tmp, `${platform}-`));
+    await build(false, { out, bundle });
+    await build(true, { out, bundle });
+    const entries = zipEntries(readFileSync(join(out, `purple-adblock-${pkg.version}-${platform}.zip`))).filter((name) => !name.endsWith("/"));
+    const folder = join(out, `purple-adblock-${platform}`);
+    const unpacked = (readdirSync(folder, { recursive: true }) as string[])
+      .filter((name) => statSync(join(folder, name)).isFile())
+      .map((name) => name.replace(/\\/g, "/"));
+    expect(entries.sort()).toEqual(unpacked.sort());
+    const manifest = JSON.parse(readFileSync(join(folder, "manifest.json"), "utf8"));
+    const named: string[] = [];
+    const walk = (value: unknown): void => {
+      if (typeof value === "string" && /\.(png|svg|js|json|html|css)$/.test(value)) named.push(value);
+      else if (value && typeof value === "object") Object.values(value).forEach(walk);
+    };
+    walk(manifest);
+    expect(named.filter((name) => !entries.includes(name))).toEqual([]);
   });
 
   test.each([
