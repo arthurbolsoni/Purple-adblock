@@ -363,6 +363,10 @@ async def soak(args, recorder, end):
             reason = None
             if not data['url'].rstrip('/').lower().endswith(watch.channel.lower()):
                 reason = f"page moved to {data['url']} (raid or redirect)"
+            elif data['contentGate']:
+                # the gate can come up after the player started (logged out, mature-rated channel): not a playing load
+                reason = 'content classification gate'
+                tried.add(watch.channel)
             elif watch.failing_since and time.time() - watch.failing_since > FAILED_AFTER:
                 reason = 'player failed or channel offline'
             elif not watch.failing_since and time.time() - watch.last_live > NO_LIVE_AFTER:

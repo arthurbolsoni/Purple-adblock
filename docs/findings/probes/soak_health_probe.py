@@ -63,7 +63,11 @@ for name in sorted(os.listdir(folder)):
 
     breaks = [(seconds_of(b['start']), b['channel']) for b in stitched]
     since, since_load, last_wall = None, None, {}
-    transitions = rows(os.path.join(path, 'transitions.jsonl'))
+    # loads where the content classification gate came up (logged out, mature-rated): the player waits for the viewer
+    gated = {s['load'] for s in rows(os.path.join(path, 'samples.jsonl')) if s.get('contentGate')}
+    for load in sorted(gated):
+        print(f"  load {load}: content classification gate, still stretches not counted")
+    transitions = [t for t in rows(os.path.join(path, 'transitions.jsonl')) if t['load'] not in gated]
     for t in transitions:
         last_wall[t['load']] = t['wall']
     for s in rows(os.path.join(path, 'samples.jsonl')):
