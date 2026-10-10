@@ -59,13 +59,24 @@ describe("GitHub Actions", () => {
 describe("issue forms", () => {
   const dir = join(ROOT, ".github", "ISSUE_TEMPLATE");
   const files = readdirSync(dir);
+  const forms = files.filter((file) => file !== "config.yml");
   const TYPES = ["markdown", "textarea", "input", "dropdown", "checkboxes"];
+  // the pinned issue where ads that got through are reported, one comment each
+  const ADS_ISSUE = "https://github.com/arthurbolsoni/Purple-adblock/issues/111";
 
-  test("only forms, a bug report and an idea", () => {
-    expect(files.sort()).toEqual(["bug-report.yml", "feature-request.yml"]);
+  test("only forms, a bug report and an idea, and the chooser's config", () => {
+    expect(files.sort()).toEqual(["bug-report.yml", "config.yml", "feature-request.yml"]);
   });
 
-  test.each(files)("%s: name, description, labels and a body of known fields with unique ids", (file) => {
+  test("an ad that got through goes to the pinned issue, from the chooser and from the bug report", () => {
+    const config: any = Bun.YAML.parse(readFileSync(join(dir, "config.yml"), "utf8"));
+    expect(config.contact_links.map((link: any) => link.url)).toEqual([ADS_ISSUE]);
+    const bug: any = Bun.YAML.parse(readFileSync(join(dir, "bug-report.yml"), "utf8"));
+    expect(bug.name).not.toMatch(/\bad\b/i);
+    expect(bug.body[0]).toEqual({ type: "markdown", attributes: { value: expect.stringContaining(ADS_ISSUE) } });
+  });
+
+  test.each(forms)("%s: name, description, labels and a body of known fields with unique ids", (file) => {
     const form: any = Bun.YAML.parse(readFileSync(join(dir, file), "utf8"));
     expect(typeof form.name).toBe("string");
     expect(typeof form.description).toBe("string");
@@ -73,9 +84,10 @@ describe("issue forms", () => {
     expect(form.body.length).toBeGreaterThan(0);
     for (const field of form.body) {
       expect(TYPES).toContain(field.type);
-      expect(typeof field.attributes.label).toBe("string");
+      // a markdown field has text and no label or id
+      expect(typeof field.attributes[field.type === "markdown" ? "value" : "label"]).toBe("string");
     }
-    const ids = form.body.map((field: any) => field.id);
+    const ids = form.body.filter((field: any) => field.type !== "markdown").map((field: any) => field.id);
     expect(new Set(ids).size).toBe(ids.length);
     expect(form.body.some((field: any) => field.validations?.required)).toBe(true);
   });

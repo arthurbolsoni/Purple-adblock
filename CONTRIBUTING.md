@@ -123,4 +123,6 @@ addons.mozilla.org gets the repository's source with each submission (`git archi
 
 ## Reporting a bug or requesting a feature
 
-Open an issue with one of the [templates](https://github.com/arthurbolsoni/Purple-adblock/issues/new/choose). For an ad that got through or a player that stopped, include the browser and its version, the extension or userscript version, the channel, the time, what was seen (ad video, ad overlay, still video, error number) and any other extension running on twitch.tv.
+An ad that got through goes in the pinned issue [#111](https://github.com/arthurbolsoni/Purple-adblock/issues/111), as a comment with the details it lists.
+
+Anything else goes in a new issue with one of the [templates](https://github.com/arthurbolsoni/Purple-adblock/issues/new/choose). For a player that stopped, include the browser and its version, the extension or userscript version, the channel, the time, what was seen (still or black video, error number) and any other extension running on twitch.tv.

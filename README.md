@@ -111,7 +111,7 @@ The IDs point to [docs/feat.md](docs/feat.md); B-xxx are Twitch server behaviors
 
 ## Contributing and support
 
-[CONTRIBUTING.md](CONTRIBUTING.md) has the setup, the commands, the tests and the rules for changes. Bugs and feature requests go to the [issues](https://github.com/arthurbolsoni/Purple-adblock/issues/new/choose); help on the [Discord server](https://discord.gg/A6CHvgtGmq).
+[CONTRIBUTING.md](CONTRIBUTING.md) has the setup, the commands, the tests and the rules for changes. Ads that got through go in the pinned issue [#111](https://github.com/arthurbolsoni/Purple-adblock/issues/111); other bugs and feature requests to the [issues](https://github.com/arthurbolsoni/Purple-adblock/issues/new/choose); help on the [Discord server](https://discord.gg/A6CHvgtGmq).
 
 ## Credits
 

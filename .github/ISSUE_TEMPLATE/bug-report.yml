@@ -1,13 +1,16 @@
-name: Ad got through or the player stopped
-description: An ad, an ad overlay, a still or black video, or a player error while Purple is on
+name: Player stopped or other bug
+description: A still or black video, a player error, or another problem while Purple is on
 title: "[Bug] "
 labels: ["bug"]
 body:
+  - type: markdown
+    attributes:
+      value: An ad that got through goes in the pinned issue, [#111](https://github.com/arthurbolsoni/Purple-adblock/issues/111), as a comment.
   - type: textarea
     id: what
     attributes:
       label: What happened
-      description: Ad video, ad overlay or countdown, still or black video, purple screen, player error (with its number).
+      description: Still or black video, player error (with its number), or what else went wrong.
     validations:
       required: true
   - type: input
