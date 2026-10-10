@@ -14,7 +14,7 @@ export interface WorkerContext {
 
 // F-17. csaiBlocked (T-301) is recorded by the page, the others come from the worker.
 export type PurpleEvent = {
-  type: "adDetected" | "backupUsed" | "segmentsReplaced" | "blankInserted" | "csaiBlocked" | "whitelisted" | "reloadRequested" | "playerReloaded" | "backupsPrewarmed" | "sequenceShifted" | "sequenceRestart";
+  type: "adDetected" | "backupUsed" | "segmentsReplaced" | "blankInserted" | "csaiBlocked" | "whitelisted" | "reloadRequested" | "playerReloaded" | "backupsPrewarmed" | "sequenceShifted" | "sequenceRestart" | "backupBehind";
   channel: string;
   playerType?: string;
   count?: number; // sequenceShifted: the shift added to the backup's MEDIA-SEQUENCE (F-23); sequenceRestart: how far the numbers went back (F-24)

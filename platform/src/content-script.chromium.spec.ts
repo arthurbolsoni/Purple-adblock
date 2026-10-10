@@ -33,7 +33,7 @@ describe("content script on Chromium (MV3)", () => {
     env.chrome.flushStorage();
     await Bun.sleep(10);
     expect(replies).toEqual([{ type: "setSettings", value: STORED }, { type: "setSettings", value: STORED }]);
-    expect(env.chrome.getCalls).toEqual([["whitelist", "toggleProxy", "proxyUrl", "debug", "blockCsai", "backupPlayerTypes", "lowQualityFallback", "pinBackupPlayerType", "stripFallback", "forcePopoutToken", "reloadAfterAd", "pausePlayDelayMs", "prewarmBackups", "stripAdMarkers", "pausePlayOnBreaks", "prewarmAtLoad", "alignBackupSequence", "restartOnSequenceBack"]]);
+    expect(env.chrome.getCalls).toEqual([["whitelist", "toggleProxy", "proxyUrl", "debug", "blockCsai", "backupPlayerTypes", "lowQualityFallback", "pinBackupPlayerType", "stripFallback", "forcePopoutToken", "reloadAfterAd", "pausePlayDelayMs", "prewarmBackups", "stripAdMarkers", "pausePlayOnBreaks", "prewarmAtLoad", "alignBackupSequence", "restartOnSequenceBack", "skipBackupBehind"]]);
     expect(document.querySelectorAll("script")).toHaveLength(0);
   });
 

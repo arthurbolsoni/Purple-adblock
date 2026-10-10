@@ -217,6 +217,9 @@ export class Player {
 
     // F-09: the first backup without ads replaces the playlist (E4); a type without one gets a new token.
     // F-10: a type whose backup had ads is skipped for CONTAMINATED_MS, with no fetch and no token request.
+    // F-25: at a switch of source, a clean backup that lists nothing past the player's newest number waits for the
+    // types after it, and is used only when none of them is ahead
+    let behind: { type: string; variant?: StreamUrl; text: string; source: string } | null = null;
     for (const type of this.backupPlayerTypes()) {
       if ((this.contaminatedUntil.get(type) ?? 0) > Date.now()) continue;
       const backup = await this.fetchm3u8ByStreamType(type, this.variantTarget(url));
@@ -224,13 +227,17 @@ export class Player {
       if (backup.dump) dump.push(...backup.dump);
       if (backup.contaminated && !backup.data) this.contaminatedUntil.set(type, Date.now() + CONTAMINATED_MS);
       if (backup.data) {
-        // F-10: autoplay and picture-by-picture (360p) are never pinned (T-802: the next midroll started on the 360p master)
-        if (type !== StreamType.AUTOPLAY && type !== StreamType.PICTURE) this.pinnedType = type;
-        this.emit({ type: "backupUsed", playerType: type, quality: backup.variant?.quality });
-        this.source = withoutQuery(backup.variant?.url ?? type);
-        return this.alignSequence(backup.data, backup.variant, text);
+        const source = withoutQuery(backup.variant?.url ?? type);
+        const aligned = this.alignSequence(backup.data, backup.variant, text);
+        if (this.listsNothingNew(aligned, source)) {
+          this.emit({ type: "backupBehind", playerType: type });
+          behind ??= { type, variant: backup.variant, text: aligned, source };
+          continue;
+        }
+        return this.useBackup(type, backup.variant, aligned, source);
       }
     }
+    if (behind) return this.useBackup(behind.type, behind.variant, behind.text, behind.source);
 
     if (dump?.length) {
       this.freeStreamChanged(true);
@@ -250,6 +257,23 @@ export class Player {
   // F-20 (T-811): with stripAdMarkers (default on), a playlist Purple delivers with blanked ad segments or an announced
   // break loses the ad's DATERANGE lines, which the page's ad UI starts from
   private adMarkers = (text: string) => (this.setting?.stripAdMarkers === false ? text : stripAdDateranges(text));
+
+  private useBackup(type: string, variant: StreamUrl | undefined, text: string, source: string): string {
+    // F-10: autoplay and picture-by-picture (360p) are never pinned (T-802: the next midroll started on the 360p master)
+    if (type !== StreamType.AUTOPLAY && type !== StreamType.PICTURE) this.pinnedType = type;
+    this.emit({ type: "backupUsed", playerType: type, quality: variant?.quality });
+    this.source = source;
+    return text;
+  }
+
+  // F-25 (T-820): with skipBackupBehind (default on), a playlist from another source than the last one given to the
+  // player whose newest number is not past that one's: the player would wait for it to move (a backup token asked a
+  // moment before was behind in time, soak j: 2 s still)
+  private listsNothingNew(text: string, source: string): boolean {
+    if (this.setting?.skipBackupBehind === false || !this.delivered || this.delivered.source === source) return false;
+    const newest = newestNumber(text);
+    return newest != null && newest <= this.delivered.newest;
+  }
 
   // F-23 (T-817): with alignBackupSequence (default on), a backup replacing the page's playlist gets the numbers the page's playlist
   // gives the same date-time, from its last poll without ads (else the live segments before the ads of this one). The

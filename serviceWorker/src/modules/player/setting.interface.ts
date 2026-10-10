@@ -18,4 +18,5 @@ export type Setting = {
   prewarmAtLoad?: boolean;
   alignBackupSequence?: boolean;
   restartOnSequenceBack?: boolean;
+  skipBackupBehind?: boolean;
 };

@@ -1121,3 +1121,51 @@ describe("player restart when the numbers go back", () => {
     expect(edges).toEqual([]);
   });
 });
+
+// F-25 (T-820): soak j 16:08, a switch to a backup token asked a moment before, whose playlist listed nothing past the
+// player's newest number by date-time: the video stood still 2 s until it moved
+describe("a backup that lists nothing past the player's", () => {
+  const SEGMENTS = "https://edge.j.cloudfront.hls.ttvnw.net/v1/segment/";
+  const POPOUT = `${HOST}popout-chunked.m3u8`;
+  const PAGE_BASE = Date.parse("2026-10-09T16:00:00.000Z") - 100 * 2000;
+  const playlist = (prefix: string, first: number, count: number, { ads = [] as number[], prefetch = 2 } = {}) => {
+    const lines = ["#EXTM3U", "#EXT-X-VERSION:3", "#EXT-X-TARGETDURATION:6", `#EXT-X-MEDIA-SEQUENCE:${first}`];
+    for (let i = 0; i < count; i++) {
+      const n = first + i;
+      lines.push(`#EXT-X-PROGRAM-DATE-TIME:${new Date(PAGE_BASE + n * 2000).toISOString()}`, `#EXTINF:2.000,${ads.includes(i) ? "Amazon|AD_ID" : "live"}`, `${SEGMENTS}${prefix}-${n}.ts`);
+    }
+    for (let p = 1; p <= prefetch; p++) lines.push(`#EXT-X-TWITCH-PREFETCH:${SEGMENTS}${prefix}-${first + count - 1 + p}.ts`);
+    return lines.join("\n");
+  };
+  const free = playlist("live", 100, 14); // the player's newest number: 115
+  const withAds = playlist("live", 101, 16, { ads: [14, 15], prefetch: 0 });
+  const behind = playlist("front", 99, 14); // newest 114
+  const ahead = playlist("pop", 102, 14); // newest 117
+
+  const second = async (settings: Record<string, unknown>, frontpage: string, popout: string) => {
+    const worker = createWorkerScope(undefined, { productDefaults: true });
+    worker.twitch.master("channel", masterFor(""));
+    worker.player.setSettings({ whitelist: [], toggleProxy: false, proxyUrl: "", backupPlayerTypes: [StreamType.FRONTPAGE, StreamType.POPOUT], lowQualityFallback: false, prewarmAtLoad: false, ...settings });
+    worker.twitch.mediaPlaylist(MAIN, free, withAds);
+    worker.twitch.mediaPlaylist(FRONTPAGE, frontpage);
+    worker.twitch.mediaPlaylist(POPOUT, popout);
+    await worker.text(USHER);
+    worker.player.currentStream().setStreamAccess(masterFor("frontpage-"), StreamType.FRONTPAGE);
+    worker.player.currentStream().setStreamAccess(masterFor("popout-"), StreamType.POPOUT);
+    worker.player.currentStream().createStreamAccess = async () => {};
+    await worker.text(MAIN);
+    return worker.text(MAIN);
+  };
+
+  test("the next type, ahead of the player, is used instead", async () => {
+    expect(await second({}, behind, ahead)).toBe(ahead);
+  });
+
+  test("skipBackupBehind off: the first clean backup, as before", async () => {
+    expect(await second({ skipBackupBehind: false }, behind, ahead)).toBe(behind);
+  });
+
+  test("with no backup ahead, the first clean one", async () => {
+    expect(await second({}, behind, playlist("pop", 98, 14))).toBe(behind);
+  });
+});

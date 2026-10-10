@@ -20,7 +20,7 @@ function injectBundle() {
 }
 
 // stored settings the page and the worker read (docs/feat.md, "Settings")
-const SETTINGS_KEYS = ["whitelist", "toggleProxy", "proxyUrl", "debug", "blockCsai", "backupPlayerTypes", "lowQualityFallback", "pinBackupPlayerType", "stripFallback", "forcePopoutToken", "reloadAfterAd", "pausePlayDelayMs", "prewarmBackups", "stripAdMarkers", "pausePlayOnBreaks", "prewarmAtLoad", "alignBackupSequence", "restartOnSequenceBack"];
+const SETTINGS_KEYS = ["whitelist", "toggleProxy", "proxyUrl", "debug", "blockCsai", "backupPlayerTypes", "lowQualityFallback", "pinBackupPlayerType", "stripFallback", "forcePopoutToken", "reloadAfterAd", "pausePlayDelayMs", "prewarmBackups", "stripAdMarkers", "pausePlayOnBreaks", "prewarmAtLoad", "alignBackupSequence", "restartOnSequenceBack", "skipBackupBehind"];
 const readSettings = () => new Promise((resolve) => storage().get(SETTINGS_KEYS, resolve));
 let settings = readSettings();
 const sendSettings = () => settings.then((items) => window.postMessage({ type: "setSettings", value: items }, "*"));
