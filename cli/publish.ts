@@ -172,7 +172,20 @@ export async function chromeToken(env: Env, fetcher: typeof fetch = fetch, now =
   return json.access_token;
 }
 
-const describe = async (response: Response) => `${response.status} ${(await response.text().catch(() => "")).slice(0, 300)}`;
+// The status and, for a Google API error, its message, reasons and precondition violations (a failed install test, a
+// missing permission justification); any other body up to 300 characters
+const describe = async (response: Response) => {
+  const text = await response.text().catch(() => "");
+  try {
+    const { error } = JSON.parse(text);
+    const details: any[] = error.details ?? [];
+    const reasons = details.filter((detail) => detail.reason).map((detail) => detail.reason);
+    const violations = details.flatMap((detail) => detail.violations ?? []).map((violation: any) => `${violation.type}: ${violation.description}`);
+    return [`${response.status} ${error.message}`, ...reasons, ...violations].join("\n");
+  } catch {
+    return `${response.status} ${text.slice(0, 300)}`;
+  }
+};
 
 // Upload, wait while the store processes it (fetchStatus), then submit for review (published once approved)
 export async function publishChrome(

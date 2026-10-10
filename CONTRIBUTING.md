@@ -102,7 +102,7 @@ A store step runs only when its secrets are set in the repository (Settings, Sec
 | `CWS_SERVICE_ACCOUNT_JSON` | JSON key of a Google Cloud service account, in a project with the Chrome Web Store API enabled, added under Account in the Developer Dashboard ([guide](https://developer.chrome.com/docs/webstore/service-accounts)) |
 | or `CWS_CLIENT_ID`, `CWS_CLIENT_SECRET`, `CWS_REFRESH_TOKEN` | an OAuth client and its refresh token, from the account that owns the item ([guide](https://developer.chrome.com/docs/webstore/using-api)) |
 
-The stores refuse a version they already have: a release starts with a new `version` in `package.json`. The Firefox version of a pre-release is `<version>.<n>`, so a tag needs the package version and a number (`2.7.0-beta.1` gives `2.7.0.1`).
+The stores refuse a version they already have: a release starts with a new `version` in `package.json`. A new permission in the Chromium manifest needs its justification in the Developer Dashboard (Privacy practices) before the API can submit the version. The Firefox version of a pre-release is `<version>.<n>`, so a tag needs the package version and a number (`2.7.0-beta.1` gives `2.7.0.1`).
 
 The same steps run locally after `bun run build`, with the secrets in a `.env` file (copied from `.env.sample`, ignored by git, loaded by Bun):
 

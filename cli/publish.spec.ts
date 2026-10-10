@@ -254,4 +254,30 @@ describe("Chrome Web Store publish", () => {
     expect(error.message).toBe("Chrome Web Store upload: 400 version must be higher");
     expect(error.message).not.toContain("ya29");
   });
+
+  // the answer to the first 2.7.0 submission: the reason was past the first 300 characters of the body
+  test("a refused publish names the store's message and each violation", async () => {
+    const refused = {
+      error: {
+        code: 400,
+        message: "Your package does not meet the requirements to be published in the store.",
+        status: "FAILED_PRECONDITION",
+        details: [
+          { "@type": "type.googleapis.com/google.rpc.ErrorInfo", reason: "INVALID_PACKAGE_FOR_PUBLISH", domain: "chromewebstore.googleapis.com" },
+          { "@type": "type.googleapis.com/google.rpc.LocalizedMessage", locale: "en-US", message: "Your package does not meet the requirements to be published in the store." },
+          {
+            "@type": "type.googleapis.com/google.rpc.PreconditionFailure",
+            violations: [{ type: "INVALID_PACKAGE_DOES_NOT_INSTALL_IN_CHROME", description: "Your uploaded package failed automated installation testing on Linux." }],
+          },
+        ],
+      },
+    };
+    const { fetcher } = fakeFetch([Response.json({ uploadState: "SUCCEEDED" }), Response.json(refused, { status: 400 })]);
+    const error = await publishChrome(options, fetcher, silent).catch((e) => e);
+    expect(error.message).toBe(
+      "Chrome Web Store publish: 400 Your package does not meet the requirements to be published in the store.\n" +
+        "INVALID_PACKAGE_FOR_PUBLISH\n" +
+        "INVALID_PACKAGE_DOES_NOT_INSTALL_IN_CHROME: Your uploaded package failed automated installation testing on Linux.",
+    );
+  });
 });
