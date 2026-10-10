@@ -72,9 +72,12 @@ async def run(session):
     return level2.base_checks(w) + [
         Check('no ad segment requested from sim/', not w.ad_segments_requested(), {'ads': w.ad_segments_requested()[:5]}),
         Check('the break handled with a backup', bool(w.events('backupUsed')), detail),
-        # T-815: a sim/ build older than the scenario's `lag` serves the backups on the stream clock
-        Check('the first backup playlist ends behind the last main one (sim/ applies the lag)',
-              scenario != SCENARIO or (bool(at_switch) and at_switch['backup'][1] < at_switch['main'][1]), {'switch': at_switch},
+        # T-815: a sim/ build older than the scenario's `lag` serves the backups on the stream clock. Since F-25 (T-820)
+        # a backup behind the player's newest number is skipped when one after it is ahead (`backupBehind`; here the
+        # popout backup, which has no lag): either shows the lag
+        Check('a backup behind the main playlist: the first one delivered, or skipped by F-25 (sim/ applies the lag)',
+              scenario != SCENARIO or (bool(at_switch) and at_switch['backup'][1] < at_switch['main'][1]) or bool(w.events('backupBehind')),
+              {'switch': at_switch, 'behind': sorted({e.get('playerType') for e in w.events('backupBehind')})},
               skipped=scenario != SCENARIO),
         Check('stalls during the run (observation)', True, detail),
     ]

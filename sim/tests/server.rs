@@ -203,3 +203,16 @@ async fn the_page_folder_is_served_and_control_paths_are_not_logged() {
     assert_eq!(f.local("GET", "/_sim/health", "").await.1, "ok");
     assert_eq!(f.log().await["log"].as_array().unwrap().len(), 0);
 }
+
+#[tokio::test]
+async fn a_media_playlist_is_answered_after_the_scenarios_delay() {
+    let f = fixture(&PREROLL.replace(r#""window": 6,"#, r#""window": 6, "playlistDelayMs": 150,"#));
+    let started = std::time::Instant::now();
+    let main = variant_url(&f.twitch("GET", &usher("site"), "").await.1);
+    assert!(started.elapsed().as_millis() < 150, "usher at once");
+    let started = std::time::Instant::now();
+    let (status, playlist) = f.twitch("GET", &main, "").await;
+    assert_eq!(status, StatusCode::OK);
+    assert!(playlist.starts_with("#EXTM3U"));
+    assert!(started.elapsed().as_millis() >= 150);
+}

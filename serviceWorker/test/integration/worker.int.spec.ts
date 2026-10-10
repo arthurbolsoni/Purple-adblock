@@ -6,7 +6,7 @@ import { Parser } from "m3u8-parser";
 import { silenceConsole } from "../harness/console";
 import { fixture } from "../harness/fixtures";
 import { createWorkerScope, type WorkerHarness } from "../harness/worker-scope";
-import { sigFor, tokenFor } from "../harness/fake-twitch";
+import { FakeTwitch, sigFor, tokenFor } from "../harness/fake-twitch";
 import { StreamType } from "../../src/modules/stream/interface/stream.enum";
 import { stripAdDateranges } from "../../src/modules/player/m3u8";
 
@@ -630,7 +630,8 @@ describe("backup player types", () => {
 
     expect(await worker.text(MAIN)).toBe(clean);
     const media = worker.twitch.callsOf("media").map((c) => c.url.replace(HOST, ""));
-    expect(media.slice(2)).toEqual(["chunked.m3u8", "popout-chunked.m3u8"]);
+    // F-26: site gave none (no master), so the types after it are asked together
+    expect(media.slice(2)).toEqual(["chunked.m3u8", "popout-chunked.m3u8", "frontpage-chunked.m3u8"]);
   });
 
   // T-203: breaks whose segments carry no title or URI marker (B-035)
@@ -1167,5 +1168,100 @@ describe("a backup that lists nothing past the player's", () => {
 
   test("with no backup ahead, the first clean one", async () => {
     expect(await second({}, behind, playlist("pop", 98, 14))).toBe(behind);
+  });
+});
+
+// F-26 (T-823): soaks m to o, a preroll at the load: the backup of each web type had ads of its own (B-052), and the
+// loop waited for one type's playlist (0.44 s, B-056) before asking the next: 2.5 to 3.6 s to the player's first playlist
+describe("backup types asked together", () => {
+  const SEGMENTS = "https://edge.j.cloudfront.hls.ttvnw.net/v1/segment/";
+  const PAGE_BASE = Date.parse("2026-10-10T10:00:00.000Z") - 100 * 2000;
+  const TYPES = [StreamType.SITE, StreamType.FRONTPAGE, StreamType.POPOUT, StreamType.EMBED];
+  const playlistUrl = (type: string) => `${HOST}${type}-chunked.m3u8`;
+  const playlist = (prefix: string, first: number, count: number, { ads = [] as number[], prefetch = 2 } = {}) => {
+    const lines = ["#EXTM3U", "#EXT-X-VERSION:3", "#EXT-X-TARGETDURATION:6", `#EXT-X-MEDIA-SEQUENCE:${first}`];
+    for (let i = 0; i < count; i++) {
+      const n = first + i;
+      lines.push(`#EXT-X-PROGRAM-DATE-TIME:${new Date(PAGE_BASE + n * 2000).toISOString()}`, `#EXTINF:2.000,${ads.includes(i) ? "Amazon|AD_ID" : "live"}`, `${SEGMENTS}${prefix}-${n}.ts`);
+    }
+    for (let p = 1; p <= prefetch; p++) lines.push(`#EXT-X-TWITCH-PREFETCH:${SEGMENTS}${prefix}-${first + count - 1 + p}.ts`);
+    return lines.join("\n");
+  };
+  const free = playlist("live", 100, 14); // the player's newest number: 115
+  const withAds = playlist("live", 101, 16, { ads: [14, 15], prefetch: 0 });
+  const ads = (prefix: string) => playlist(prefix, 101, 16, { ads: [14, 15], prefetch: 0 });
+  const clean = (prefix: string) => playlist(prefix, 102, 14); // newest 117
+  const behind = (prefix: string) => playlist(prefix, 99, 14); // newest 114
+
+  // the poll with ads after one without; each type's playlist answered `delays[type]` ms (default 5) after it was asked
+  const poll = async (settings: Record<string, unknown>, backups: Record<string, string>, delays: Record<string, number> = {}) => {
+    const twitch = new FakeTwitch();
+    const answer = twitch.fetch;
+    const asked: string[] = [];
+    let inFlight = 0;
+    let peak = 0;
+    twitch.fetch = async (input: any, init?: any) => {
+      const type = TYPES.find((t) => String(input).startsWith(playlistUrl(t)));
+      if (!type) return answer(input, init);
+      asked.push(type);
+      peak = Math.max(peak, ++inFlight);
+      await Bun.sleep(delays[type] ?? 5);
+      inFlight--;
+      return answer(input, init);
+    };
+    const worker = createWorkerScope(twitch, { productDefaults: true });
+    twitch.master("channel", masterFor(""));
+    worker.player.setSettings({ whitelist: [], toggleProxy: false, proxyUrl: "", backupPlayerTypes: TYPES, lowQualityFallback: false, prewarmAtLoad: false, ...settings });
+    twitch.mediaPlaylist(MAIN, free, withAds);
+    for (const type of TYPES) twitch.mediaPlaylist(playlistUrl(type), backups[type]);
+    await worker.text(USHER);
+    for (const type of TYPES) worker.player.currentStream().setStreamAccess(masterFor(`${type}-`), type);
+    const tokens: string[] = [];
+    worker.player.currentStream().createStreamAccess = async (type: string) => void tokens.push(type);
+    await worker.text(MAIN);
+    const out = await worker.text(MAIN);
+    return { out, asked, peak, tokens };
+  };
+
+  test("the first type with ads: the other types asked at once, the first clean one in F-09's order used", async () => {
+    const backups = { site: ads("site"), frontpage: ads("front"), popout: clean("pop"), embed: clean("emb") };
+    const { out, asked, peak } = await poll({}, backups, { popout: 30, embed: 1 });
+
+    expect(out).toBe(backups.popout);
+    expect(asked).toEqual(TYPES);
+    expect(peak).toBe(3);
+  });
+
+  test("parallelBackupFetch off: one type after another, as before", async () => {
+    const backups = { site: ads("site"), frontpage: ads("front"), popout: clean("pop"), embed: clean("emb") };
+    const { out, asked, peak } = await poll({ parallelBackupFetch: false }, backups, { popout: 30, embed: 1 });
+
+    expect(out).toBe(backups.popout);
+    expect(asked).toEqual([StreamType.SITE, StreamType.FRONTPAGE, StreamType.POPOUT]);
+    expect(peak).toBe(1);
+  });
+
+  test("the first type clean: no other type asked", async () => {
+    const backups = { site: clean("site"), frontpage: clean("front"), popout: clean("pop"), embed: clean("emb") };
+    const { out, asked } = await poll({}, backups);
+
+    expect(out).toBe(backups.site);
+    expect(asked).toEqual([StreamType.SITE]);
+  });
+
+  test("a clean type behind the player's waits for one ahead after it (F-25)", async () => {
+    const backups = { site: ads("site"), frontpage: behind("front"), popout: ads("pop"), embed: clean("emb") };
+    expect((await poll({}, backups)).out).toBe(backups.embed);
+  });
+
+  test("with none ahead, the first clean one behind (F-25)", async () => {
+    const backups = { site: ads("site"), frontpage: behind("front"), popout: ads("pop"), embed: ads("emb") };
+    expect((await poll({}, backups)).out).toBe(backups.frontpage);
+  });
+
+  test("each type asked that gave no clean backup gets a new token, also after the one used", async () => {
+    const backups = { site: ads("site"), frontpage: clean("front"), popout: ads("pop"), embed: ads("emb") };
+    expect((await poll({}, backups)).tokens).toEqual([StreamType.SITE, StreamType.POPOUT, StreamType.EMBED]);
+    expect((await poll({ parallelBackupFetch: false }, backups)).tokens).toEqual([StreamType.SITE]);
   });
 });

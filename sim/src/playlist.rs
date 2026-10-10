@@ -298,6 +298,7 @@ mod tests {
             breaks,
             player_types: Default::default(),
             gql: Default::default(),
+            playlist_delay_ms: 0,
         }
     }
 

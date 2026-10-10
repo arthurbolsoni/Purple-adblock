@@ -35,7 +35,7 @@ const getSettings = () => window.postMessage({ type: "getSettings", value: null 
 
 describe("content script on Firefox 115 (MV2)", () => {
   test("reads the settings from storage", () => {
-    expect(env.chrome.getCalls).toEqual([["whitelist", "toggleProxy", "proxyUrl", "debug", "blockCsai", "backupPlayerTypes", "lowQualityFallback", "pinBackupPlayerType", "stripFallback", "forcePopoutToken", "reloadAfterAd", "pausePlayDelayMs", "prewarmBackups", "stripAdMarkers", "pausePlayOnBreaks", "prewarmAtLoad", "alignBackupSequence", "restartOnSequenceBack", "skipBackupBehind"]]);
+    expect(env.chrome.getCalls).toEqual([["whitelist", "toggleProxy", "proxyUrl", "debug", "blockCsai", "backupPlayerTypes", "lowQualityFallback", "pinBackupPlayerType", "stripFallback", "forcePopoutToken", "reloadAfterAd", "pausePlayDelayMs", "prewarmBackups", "stripAdMarkers", "pausePlayOnBreaks", "prewarmAtLoad", "alignBackupSequence", "restartOnSequenceBack", "skipBackupBehind", "parallelBackupFetch"]]);
   });
 
   test("injects app/bundle.js before storage answers, and removes the tag once loaded", () => {

@@ -30,6 +30,10 @@ pub struct Scenario {
     pub player_types: HashMap<String, PlayerType>,
     #[serde(default)]
     pub gql: Gql,
+    /// Milliseconds a media playlist is answered after it was asked (B-056: a backup's came 0.40 to 0.72 s after
+    /// the previous answer of the backup loop, median 0.44 s). 0: at once.
+    #[serde(default)]
+    pub playlist_delay_ms: u64,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
@@ -198,6 +202,7 @@ mod tests {
         assert_eq!((s.segment_seconds, s.window, s.prefetch), (2.0, 14, 2));
         assert!(s.breaks.is_empty());
         assert!(s.breaks_for("site"));
+        assert_eq!(s.playlist_delay_ms, 0);
     }
 
     #[test]

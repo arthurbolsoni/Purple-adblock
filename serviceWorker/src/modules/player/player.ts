@@ -219,14 +219,19 @@ export class Player {
     // F-10: a type whose backup had ads is skipped for CONTAMINATED_MS, with no fetch and no token request.
     // F-25: at a switch of source, a clean backup that lists nothing past the player's newest number waits for the
     // types after it, and is used only when none of them is ahead
+    // F-26: with parallelBackupFetch (default on), when the first type gives none, the other types' playlists are
+    // asked at once and their answers taken in F-09's order (a preroll: each web type's backup has its own, B-052,
+    // and one type after another took 0.44 s each, B-056)
     let behind: { type: string; variant?: StreamUrl; text: string; source: string } | null = null;
-    for (const type of this.backupPlayerTypes()) {
-      if ((this.contaminatedUntil.get(type) ?? 0) > Date.now()) continue;
-      const backup = await this.fetchm3u8ByStreamType(type, this.variantTarget(url));
-      if (!backup.data) this.currentStream().createStreamAccess(type, this.integrityToken, type === StreamType.AUTOPLAY ? "android" : "web");
-      if (backup.dump) dump.push(...backup.dump);
-      if (backup.contaminated && !backup.data) this.contaminatedUntil.set(type, Date.now() + CONTAMINATED_MS);
-      if (backup.data) {
+    const target = this.variantTarget(url);
+    const types = this.backupPlayerTypes().filter((type) => (this.contaminatedUntil.get(type) ?? 0) <= Date.now());
+    const rounds = this.setting?.parallelBackupFetch === false ? types.map((type) => [type]) : [types.slice(0, 1), types.slice(1)];
+    for (const round of rounds) {
+      const backups = await Promise.all(round.map((type) => this.fetchm3u8ByStreamType(type, target)));
+      round.forEach((type, i) => this.noteBackup(type, backups[i], dump));
+      for (const [i, type] of round.entries()) {
+        const backup = backups[i];
+        if (!backup.data) continue;
         const source = withoutQuery(backup.variant?.url ?? type);
         const aligned = this.alignSequence(backup.data, backup.variant, text);
         if (this.listsNothingNew(aligned, source)) {
@@ -257,6 +262,14 @@ export class Player {
   // F-20 (T-811): with stripAdMarkers (default on), a playlist Purple delivers with blanked ad segments or an announced
   // break loses the ad's DATERANGE lines, which the page's ad UI starts from
   private adMarkers = (text: string) => (this.setting?.stripAdMarkers === false ? text : stripAdDateranges(text));
+
+  // F-09, F-10: what one type's answer leaves for the next polls: a new token when it gave no clean backup, the type
+  // left out for CONTAMINATED_MS when its backups had ads; its playlists for the merge (E5)
+  private noteBackup(type: string, backup: { data: string | null; dump: string[]; contaminated: boolean }, dump: string[]) {
+    if (!backup.data) this.currentStream().createStreamAccess(type, this.integrityToken, type === StreamType.AUTOPLAY ? "android" : "web");
+    if (backup.dump) dump.push(...backup.dump);
+    if (backup.contaminated && !backup.data) this.contaminatedUntil.set(type, Date.now() + CONTAMINATED_MS);
+  }
 
   private useBackup(type: string, variant: StreamUrl | undefined, text: string, source: string): string {
     // F-10: autoplay and picture-by-picture (360p) are never pinned (T-802: the next midroll started on the 360p master)

@@ -194,10 +194,18 @@ async fn handle(State(app): State<App>, request: Request) -> Response {
         headers,
     };
     let response = twitch(&app, &parts.method, &t, &body, now, &mut entry);
-    let mut sim = app.sim.lock().unwrap();
-    entry.at = now - sim.epoch_ms;
-    entry.status = response.status().as_u16();
-    sim.log.push(entry);
+    let delay = {
+        let mut sim = app.sim.lock().unwrap();
+        entry.at = now - sim.epoch_ms;
+        entry.status = response.status().as_u16();
+        let playlist = entry.path.starts_with("/v1/playlist/") && entry.status == 200;
+        sim.log.push(entry);
+        if playlist { sim.scenario.as_ref().map_or(0, |s| s.playlist_delay_ms) } else { 0 }
+    };
+    // B-056: a media playlist comes some time after it was asked
+    if delay > 0 {
+        tokio::time::sleep(std::time::Duration::from_millis(delay)).await;
+    }
     response
 }
 

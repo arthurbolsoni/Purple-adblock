@@ -66,6 +66,7 @@ Three groups: strategies that already exist (E-xx, none is removed), fixes to ex
 | F-23 | A backup replacing the page's playlist gets the sequence numbers the page's playlist gives the same date-time: the page's playlist numbers the stream ahead of backups asked before it after its stitched midrolls (B-054), and the player, which asks for the number after its last segment, waited at the switch until the backup's numbers caught up, 3 to 7 s still when that took 2 s or more (T-816, [finding](findings/2026-10-09-sequence-numbering.md)) | Purple | `alignBackupSequence = true` (since T-817) | T-817 |
 | F-24 | When the playlist given to the player comes from another source than the last one (the page's own or a backup variant) and its newest number is below the last one's, the player is restarted (E6's pause and play) once: after a preroll Purple played on backups, the page's playlist numbers from 0 (B-029, B-039) and the player waited for good with E6 off (soak k, 17 minutes; T-818, [finding](findings/2026-10-09-preroll-numbering.md)) | Purple | `restartOnSequenceBack = true` | T-818 |
 | F-25 | At a switch of the playlist source, a clean backup that lists nothing past the player's newest number (after F-23) leaves the next types to be tried first, and is used only when none of them is ahead: a backup token asked a moment before was behind in time and the video stood still 2 s (soak j 16:08, T-820) | Purple | `skipBackupBehind = true` | T-820 |
+| F-26 | When the first type in F-09's order gives no backup to use (ads, its own break announced, no master, or behind with F-25), the other types' playlists are asked at once and their answers taken in F-09's order; each type that gave none gets its new token and F-10's 5 s skip, as in the chain. At a preroll each web type's backup had ads of its own (B-052) and the chain waited for one type's playlist (0.44 s, B-056) before asking the next: 2.46 to 3.59 s to the player's first playlist in 31 prerolls (soaks m to o, T-823). L2-12: 0.92 to 0.93 s with it, 3.19 s without | Purple | `parallelBackupFetch = true` | T-823 |
 
 ### F-02: markers
 
@@ -178,8 +179,9 @@ The wait between `pause` and `play` at each break edge (F-15) comes from `pauseP
 | `alignBackupSequence` | `boolean` | `true` | F-23 |
 | `restartOnSequenceBack` | `boolean` | `true` | F-24 |
 | `skipBackupBehind` | `boolean` | `true` | F-25 |
+| `parallelBackupFetch` | `boolean` | `true` | F-26 |
 
-The content script sends the stored `whitelist`, `toggleProxy`, `proxyUrl`, `debug`, `blockCsai`, `backupPlayerTypes`, `lowQualityFallback`, `pinBackupPlayerType`, `stripFallback`, `forcePopoutToken`, `reloadAfterAd`, `pausePlayDelayMs`, `prewarmBackups`, `stripAdMarkers`, `pausePlayOnBreaks`, `prewarmAtLoad`, `alignBackupSequence`, `restartOnSequenceBack` and `skipBackupBehind` when storage first answers, when a worker asks, and whenever one of them changes (T-602). The worker replaces its settings with each message it gets. The userscript uses the defaults.
+The content script sends the stored `whitelist`, `toggleProxy`, `proxyUrl`, `debug`, `blockCsai`, `backupPlayerTypes`, `lowQualityFallback`, `pinBackupPlayerType`, `stripFallback`, `forcePopoutToken`, `reloadAfterAd`, `pausePlayDelayMs`, `prewarmBackups`, `stripAdMarkers`, `pausePlayOnBreaks`, `prewarmAtLoad`, `alignBackupSequence`, `restartOnSequenceBack`, `skipBackupBehind` and `parallelBackupFetch` when storage first answers, when a worker asks, and whenever one of them changes (T-602). The worker replaces its settings with each message it gets. The userscript uses the defaults.
 
 ## Out of scope
 
