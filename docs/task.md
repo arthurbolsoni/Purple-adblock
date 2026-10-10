@@ -588,10 +588,15 @@ Odd behaviors seen in the runs. Each task ends with its cause in a finding (and 
 - Tests: soak
 
 ### T-820 A switch to a backup token behind in time
-- [~] Status · F-25 · 2026-10-09: `skipBackupBehind` (F-25, default on) with TS-820. Next: a soak with it.
+- [x] Status · F-25 · done 2026-10-09: `skipBackupBehind` (F-25, default on) with TS-820; soak n: 97 `backupBehind`, no still video after any of 207 changes of source, 18 of them with a gap of 0 or less ([finding](findings/2026-10-09-soak-n.md#breaks-and-switches))
 - Origin: soak j 16:08:01 (`alignBackupSequence` on, E6 off): from `popout` to a `site` token asked 0.2 s before, whose playlist listed nothing newer than `popout`'s by date-time and moved 1.5 s later; the video stood still 2 s ([sequence numbering](findings/2026-10-09-sequence-numbering.md#soaks-i-and-j-twitchtv)).
 - Done when: a soak with the project's goal (every ad blocked, no still video) has no still stretch from a switch to a backup behind.
 - Tests: TS-820, soak
+
+### T-821 Backup tokens while the page's playlist of `/channel-e` stands still
+- [x] Status · B-055 · done 2026-10-09: every token's playlist stopped in the same second (page, `site`, `popout`, `embed`), for 20 to 30 s, and moved again together; no backup has segments then. The page's player stops on `ErrorNetworkIO` after about 18 s and stays on its error overlay after the playlists move again ([finding](findings/2026-10-09-soak-n.md#channel-e-b-055))
+- Origin: soaks k to m: the player error on `/channel-e` six times, the page's playlist as Twitch sent it.
+- Tests: [`backup_advance_probe.py`](findings/probes/backup_advance_probe.py), soak
 
 ### T-808 New preroll after a player reload
 - [x] Status · B-045 · Q-018 · done 2026-10-09: no reload kind avoided it. L3-13 reloaded the player at 6 break ends: a soft reload right away brought no new break (0 of 2; 1 of 4 with B-045's), a soft reload 15 s later a preroll (1 of 1), a new token a midroll (1 of 2), a new player and token a break (1 of 1). `reloadAfterAd` stays off ([finding](findings/2026-10-09-reload-kinds.md))
