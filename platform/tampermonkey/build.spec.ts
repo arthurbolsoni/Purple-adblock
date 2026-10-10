@@ -52,4 +52,10 @@ describe("userscript build", () => {
     expect(build().exitCode).toBe(0);
     expect(readFileSync(join(cwd, "platform", "tampermonkey", "dist", "purpleadblocker.user.js"), "utf8")).toEndWith(BUNDLE);
   });
+
+  // installed userscripts update from the committed copy on main (@updateURL), so it carries the package version
+  test("the committed userscript has the package version", () => {
+    const committed = readFileSync(join(import.meta.dir, "dist", "purpleadblocker.user.js"), "utf8");
+    expect(committed.match(/^\/\/ @version\s+(\S+)/m)?.[1]).toBe(VERSION);
+  });
 });
