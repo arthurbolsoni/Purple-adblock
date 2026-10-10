@@ -47,6 +47,17 @@ describe("package.json scripts (T-701)", () => {
     expect([deps.eslint, deps.prettier, deps["lint-staged"], pkg.prettier, pkg.scripts.lint, pkg.scripts.format]).toEqual([undefined, undefined, undefined, undefined, undefined, undefined]);
     expect([".eslintrc.js", ".prettierrc"].filter((name) => existsSync(join(ROOT, name)))).toEqual([]);
   });
+
+  // T-705: m3u8-parser is the only package in the bundle; Vite builds it with `minify: 'terser'`, and terser is an
+  // optional peer of Vite, so it is declared (it came before only through terser-webpack-plugin). The webpack-era
+  // packages, imported by nothing, left
+  test("m3u8-parser is the only dependency; Vite and terser are dev dependencies; no webpack-era packages", () => {
+    expect(Object.keys(pkg.dependencies)).toEqual(["m3u8-parser"]);
+    expect(readFileSync(join(ROOT, "serviceWorker", "build.ts"), "utf8")).toContain("minify: 'terser'");
+    expect([pkg.devDependencies.vite, pkg.devDependencies.terser].map(Boolean)).toEqual([true, true]);
+    const deps = { ...pkg.dependencies, ...pkg.devDependencies };
+    expect(["terser-webpack-plugin", "ts-loader", "webpack", "concurrently", "dotenv"].filter((name) => deps[name])).toEqual([]);
+  });
 });
 
 describe("extension builds (T-701)", () => {
