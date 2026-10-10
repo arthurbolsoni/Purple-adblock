@@ -88,30 +88,34 @@ Pull requests follow the [template](.github/PULL_REQUEST_TEMPLATE.md).
 
 ## Releases
 
-| Push | Workflow | Result |
-| --- | --- | --- |
-| to `main` | `release.yml` | GitHub release of the `package.json` version (both zips, the userscript, `LICENSE`). On the first push of a new version: Firefox submitted to addons.mozilla.org (listed, reviewed there) and Chrome submitted to the Chrome Web Store (published once the review passes) |
-| a tag `<version>-<label>.<n>`, for instance `2.7.0-beta.1` | `pre-release.yml` | GitHub pre-release of the tag, with the Firefox build signed as unlisted (`purple-adblock-<version>.<n>-firefox-signed.xpi`) |
-
-A store step runs only when its secrets are set in the repository (Settings, Secrets and variables, Actions):
-
-| Secret | Where it comes from |
-| --- | --- |
-| `AMO_JWT_ISSUER`, `AMO_JWT_SECRET` | [addons.mozilla.org API keys](https://addons.mozilla.org/developers/addon/api/key/), on the account that owns the add-on |
-| `CWS_PUBLISHER_ID` | Chrome Web Store Developer Dashboard, publisher settings |
-| `CWS_SERVICE_ACCOUNT_JSON` | JSON key of a Google Cloud service account, in a project with the Chrome Web Store API enabled, added under Account in the Developer Dashboard ([guide](https://developer.chrome.com/docs/webstore/service-accounts)) |
-| or `CWS_CLIENT_ID`, `CWS_CLIENT_SECRET`, `CWS_REFRESH_TOKEN` | an OAuth client and its refresh token, from the account that owns the item ([guide](https://developer.chrome.com/docs/webstore/using-api)) |
-
-The stores refuse a version they already have: a release starts with a new `version` in `package.json`. A new permission in the Chromium manifest needs its justification in the Developer Dashboard (Privacy practices) before the API can submit the version. The Firefox version of a pre-release is `<version>.<n>`, so a tag needs the package version and a number (`2.7.0-beta.1` gives `2.7.0.1`).
-
-The same steps run locally after `bun run build`, with the secrets in a `.env` file (copied from `.env.sample`, ignored by git, loaded by Bun):
+Releases are made on this machine, with the store keys in a `.env` file (copied from `.env.sample`, ignored by git, loaded by Bun) and the GitHub CLI. `bun run build` rewrites `platform/tampermonkey/dist/purpleadblocker.user.js`, from which installed userscripts update: it goes into the release commit.
 
 ```bash
-bun cli/publish.ts firefox --channel listed --dry-run            # what would be sent, with nothing sent
-bun cli/publish.ts firefox --channel listed --wait               # submitted for review; once approved, signed .xpi in dist/
-bun cli/publish.ts firefox --channel unlisted --tag 2.7.0-beta.1 # signed .xpi in dist/
-bun cli/publish.ts chrome
+bun run build                                       # dist/purple-adblock-<version>-<platform>.zip and the userscript
+bun cli/publish.ts firefox --channel listed --wait  # addons.mozilla.org review; once approved, dist/purple-adblock-<version>-firefox-signed.xpi
+bun cli/publish.ts chrome                           # Chrome Web Store, submitted for review, published once approved
+gh release create <version> --title <version> LICENSE dist/purple-adblock-<version>-*.zip \
+  dist/purple-adblock-<version>-firefox-signed.xpi platform/tampermonkey/dist/purpleadblocker.user.js
 ```
+
+A pre-release signs the Firefox build as unlisted, with no review, under `<version>.<n>` for a tag `<version>-<label>.<n>` (`2.7.0-beta.1` gives `2.7.0.1`):
+
+```bash
+bun cli/publish.ts firefox --channel unlisted --tag 2.7.0-beta.1  # dist/purple-adblock-2.7.0.1-firefox-signed.xpi
+gh release create 2.7.0-beta.1 --prerelease --title 2.7.0-beta.1 LICENSE dist/purple-adblock-2.7.0-*.zip \
+  dist/purple-adblock-2.7.0.1-firefox-signed.xpi platform/tampermonkey/dist/purpleadblocker.user.js
+```
+
+`--dry-run` shows what `cli/publish.ts` would send, with nothing sent.
+
+| Variable | Where it comes from |
+| --- | --- |
+| `AMO_JWT_ISSUER`, `AMO_JWT_SECRET` | [addons.mozilla.org API keys](https://addons.mozilla.org/developers/addon/api/key/), on the account that owns the add-on |
+| `CWS_PUBLISHER_ID` | Chrome Web Store Developer Dashboard, Publisher, Settings |
+| `CWS_SERVICE_ACCOUNT_JSON` | JSON key of a Google Cloud service account, on one line, in a project with the Chrome Web Store API enabled, added under Account in the Developer Dashboard ([guide](https://developer.chrome.com/docs/webstore/service-accounts)) |
+| or `CWS_CLIENT_ID`, `CWS_CLIENT_SECRET`, `CWS_REFRESH_TOKEN` | an OAuth client and its refresh token, from the account that owns the item ([guide](https://developer.chrome.com/docs/webstore/using-api)) |
+
+The stores refuse a version they already have: a release starts with a new `version` in `package.json`. A new permission in the Chromium manifest needs its justification in the Developer Dashboard (Privacy practices) before the API can submit the version.
 
 The store texts (summary and description, en-US and pt-BR) are in [docs/store-listing.md](docs/store-listing.md), with where each one goes.
 

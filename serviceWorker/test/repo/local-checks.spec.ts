@@ -1,6 +1,6 @@
 // T-003: tests run on this machine before every commit, never on GitHub Actions.
 import { describe, expect, test } from "bun:test";
-import { readdirSync, readFileSync } from "fs";
+import { existsSync, readdirSync, readFileSync } from "fs";
 import { join } from "path";
 
 const ROOT = join(import.meta.dir, "..", "..", "..");
@@ -40,14 +40,17 @@ describe("local checks", () => {
   });
 });
 
+// no workflow since 2026-10-10 (T-702): releases are made locally; one added later still runs no tests
 describe("GitHub Actions", () => {
   const dir = join(ROOT, ".github", "workflows");
-  const workflows = readdirSync(dir).filter((f) => /\.ya?ml$/.test(f));
   const RUNS_TESTS = /\b(?:bun|npm|yarn|pnpm)\s+(?:run\s+)?(?:test|check)\b|\bbun\s+test\b|\bcargo\s+test\b|\bjest\b|e2e\/run\.py/;
 
-  test.each(workflows)("%s runs no tests", (file) => {
-    const workflow: any = Bun.YAML.parse(readFileSync(join(dir, file), "utf8"));
-    const runs = Object.values(workflow.jobs ?? {}).flatMap((job: any) => (job.steps ?? []).map((step: any) => step.run ?? ""));
+  test("no workflow runs tests", () => {
+    const workflows = existsSync(dir) ? readdirSync(dir).filter((f) => /\.ya?ml$/.test(f)) : [];
+    const runs = workflows.flatMap((file) => {
+      const workflow: any = Bun.YAML.parse(readFileSync(join(dir, file), "utf8"));
+      return Object.values(workflow.jobs ?? {}).flatMap((job: any) => (job.steps ?? []).map((step: any) => step.run ?? ""));
+    });
     expect(runs.filter((run: string) => RUNS_TESTS.test(run))).toEqual([]);
   });
 });

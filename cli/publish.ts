@@ -7,7 +7,7 @@
 //   bun cli/publish.ts chrome [--dry-run]
 //
 // Both run after `bun run build` (serviceWorker/dist/bundle.js, dist/purple-adblock-<version>-chromium.zip).
-// Credentials come from the environment: GitHub secrets in the release workflows, or a local .env, which Bun loads.
+// Credentials come from the environment, a local .env that Bun loads (CONTRIBUTING.md, Releases).
 // None of them is printed or passed on a command line.
 //   Firefox: AMO_JWT_ISSUER, AMO_JWT_SECRET (https://addons.mozilla.org/developers/addon/api/key/)
 //   Chrome:  CWS_PUBLISHER_ID, and CWS_SERVICE_ACCOUNT_JSON (the service account's JSON key) or CWS_CLIENT_ID,
@@ -105,7 +105,7 @@ export async function signFirefox(
   const work = join(root, "dist", "sign");
   const sourceDir = join(work, unpackedName("firefox"));
   const artifactsDir = join(work, "artifacts");
-  // in the work folder, so the release workflows do not attach it with dist/*.zip
+  // in the work folder, apart from the release zips in dist/
   const sourceArchive = join(work, `purple-adblock-${version}-source.zip`);
   const metadata = join(work, "amo-metadata.json");
   const sign = webExtSign({ channel: options.channel, wait: options.wait, sourceDir, artifactsDir, sourceArchive, metadata, env: options.dryRun ? { AMO_JWT_ISSUER: "-", AMO_JWT_SECRET: "-" } : options.env });

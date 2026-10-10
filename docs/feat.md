@@ -16,7 +16,7 @@ Three groups: strategies that already exist (E-xx, none is removed), fixes to ex
 | E8 | Backup in the quality selected in the player | `stream.types.ts`, `index.ts` | kept | T-407 |
 | E9 | Integrity token capture from the `/integrity` call | `index.ts`, `page/fetch-hook.ts` | the hook reads every page response and rebuilds it (a 204/304 body throws in browsers); installed with the first worker, so a token from before it is lost | T-106, T-401 |
 | E10 | Capture of the mini player's picture-by-picture stream | `app.controller.ts` (`onChannelPicture`) | kept | T-408 |
-| E11 | Distribution: Chromium MV3, Firefox MV2, userscript | `cli/`, `platform/` | `bun run build` builds the worker, both zips and the userscript (T-701); a push to `main` publishes them as a release, a tag with a hyphen as a pre-release (T-702); the first push of a version also sends Firefox to addons.mozilla.org (listed) and Chrome to the Chrome Web Store, and a pre-release gets a signed unlisted `.xpi` (T-703) | T-701, T-702, T-703 |
+| E11 | Distribution: Chromium MV3, Firefox MV2, userscript | `cli/`, `platform/` | `bun run build` builds the worker, both zips and the userscript (T-701); releases are made locally: `cli/publish.ts` sends Firefox to addons.mozilla.org (listed, with the signed `.xpi` once approved; unlisted for a pre-release) and Chrome to the Chrome Web Store, and `gh release create` publishes the GitHub release (T-703); no workflow since 2026-10-10 (T-702) | T-701, T-702, T-703 |
 | E12 | Configurable proxy (`toggleProxy`, `proxyUrl`) | `popup.js` | UI not read by the worker since 2023 (#79) | Open decisions in `docs/task.md` |
 
 ## Fixes
