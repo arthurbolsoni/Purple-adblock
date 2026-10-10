@@ -37,11 +37,14 @@ describe("userscript build", () => {
     // T-706: the license in the header and Purple's own notice
     expect(text).toContain("// @license      Apache-2.0\n");
     expect(text).toContain("// Copyright 2021-present Arthur Bolsoni. Licensed under the Apache License, Version 2.0:\n");
-    // T-704: TwitchAdSolutions' MIT notice, after the header and before the bundle
+    // T-704: the third-party notices, after the header and before the bundle: TwitchAdSolutions and the npm packages
+    // in the bundle, with the MIT permission notice
     const notice = text.slice(text.indexOf("// ==/UserScript==\n"), text.indexOf(BUNDLE));
     expect(notice).toContain("https://github.com/pixeltris/TwitchAdSolutions");
     expect(notice).toContain("https://github.com/ryanbr/TwitchAdSolutions");
-    expect(notice).toContain("// Copyright (c) 2020-present TwitchAdSolutions Contributors\n");
+    expect(notice).toContain("//   Copyright (c) 2020-present TwitchAdSolutions Contributors\n");
+    expect(notice).toContain("// Includes m3u8-parser (https://github.com/videojs/m3u8-parser), Copyright Brightcove, Inc, under the Apache\n");
+    for (const name of ["@videojs/vhs-utils", "global", "@babel/runtime"]) expect(notice).toContain(`// - ${name} (`);
     expect(notice).toContain("// The above copyright notice and this permission notice shall be included in all\n");
   });
 

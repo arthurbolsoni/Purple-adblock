@@ -11,15 +11,22 @@ console.log("building userScript version: " + version);
 
 let raw = fs.readFileSync(bundle);
 
-// T-704: the userscript carries TwitchAdSolutions' code (THIRD-PARTY-NOTICES.md), so it carries its MIT notice
+// T-704: the userscript carries third-party code (THIRD-PARTY-NOTICES.md), so it carries their notices
 const NOTICE = `// Purple Adblock, https://github.com/arthurbolsoni/Purple-adblock
 // Copyright 2021-present Arthur Bolsoni. Licensed under the Apache License, Version 2.0:
 // https://www.apache.org/licenses/LICENSE-2.0
 //
-// Includes code from TwitchAdSolutions (https://github.com/pixeltris/TwitchAdSolutions and its fork
-// https://github.com/ryanbr/TwitchAdSolutions) under the MIT License:
-//
-// Copyright (c) 2020-present TwitchAdSolutions Contributors
+// Includes m3u8-parser (https://github.com/videojs/m3u8-parser), Copyright Brightcove, Inc, under the Apache
+// License, Version 2.0, and code under the MIT License from:
+// - TwitchAdSolutions (https://github.com/pixeltris/TwitchAdSolutions and its fork https://github.com/ryanbr/TwitchAdSolutions)
+//   Copyright (c) 2020-present TwitchAdSolutions Contributors
+// - @videojs/vhs-utils (https://github.com/videojs/vhs-utils)
+//   Copyright (c) brandonocasey <brandonocasey@gmail.com>
+// - global (https://github.com/Raynos/global)
+//   Copyright (c) 2012 Colingo.
+// - @babel/runtime (https://github.com/babel/babel)
+//   Copyright (c) 2014-present Sebastian McKenzie and other contributors
+// All notices: https://github.com/arthurbolsoni/Purple-adblock/blob/main/THIRD-PARTY-NOTICES.md
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal

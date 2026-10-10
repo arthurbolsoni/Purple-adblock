@@ -4,7 +4,7 @@
 import { afterAll, describe, expect, test } from "bun:test";
 import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "fs";
 import { tmpdir } from "os";
-import { join } from "path";
+import { dirname, join } from "path";
 import { buildChrome } from "./chrome_builder.js";
 import { buildFirefox } from "./firefox_builder.js";
 import { NOTICES, unpackedName, zipName } from "./files.js";
@@ -90,5 +90,37 @@ describe("extension builds (T-701)", () => {
     expect(notices).toContain("https://github.com/ryanbr/TwitchAdSolutions");
     expect(notices).toContain("Copyright (c) 2020-present TwitchAdSolutions Contributors");
     expect(notices).toContain("The above copyright notice and this permission notice shall be included in all");
+  });
+
+  // the bundle carries m3u8-parser and the modules its ES build imports (Vite follows `module`): each package reached
+  // that way has its row and its license file's text in THIRD-PARTY-NOTICES.md, so a new import fails here until added
+  test("THIRD-PARTY-NOTICES.md lists every package bundled with m3u8-parser, with its license text (T-704)", () => {
+    const notices = readFileSync(join(ROOT, "THIRD-PARTY-NOTICES.md"), "utf8").replace(/\r\n/g, "\n");
+    const packageDir = (file: string) => {
+      const parts = file.split(/[\\/]/);
+      const at = parts.lastIndexOf("node_modules");
+      return parts.slice(0, at + (parts[at + 1].startsWith("@") ? 3 : 2)).join("/");
+    };
+    const bundled = new Map<string, string>();
+    const files = new Set<string>();
+    const visit = (file: string) => {
+      if (files.has(file)) return;
+      files.add(file);
+      const dir = packageDir(file);
+      bundled.set(JSON.parse(readFileSync(join(dir, "package.json"), "utf8")).name, dir);
+      const source = readFileSync(file, "utf8");
+      for (const match of source.matchAll(/\bfrom\s*['"]([^'"]+)['"]|\bimport\s*['"]([^'"]+)['"]/g)) {
+        visit(Bun.resolveSync(match[1] ?? match[2], dirname(file)));
+      }
+    };
+    const entry = join(ROOT, "node_modules", "m3u8-parser");
+    visit(join(entry, JSON.parse(readFileSync(join(entry, "package.json"), "utf8")).module));
+    expect([...bundled.keys()].sort()).toEqual(["@babel/runtime", "@videojs/vhs-utils", "global", "m3u8-parser"]);
+    for (const [name, dir] of bundled) {
+      const version = JSON.parse(readFileSync(join(dir, "package.json"), "utf8")).version;
+      expect(notices).toContain(`| ${version} |`);
+      expect(notices).toContain(`### ${name}\n`);
+      expect(notices).toContain(readFileSync(join(dir, "LICENSE"), "utf8").replace(/\r\n/g, "\n").trim());
+    }
   });
 });
