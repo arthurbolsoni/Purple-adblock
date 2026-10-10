@@ -22,11 +22,11 @@ It ships as a Firefox add-on (Manifest V2), a Chromium extension (Manifest V3: C
 
 ## Install
 
-| Platform | Where |
-| --- | --- |
-| Firefox | [Firefox Add-ons](https://addons.mozilla.org/firefox/addon/purpleadblock/) |
-| Chrome and other Chromium browsers | [Chrome Web Store](https://chromewebstore.google.com/detail/purple-ads-blocker/lkgcfobnmghhbhgekffaadadhmeoindg) |
-| Userscript | [purpleadblocker.user.js](https://raw.githubusercontent.com/arthurbolsoni/Purple-adblock/main/platform/tampermonkey/dist/purpleadblocker.user.js), in a userscript manager that runs scripts at `document-start` (Tampermonkey, Violentmonkey) |
+| Browser | Install from ... | Browser | Install from ... |
+| --- | --- | --- | --- |
+| <img src="https://raw.githubusercontent.com/alrra/browser-logos/main/src/firefox/firefox_48x48.png" alt="Get Purple Adblock for Firefox" width="48"> | <a href="https://addons.mozilla.org/firefox/addon/purpleadblock/">Firefox Add-ons</a> | <img src="https://raw.githubusercontent.com/alrra/browser-logos/main/src/chrome/chrome_48x48.png" alt="Get Purple Adblock for Chrome" width="48"> | <a href="https://chromewebstore.google.com/detail/purple-ads-blocker/lkgcfobnmghhbhgekffaadadhmeoindg">Chrome Web Store</a> |
+| <img src="https://raw.githubusercontent.com/alrra/browser-logos/main/src/edge/edge_48x48.png" alt="Get Purple Adblock for Microsoft Edge" width="48"> | <a href="https://chromewebstore.google.com/detail/purple-ads-blocker/lkgcfobnmghhbhgekffaadadhmeoindg">Chrome Web Store</a>, after `Allow extensions from other stores` | <img src="https://raw.githubusercontent.com/alrra/browser-logos/main/src/brave/brave_48x48.png" alt="Get Purple Adblock for Brave" width="48"> | <a href="https://chromewebstore.google.com/detail/purple-ads-blocker/lkgcfobnmghhbhgekffaadadhmeoindg">Chrome Web Store</a> |
+| <img src="https://raw.githubusercontent.com/alrra/browser-logos/main/src/opera/opera_48x48.png" alt="Get Purple Adblock for Opera" width="48"> | <a href="https://chromewebstore.google.com/detail/purple-ads-blocker/lkgcfobnmghhbhgekffaadadhmeoindg">Chrome Web Store</a>, with Opera's `Install Chrome Extensions` | <img src="https://www.tampermonkey.net/images/icon48.png" alt="Get the Purple Adblock userscript" width="48"> | <a href="https://raw.githubusercontent.com/arthurbolsoni/Purple-adblock/main/platform/tampermonkey/dist/purpleadblocker.user.js">Userscript</a>, in a userscript manager that runs scripts at `document-start` (Tampermonkey, Violentmonkey) |
 
 The extension's popup turns Purple off and on for the channel in the current tab (a per-channel allow list). The userscript has no popup and uses the default settings.
 
