@@ -16,7 +16,7 @@ Phases run in order. Inside a phase, the "Depends on" column says what must come
 | 4. Backup streams | T-401 to T-410 | T-104, T-105, T-106, T-107 |
 | 5. Playlist assembly | T-501, T-502 | T-101, T-201 |
 | 6. Player control and settings | T-601 to T-604 | T-107, T-201 |
-| 7. Build and release | T-701, T-702 | Phase 0 |
+| 7. Build and release | T-701, T-702, T-703 | Phase 0 |
 | 8. Investigations | T-801 to T-813 | - |
 
 ## Phase 0: test base
@@ -451,6 +451,13 @@ Runs in parallel with phases 1 to 7. Phase 1 to 6 tasks list L2/L3 scenarios tha
   - releases only on push to `main` or on a tag;
   - `actions/checkout` v4; `marvinpinto/action-automatic-releases` (archived) is replaced by a maintained action.
 - Tests: TS-702
+
+### T-703 Signed releases for Firefox and Chrome
+- [ ] Status · E11 · code done 2026-10-10, first store submission pending the store secrets: `cli/publish.ts` signs the Firefox build with `web-ext` 10.7.0 (run by Bun) on addons.mozilla.org, `listed` for a release (submitted for review, no wait) and `unlisted` for a pre-release (the signed `.xpi` in `dist/`), with the repository's source (`git archive`) as AMO asks for minified code; and sends the Chromium zip to the Chrome Web Store API v2 (upload, `fetchStatus` while processing, `publish` for review), with a service account or an OAuth refresh token. `release.yml` runs both after the GitHub release, only on the first push of a version (no tag for it yet) and only when the store's secrets are set; `pre-release.yml` signs the Firefox build of a `<version>-<label>.<n>` tag as `<version>.<n>` and attaches the `.xpi`. The Firefox manifest has the AMO add-on ID and declares no data collection: `web-ext lint` 0 errors, 0 warnings (2 warnings before). Package version 2.7.0. `sign-addon` (unused, deprecated) left the dependencies. Dry runs (`--dry-run`) of both pass; no submission was made
+- Origin: the maintainer, 2026-10-10: signed Firefox and Chrome versions for the 2.7.0 release; Firefox listed for releases and unlisted for pre-releases, Chrome uploaded and published through the API.
+- Files: `cli/publish.ts`, `.github/workflows/release.yml`, `.github/workflows/pre-release.yml`, `platform/firefox/manifest.json`, `package.json`
+- Done when: a release reaches addons.mozilla.org and the Chrome Web Store through the workflow, and a pre-release has its signed `.xpi`.
+- Tests: TS-703
 
 ## Phase 8: investigations
 

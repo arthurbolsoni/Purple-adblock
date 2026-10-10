@@ -10,7 +10,7 @@ An adblocker for Twitch live streams
 [![Discord](https://img.shields.io/discord/829993555820019773?label=Discord)](https://discord.gg/A6CHvgtGmq)
 ![License](https://img.shields.io/badge/license-GPLv3-blue.svg?label=License)
 [![Mozilla Add-on](https://img.shields.io/amo/dw/%7Ba7399979-5203-4489-9861-b168187b52e1%7D?label=Firefox%20Users)](https://addons.mozilla.org/firefox/addon/purpleadblock/)
-[![Chrome Web Store](https://img.shields.io/chrome-web-store/users/lkgcfobnmghhbhgekffaadadhmeoindg?label=Chrome%20Users)](https://chrome.google.com/webstore/detail/purple-adblock/lkgcfobnmghhbhgekffaadadhmeoindg)
+[![Chrome Web Store](https://img.shields.io/chrome-web-store/users/lkgcfobnmghhbhgekffaadadhmeoindg?label=Chrome%20Users)](https://chromewebstore.google.com/detail/purple-ads-blocker/lkgcfobnmghhbhgekffaadadhmeoindg)
 
 </div>
 
@@ -25,10 +25,12 @@ It ships as a Firefox add-on (Manifest V2), a Chromium extension (Manifest V3: C
 | Platform | Where |
 | --- | --- |
 | Firefox | [Firefox Add-ons](https://addons.mozilla.org/firefox/addon/purpleadblock/) |
-| Chrome and other Chromium browsers | [Chrome Web Store](https://chrome.google.com/webstore/detail/purple-adblock/lkgcfobnmghhbhgekffaadadhmeoindg) |
+| Chrome and other Chromium browsers | [Chrome Web Store](https://chromewebstore.google.com/detail/purple-ads-blocker/lkgcfobnmghhbhgekffaadadhmeoindg) |
 | Userscript | [purpleadblocker.user.js](https://raw.githubusercontent.com/arthurbolsoni/Purple-adblock/main/platform/tampermonkey/dist/purpleadblocker.user.js), in a userscript manager that runs scripts at `document-start` (Tampermonkey, Violentmonkey) |
 
 The extension's popup turns Purple off and on for the channel in the current tab (a per-channel allow list). The userscript has no popup and uses the default settings.
+
+Pre-releases on the [releases page](https://github.com/arthurbolsoni/Purple-adblock/releases) come with a Firefox build signed by Mozilla (`purple-adblock-<version>-firefox.xpi`), which Firefox installs from `about:addons` (gear menu, `Install Add-on From File...`) and keeps after a restart.
 
 ### Manual installation
 

@@ -1,5 +1,7 @@
 # Builds the extensions and the userscript when a tag with a hyphen is pushed (2.7.0-beta.1) and publishes them as a
-# pre-release of that tag. Tests run locally before every commit; no workflow runs them (T-702).
+# pre-release of that tag. With the AMO secrets set, the Firefox build is signed as unlisted (T-703): version
+# <package version>.<n> for a tag <package version>-<label>.<n>, the signed .xpi attached to the pre-release.
+# Tests run locally before every commit; no workflow runs them (T-702).
 name: pre-release
 
 on:
@@ -19,6 +21,18 @@ jobs:
           bun-version: 1.4.1
       - run: bun install --frozen-lockfile
       - run: bun run build
+      - name: Which store secrets are set
+        id: stores
+        env:
+          AMO_JWT_ISSUER: ${{ secrets.AMO_JWT_ISSUER }}
+        run: echo "amo=$([ -n "$AMO_JWT_ISSUER" ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
+      - name: Firefox, signed (unlisted)
+        if: steps.stores.outputs.amo == 'true'
+        env:
+          AMO_JWT_ISSUER: ${{ secrets.AMO_JWT_ISSUER }}
+          AMO_JWT_SECRET: ${{ secrets.AMO_JWT_SECRET }}
+          TAG: ${{ github.ref_name }}
+        run: bun cli/publish.ts firefox --channel unlisted --tag "$TAG"
       - uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ github.ref_name }}
@@ -27,4 +41,5 @@ jobs:
           files: |
             LICENSE
             dist/*.zip
+            dist/*.xpi
             platform/tampermonkey/dist/purpleadblocker.user.js

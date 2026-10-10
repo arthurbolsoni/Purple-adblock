@@ -28,7 +28,8 @@ describe("content script on Firefox 157 (MV2)", () => {
   test("once storage answers, the settings go to the page", async () => {
     window.postMessage({ type: "getSettings", value: null }, "*");
     env.chrome.flushStorage();
-    await Bun.sleep(10);
+    // the two replies follow storage's answer; under load (the pre-commit run) they came after the fixed 10 ms wait
+    for (let i = 0; i < 100 && replies.length < 2; i++) await Bun.sleep(10);
     expect(replies).toEqual([{ type: "setSettings", value: STORED }, { type: "setSettings", value: STORED }]);
     expect(document.querySelectorAll("script")).toHaveLength(0);
   });

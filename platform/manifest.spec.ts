@@ -36,6 +36,13 @@ describe("Firefox manifest", () => {
       { matches: TWITCH, run_at: "document_start", world: "MAIN", js: ["app/bundle.js"] },
     ]);
   });
+  // T-703: the add-on published on addons.mozilla.org, so a signed submission updates it; Purple collects no data
+  // (AMO's data collection declaration, required for signing)
+  test("the AMO add-on ID and no data collection", () => {
+    expect(manifest.browser_specific_settings).toEqual({
+      gecko: { id: "{a7399979-5203-4489-9861-b168187b52e1}", data_collection_permissions: { required: ["none"] } },
+    });
+  });
 });
 
 // T-302: a static rule blocks edge.ads.twitch.tv for requests the page hooks do not see (iframes, beacons)

@@ -1,6 +1,6 @@
 {
   "name": "purple-adblock",
-  "version": "2.6.7",
+  "version": "2.7.0",
   "description": "An adblocker for the Twitch.tv using server side signature and local m3u8 manipulation",
   "scripts": {
     "dev": "bun serviceWorker/build.ts dev && bun cli/build.ts dev",
@@ -40,10 +40,10 @@
     "fs-extra": "^10.1.0",
     "lint-staged": "^12.2.2",
     "prettier": "^2.5.1",
-    "sign-addon": "^5.1.0",
     "terser-webpack-plugin": "^5.3.6",
     "ts-loader": "^9.4.1",
-    "typescript": "^4.5.4"
+    "typescript": "^4.5.4",
+    "web-ext": "10.7.0"
   },
   "dependencies": {
     "m3u8-parser": "^7.1.0",

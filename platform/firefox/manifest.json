@@ -8,6 +8,14 @@
         "128": "images/logov2-128.png"
     },
     "manifest_version": 2,
+    "browser_specific_settings": {
+        "gecko": {
+            "id": "{a7399979-5203-4489-9861-b168187b52e1}",
+            "data_collection_permissions": {
+                "required": ["none"]
+            }
+        }
+    },
     "name": "Purple Ads Blocker",
     "description": "An adblocker for the Twitch.tv using server side signature and local m3u8 manipulation",
     "author": "kingarthur",

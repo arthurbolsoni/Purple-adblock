@@ -8,6 +8,7 @@
 - [Tests](#tests)
 - [Rules for changes](#rules-for-changes)
 - [Commits and pull requests](#commits-and-pull-requests)
+- [Releases](#releases)
 - [Reporting a bug or requesting a feature](#reporting-a-bug-or-requesting-a-feature)
 
 ## Setup
@@ -81,6 +82,34 @@ Levels 2 and 3 use the Edge profile `~/nodriver/profile-edge-purple`, kept for t
 Commit subjects start with the kind of change, as in the history: `feat:`, `fix:`, `docs:`, `test:`, `refactor:`, with the task or feature ID when there is one (`feat: ... (F-26, T-823)`). The body says why.
 
 Pull requests follow the [template](.github/PULL_REQUEST_TEMPLATE.md).
+
+## Releases
+
+| Push | Workflow | Result |
+| --- | --- | --- |
+| to `main` | `release.yml` | GitHub release of the `package.json` version (both zips, the userscript, `LICENSE`). On the first push of a new version: Firefox submitted to addons.mozilla.org (listed, reviewed there) and Chrome submitted to the Chrome Web Store (published once the review passes) |
+| a tag `<version>-<label>.<n>`, for instance `2.7.0-beta.1` | `pre-release.yml` | GitHub pre-release of the tag, with the Firefox build signed as unlisted (`purple-adblock-<version>.<n>-firefox.xpi`) |
+
+A store step runs only when its secrets are set in the repository (Settings, Secrets and variables, Actions):
+
+| Secret | Where it comes from |
+| --- | --- |
+| `AMO_JWT_ISSUER`, `AMO_JWT_SECRET` | [addons.mozilla.org API keys](https://addons.mozilla.org/developers/addon/api/key/), on the account that owns the add-on |
+| `CWS_PUBLISHER_ID` | Chrome Web Store Developer Dashboard, publisher settings |
+| `CWS_SERVICE_ACCOUNT_JSON` | JSON key of a Google Cloud service account, in a project with the Chrome Web Store API enabled, added under Account in the Developer Dashboard ([guide](https://developer.chrome.com/docs/webstore/service-accounts)) |
+| or `CWS_CLIENT_ID`, `CWS_CLIENT_SECRET`, `CWS_REFRESH_TOKEN` | an OAuth client and its refresh token, from the account that owns the item ([guide](https://developer.chrome.com/docs/webstore/using-api)) |
+
+The stores refuse a version they already have: a release starts with a new `version` in `package.json`. The Firefox version of a pre-release is `<version>.<n>`, so a tag needs the package version and a number (`2.7.0-beta.1` gives `2.7.0.1`).
+
+The same steps run locally after `bun run build`, with the secrets in a `.env` file (ignored by git, loaded by Bun):
+
+```bash
+bun cli/publish.ts firefox --channel listed --dry-run            # what would be sent, with nothing sent
+bun cli/publish.ts firefox --channel unlisted --tag 2.7.0-beta.1 # signed .xpi in dist/
+bun cli/publish.ts chrome
+```
+
+addons.mozilla.org gets the repository's source with each submission (`git archive` of `HEAD`), since `app/bundle.js` is minified; its reviewers rebuild it with `bun install --frozen-lockfile` and `bun run build` (Bun 1.4.1).
 
 ## Reporting a bug or requesting a feature
 
