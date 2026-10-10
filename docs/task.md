@@ -598,6 +598,13 @@ Odd behaviors seen in the runs. Each task ends with its cause in a finding (and 
 - Origin: soaks k to m: the player error on `/channel-e` six times, the page's playlist as Twitch sent it.
 - Tests: [`backup_advance_probe.py`](findings/probes/backup_advance_probe.py), soak
 
+### T-823 A load with a preroll starts about 3 s later
+- [ ] Status · B-052 · F-09 · open: in soaks m to o, 31 breaks at a load ended on `autoplay` 2.46 to 3.59 s after the page's first playlist with ads; the types before it in F-09's order each had ads of their own (B-052), asked one after another. The video moved 6.5 s after the master (median, 22 loads with a preroll) against 3.4 s (169 loads without) ([finding](findings/2026-10-10-soak-o.md#start-of-a-load-with-a-preroll))
+- Origin: soak o, 2026-10-10.
+- Check: at a poll with ads, when the first type in F-09's order has ads, the other types' playlists asked at once and the first clean one in F-09's order used; behind a setting, its default the maintainer's decision.
+- Done when: a level 1 test shows the other types asked together with the order kept (F-25 included); a level 2 preroll with backups that have their own preroll measures the start with and without it; a soak shows the start of loads with a preroll.
+- Tests: unit, L2, soak
+
 ### T-808 New preroll after a player reload
 - [x] Status · B-045 · Q-018 · done 2026-10-09: no reload kind avoided it. L3-13 reloaded the player at 6 break ends: a soft reload right away brought no new break (0 of 2; 1 of 4 with B-045's), a soft reload 15 s later a preroll (1 of 1), a new token a midroll (1 of 2), a new player and token a break (1 of 1). `reloadAfterAd` stays off ([finding](findings/2026-10-09-reload-kinds.md))
 - Origin: a soft reload with the same token at the first live poll after a preroll brought a new preroll in 1 of 2 reloads ([player reload](findings/2026-10-08-ad-break-reload.md)); `reloadAfterAd` stays off.

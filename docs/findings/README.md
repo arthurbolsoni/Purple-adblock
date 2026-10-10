@@ -42,9 +42,10 @@ New discoveries are added here as they happen. A later finding that contradicts 
 | [2026-10-09-sequence-numbering.md](2026-10-09-sequence-numbering.md) | Sequence numbers at a switch between the page's and the backups' playlists, and the still video they cause (T-816, B-054) | closed |
 | [2026-10-09-firefox-injection.md](2026-10-09-firefox-injection.md) | Purple's page hook on Firefox before the player workers: `<script src>` against a `MAIN` world content script in MV2, and the userscript, through WebDriver BiDi (T-111) | closed |
 | [2026-10-09-preroll-numbering.md](2026-10-09-preroll-numbering.md) | The page's playlist after a preroll played on backups numbers from 0: the player waited for good with E6 off; restart when the numbers go back (T-818, F-24) | closed |
-| [2026-10-09-soak-k.md](2026-10-09-soak-k.md) | Soak k: the 2026-10-09 defaults on 14 channel loads; ad blocking, still video, worker logs (T-818, T-819) | open |
+| [2026-10-09-soak-k.md](2026-10-09-soak-k.md) | Soak k: the 2026-10-09 defaults on 14 channel loads; ad blocking, still video, worker logs (T-818, T-819) | | closed |
 | [2026-10-09-soak-l.md](2026-10-09-soak-l.md) | Soaks l and m, hopping channels: 20 prerolls with F-24, the frames around the decoder log, 360p backups in breaks and the new order (T-818, T-819) | closed |
 | [2026-10-09-soak-n.md](2026-10-09-soak-n.md) | Soak n: F-25 at 207 switches, and backup tokens during a stall of `/channel-e` (T-820, T-821, B-055) | closed |
+| [2026-10-10-soak-o.md](2026-10-10-soak-o.md) | Soak o: 14 breaks on three sessions, and a load with a preroll starting about 3 s later while the backup types are asked one after another (T-823, B-052, B-055) | open |
 | [2026-10-09-reload-kinds.md](2026-10-09-reload-kinds.md) | Player reload kinds at a break's end and the new breaks after them (T-808, L3-13) | closed |
 | [2026-10-09-prewarm-at-load.md](2026-10-09-prewarm-at-load.md) | Backup tokens at the channel load, for midrolls in the first seconds of a load (T-812, F-22) | closed |
 | [../research.md](../research.md) | Brave's Twitch scriptlet | closed |
