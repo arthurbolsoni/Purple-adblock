@@ -643,6 +643,13 @@ Odd behaviors seen in the runs. Each task ends with its cause in a finding (and 
 - Done when: the condition is in `docs/server/` (B-045, Q-018), and `reloadAfterAd`'s default is decided on it.
 - Tests: L3-11
 
+### T-824 Black video on HEVC streams (#105)
+- [ ] Status · E8 · F-11 · open
+- Origin: issue #105 (2025-03-08, a 2.6 release, Firefox 137 beta on Linux): on channels with Enhanced Broadcasting that send HEVC, the video stayed black with Purple on and played with it off. Builds before T-101 regenerated playlists without ads and lost `EXT-X-MAP`, and an fMP4 channel then played in 0 of 18 loads ([finding](findings/2026-10-08-rewritten-playlist-stall.md)); HEVC variants are fMP4. Since T-101 a playlist without ads reaches the player untouched, and since T-407 a backup comes in the codec family of the variant the player is on. The maintainer commented on #105 on 2026-10-10, asking for a test of 2.7.0.
+- Check: a channel whose master lists HEVC variants (`hvc1` or `hev1` in `CODECS`), loaded with 2.7.0 and in record mode (no Purple), in Firefox (`e2e/firefox.py`) and Edge: whether Twitch lists HEVC for that browser (`supported_codecs` in the page's usher request), the variant the player takes, the video moving; at a break, the codec of the backup variant and the video at each switch. At level 2, `sim/` with an HEVC rendition (`hevc` in `sim/src/media.rs`) and a break.
+- Done when: whether 2.7.0 plays HEVC streams, with and without breaks, is in a finding; a fix task if Purple causes a black video; the result commented on #105.
+- Tests: L3 run in Firefox and Edge, L2 scenario with HEVC; TS for any change
+
 ## Open decisions
 
 - E12 (proxy): the servers went offline in 2023 (#79) and the worker does not read `toggleProxy` or `proxyUrl`. Either bring back the proxy path with a user-provided URL or keep only the UI.
