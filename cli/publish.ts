@@ -1,8 +1,9 @@
 // T-703: signed releases. Firefox through addons.mozilla.org with web-ext (listed for a release, so AMO reviews it and
-// its users get the update; unlisted for a pre-release, a signed .xpi for the GitHub pre-release). Chrome through the
-// Chrome Web Store API v2: the zip is uploaded and submitted for review; the store signs and publishes it once approved.
+// its users get the update, and with --wait the signed .xpi once approved, for the GitHub release; unlisted for a
+// pre-release, a signed .xpi for the GitHub pre-release). Chrome through the Chrome Web Store API v2: the zip is
+// uploaded and submitted for review; the store signs and publishes it once approved.
 //
-//   bun cli/publish.ts firefox --channel listed|unlisted [--tag <pre-release tag>] [--dry-run]
+//   bun cli/publish.ts firefox --channel listed|unlisted [--wait] [--tag <pre-release tag>] [--dry-run]
 //   bun cli/publish.ts chrome [--dry-run]
 //
 // Both run after `bun run build` (serviceWorker/dist/bundle.js, dist/purple-adblock-<version>-chromium.zip).
@@ -21,8 +22,9 @@ export const CWS_ITEM_ID = "lkgcfobnmghhbhgekffaadadhmeoindg";
 export const CWS_API = "https://chromewebstore.googleapis.com";
 export const CWS_SCOPE = "https://www.googleapis.com/auth/chromewebstore";
 export const GOOGLE_TOKEN_URL = "https://oauth2.googleapis.com/token";
-// listed: submitted for review, nothing to wait for; unlisted: AMO signs it automatically, usually within minutes
-export const UNLISTED_APPROVAL_MS = 15 * 60_000;
+// how long web-ext waits for AMO to sign: always for unlisted, which AMO signs automatically, usually within minutes;
+// for listed only with --wait (signed once approved), else it is submitted for review with nothing to wait for
+export const APPROVAL_MS = 15 * 60_000;
 
 type Env = Record<string, string | undefined>;
 type Log = (line: string) => void;
@@ -46,7 +48,7 @@ const required = (env: Env, names: string[]): string[] => {
 };
 
 // web-ext reads WEB_EXT_<OPTION> from the environment: the key and secret never reach the command line
-export function webExtSign(options: { channel: "listed" | "unlisted"; sourceDir: string; artifactsDir: string; sourceArchive: string; metadata: string; env: Env }) {
+export function webExtSign(options: { channel: "listed" | "unlisted"; wait?: boolean; sourceDir: string; artifactsDir: string; sourceArchive: string; metadata: string; env: Env }) {
   const [issuer, secret] = required(options.env, ["AMO_JWT_ISSUER", "AMO_JWT_SECRET"]);
   const args = [
     "sign",
@@ -55,7 +57,7 @@ export function webExtSign(options: { channel: "listed" | "unlisted"; sourceDir:
     "--artifacts-dir", options.artifactsDir,
     "--upload-source-code", options.sourceArchive,
     "--amo-metadata", options.metadata,
-    "--approval-timeout", String(options.channel === "listed" ? 0 : UNLISTED_APPROVAL_MS),
+    "--approval-timeout", String(options.channel === "listed" && !options.wait ? 0 : APPROVAL_MS),
     "--no-input",
   ];
   return { args, env: { WEB_EXT_API_KEY: issuer, WEB_EXT_API_SECRET: secret } };
@@ -91,9 +93,10 @@ export function amoMetadata(packageJson: { version: string; license: string }) {
 }
 
 // The unpacked build (the release zip's content) with the Firefox version, the repository's source for AMO's review
-// (the bundle is minified), then web-ext sign. Unlisted: the signed .xpi goes to dist/purple-adblock-<version>-firefox.xpi
+// (the bundle is minified), then web-ext sign. Unlisted, or listed with wait: the signed .xpi goes to
+// dist/purple-adblock-<version>-firefox.xpi
 export async function signFirefox(
-  options: { channel: "listed" | "unlisted"; tag?: string; dryRun?: boolean; env: Env; root?: string },
+  options: { channel: "listed" | "unlisted"; wait?: boolean; tag?: string; dryRun?: boolean; env: Env; root?: string },
   deps: FirefoxDeps = defaultFirefoxDeps(),
 ): Promise<string | null> {
   const root = options.root ?? ".";
@@ -105,7 +108,7 @@ export async function signFirefox(
   // in the work folder, so the release workflows do not attach it with dist/*.zip
   const sourceArchive = join(work, `purple-adblock-${version}-source.zip`);
   const metadata = join(work, "amo-metadata.json");
-  const sign = webExtSign({ channel: options.channel, sourceDir, artifactsDir, sourceArchive, metadata, env: options.dryRun ? { AMO_JWT_ISSUER: "-", AMO_JWT_SECRET: "-" } : options.env });
+  const sign = webExtSign({ channel: options.channel, wait: options.wait, sourceDir, artifactsDir, sourceArchive, metadata, env: options.dryRun ? { AMO_JWT_ISSUER: "-", AMO_JWT_SECRET: "-" } : options.env });
 
   deps.log(`Firefox ${version}, ${options.channel}${options.dryRun ? " (dry run)" : ""}`);
   rmSync(work, { recursive: true, force: true });
@@ -125,7 +128,7 @@ export async function signFirefox(
     return null;
   }
   await deps.run(command, sign.env);
-  if (options.channel === "listed") {
+  if (options.channel === "listed" && !options.wait) {
     deps.log(`Firefox ${version} submitted to addons.mozilla.org for review`);
     return null;
   }
@@ -207,7 +210,7 @@ async function main(argv: string[], env: Env) {
   if (target === "firefox") {
     const channel = flag("--channel");
     if (channel !== "listed" && channel !== "unlisted") throw new Error("--channel listed|unlisted");
-    await signFirefox({ channel, tag: flag("--tag"), dryRun, env });
+    await signFirefox({ channel, wait: rest.includes("--wait"), tag: flag("--tag"), dryRun, env });
     return;
   }
   if (target === "chrome") {
@@ -223,7 +226,7 @@ async function main(argv: string[], env: Env) {
     await publishChrome({ zip: new Uint8Array(readFileSync(zipPath)), publisherId, itemId: env.CWS_ITEM_ID ?? CWS_ITEM_ID, token });
     return;
   }
-  throw new Error("usage: bun cli/publish.ts firefox --channel listed|unlisted [--tag <tag>] [--dry-run] | chrome [--dry-run]");
+  throw new Error("usage: bun cli/publish.ts firefox --channel listed|unlisted [--wait] [--tag <tag>] [--dry-run] | chrome [--dry-run]");
 }
 
 if (import.meta.main) {

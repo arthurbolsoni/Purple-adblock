@@ -108,6 +108,7 @@ The same steps run locally after `bun run build`, with the secrets in a `.env` f
 
 ```bash
 bun cli/publish.ts firefox --channel listed --dry-run            # what would be sent, with nothing sent
+bun cli/publish.ts firefox --channel listed --wait               # submitted for review; once approved, signed .xpi in dist/
 bun cli/publish.ts firefox --channel unlisted --tag 2.7.0-beta.1 # signed .xpi in dist/
 bun cli/publish.ts chrome
 ```

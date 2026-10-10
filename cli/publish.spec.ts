@@ -8,7 +8,7 @@ import {
   CWS_API,
   CWS_SCOPE,
   GOOGLE_TOKEN_URL,
-  UNLISTED_APPROVAL_MS,
+  APPROVAL_MS,
   chromeToken,
   firefoxVersion,
   publishChrome,
@@ -52,7 +52,12 @@ describe("web-ext sign", () => {
 
   test("unlisted: waits for the signed file", () => {
     const { args } = webExtSign({ channel: "unlisted", ...paths, env });
-    expect(args[args.indexOf("--approval-timeout") + 1]).toBe(String(UNLISTED_APPROVAL_MS));
+    expect(args[args.indexOf("--approval-timeout") + 1]).toBe(String(APPROVAL_MS));
+  });
+
+  test("listed with wait: waits for the approval and the signed file", () => {
+    const { args } = webExtSign({ channel: "listed", wait: true, ...paths, env });
+    expect(args[args.indexOf("--approval-timeout") + 1]).toBe(String(APPROVAL_MS));
   });
 
   test("the key and secret go in web-ext's environment, never in its arguments", () => {
@@ -124,6 +129,14 @@ describe("signFirefox", () => {
     expect(await signFirefox({ channel: "listed", env, root }, deps)).toBeNull();
     expect(calls[1].cmd).toContain("listed");
     expect(JSON.parse(readFileSync(join(root, "dist", "sign", "purple-adblock-firefox", "manifest.json"), "utf8")).version).toBe("2.7.0");
+  });
+
+  test("release with wait: listed, the signed .xpi lands in dist with the package version", async () => {
+    const { calls, deps } = setup();
+    const signed = await signFirefox({ channel: "listed", wait: true, env, root }, deps);
+    expect(calls[1].cmd).toContain("listed");
+    expect(signed).toBe(join(root, "dist", "purple-adblock-2.7.0-firefox.xpi"));
+    expect(readFileSync(signed!, "utf8")).toBe("signed");
   });
 
   test("dry run: no web-ext, no credentials needed", async () => {
