@@ -91,7 +91,7 @@ Pull requests follow the [template](.github/PULL_REQUEST_TEMPLATE.md).
 | Push | Workflow | Result |
 | --- | --- | --- |
 | to `main` | `release.yml` | GitHub release of the `package.json` version (both zips, the userscript, `LICENSE`). On the first push of a new version: Firefox submitted to addons.mozilla.org (listed, reviewed there) and Chrome submitted to the Chrome Web Store (published once the review passes) |
-| a tag `<version>-<label>.<n>`, for instance `2.7.0-beta.1` | `pre-release.yml` | GitHub pre-release of the tag, with the Firefox build signed as unlisted (`purple-adblock-<version>.<n>-firefox.xpi`) |
+| a tag `<version>-<label>.<n>`, for instance `2.7.0-beta.1` | `pre-release.yml` | GitHub pre-release of the tag, with the Firefox build signed as unlisted (`purple-adblock-<version>.<n>-firefox-signed.xpi`) |
 
 A store step runs only when its secrets are set in the repository (Settings, Secrets and variables, Actions):
 

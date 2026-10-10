@@ -15,7 +15,7 @@
 import { existsSync, mkdirSync, readdirSync, readFileSync, renameSync, rmSync, writeFileSync } from "fs";
 import { join } from "path";
 import { buildFirefox } from "./firefox_builder.js";
-import { unpackedName } from "./files.js";
+import { signedXpiName, unpackedName } from "./files.js";
 
 export const AMO_ADDON_ID = "{a7399979-5203-4489-9861-b168187b52e1}";
 export const CWS_ITEM_ID = "lkgcfobnmghhbhgekffaadadhmeoindg";
@@ -94,7 +94,7 @@ export function amoMetadata(packageJson: { version: string; license: string }) {
 
 // The unpacked build (the release zip's content) with the Firefox version, the repository's source for AMO's review
 // (the bundle is minified), then web-ext sign. Unlisted, or listed with wait: the signed .xpi goes to
-// dist/purple-adblock-<version>-firefox.xpi
+// dist/purple-adblock-<version>-firefox-signed.xpi
 export async function signFirefox(
   options: { channel: "listed" | "unlisted"; wait?: boolean; tag?: string; dryRun?: boolean; env: Env; root?: string },
   deps: FirefoxDeps = defaultFirefoxDeps(),
@@ -134,7 +134,7 @@ export async function signFirefox(
   }
   const xpi = existsSync(artifactsDir) ? readdirSync(artifactsDir).find((name) => name.endsWith(".xpi")) : undefined;
   if (!xpi) throw new Error(`no signed .xpi in ${artifactsDir}`);
-  const signed = join(root, "dist", `purple-adblock-${version}-firefox.xpi`);
+  const signed = join(root, "dist", signedXpiName(version));
   renameSync(join(artifactsDir, xpi), signed);
   deps.log(`Firefox ${version} signed: ${signed}`);
   return signed;

@@ -108,7 +108,7 @@ describe("signFirefox", () => {
     expect(calls[0].cmd).toEqual(["git", "archive", "--format=zip", `--output=${join(root, "dist", "sign", "purple-adblock-2.7.0.3-source.zip")}`, "HEAD"]);
     expect(calls[1].cmd.slice(0, 6)).toEqual(["bun", "--bun", "x", "web-ext", "sign", "--channel"]);
     expect(calls[1].env).toEqual({ WEB_EXT_API_KEY: "user:1:2", WEB_EXT_API_SECRET: "s3cret" });
-    expect(signed).toBe(join(root, "dist", "purple-adblock-2.7.0.3-firefox.xpi"));
+    expect(signed).toBe(join(root, "dist", "purple-adblock-2.7.0.3-firefox-signed.xpi"));
     expect(readFileSync(signed!, "utf8")).toBe("signed");
   });
 
@@ -135,7 +135,7 @@ describe("signFirefox", () => {
     const { calls, deps } = setup();
     const signed = await signFirefox({ channel: "listed", wait: true, env, root }, deps);
     expect(calls[1].cmd).toContain("listed");
-    expect(signed).toBe(join(root, "dist", "purple-adblock-2.7.0-firefox.xpi"));
+    expect(signed).toBe(join(root, "dist", "purple-adblock-2.7.0-firefox-signed.xpi"));
     expect(readFileSync(signed!, "utf8")).toBe("signed");
   });
 

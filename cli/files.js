@@ -9,3 +9,5 @@ export const NOTICES = ["LICENSE", "NOTICE", "THIRD-PARTY-NOTICES.md"];
 export const PACKAGE = "purple-adblock";
 export const zipName = (platform, version) => `${PACKAGE}-${version}-${platform}.zip`;
 export const unpackedName = (platform) => `${PACKAGE}-${platform}`;
+// T-703: the Firefox build Mozilla signed, apart from the unsigned zips
+export const signedXpiName = (version) => `${PACKAGE}-${version}-firefox-signed.xpi`;
