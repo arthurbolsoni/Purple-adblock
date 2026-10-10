@@ -476,6 +476,13 @@ Runs in parallel with phases 1 to 7. Phase 1 to 6 tasks list L2/L3 scenarios tha
 - Files: `LICENSE`, `NOTICE`, `package.json`, `cli/files.js`, `cli/publish.ts`, `platform/tampermonkey/build.js`
 - Tests: TS-706
 
+### T-707 Store listing
+- [ ] Status · E11 · Firefox done 2026-10-10: the addons.mozilla.org summary and description (en-US, pt-BR), which still described a proxy Purple no longer uses, are the texts of `docs/store-listing.md`, sent through the add-on edit API with the `AMO_JWT_*` key. AMO renders Markdown in a description and shows HTML tags as text: a first HTML version showed its tags until the Markdown one replaced it. Chrome Web Store pending, with the next release: the en-US summary in the `description` of `platform/chromium/manifest.json` (the store reads it from a new version) and the description, as plain text, in the Developer Dashboard (the API has no listing method)
+- Origin: the maintainer, 2026-10-10: a new store description, on Firefox now and on Chrome with the next release.
+- Files: `docs/store-listing.md`, `platform/chromium/manifest.json`
+- Done when: the Chrome Web Store shows the summary and the description of `docs/store-listing.md`.
+- Tests: TS-707
+
 ## Phase 8: investigations
 
 Odd behaviors seen in the runs. Each task ends with its cause in a finding (and in `docs/server/` when it is the server's), and a fix task when Purple causes it.

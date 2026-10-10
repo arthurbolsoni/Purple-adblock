@@ -186,3 +186,20 @@ describe("extension builds (T-701)", () => {
     }
   });
 });
+
+// T-707: docs/store-listing.md holds the store texts; the summary goes into the Chromium manifest's description, which
+// the Chrome Web Store takes up to 132 characters
+describe("store listing (T-707)", () => {
+  const listing = readFileSync(join(ROOT, "docs", "store-listing.md"), "utf8").replace(/\r\n/g, "\n");
+
+  // addons.mozilla.org renders Markdown in a description and shows HTML tags as text
+  test.each(["en-US", "pt-BR"])("%s: a summary within 132 characters and a Markdown description", (locale) => {
+    const row = listing.split("\n").find((line) => line.startsWith(`| ${locale} | `)) ?? "";
+    const summary = row.slice(`| ${locale} | `.length, -" |".length);
+    expect(summary.length).toBeGreaterThan(0);
+    expect(summary.length).toBeLessThanOrEqual(132);
+    const description = listing.split(`## Description, ${locale}\n\n\`\`\`markdown\n`)[1]?.split("\n```")[0] ?? "";
+    expect(description).toContain("\n- ");
+    expect(description).not.toContain("<");
+  });
+});

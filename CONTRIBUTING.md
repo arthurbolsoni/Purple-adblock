@@ -113,6 +113,8 @@ bun cli/publish.ts firefox --channel unlisted --tag 2.7.0-beta.1 # signed .xpi i
 bun cli/publish.ts chrome
 ```
 
+The store texts (summary and description, en-US and pt-BR) are in [docs/store-listing.md](docs/store-listing.md), with where each one goes.
+
 addons.mozilla.org gets the repository's source with each submission (`git archive` of `HEAD`), since `app/bundle.js` is minified; its reviewers rebuild it with `bun install --frozen-lockfile` and `bun run build` (Bun 1.4.1).
 
 ## Reporting a bug or requesting a feature
