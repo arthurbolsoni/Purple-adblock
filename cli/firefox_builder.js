@@ -1,7 +1,7 @@
 const fs = require("fs");
 var fs_Extra = require("fs-extra");
 const archiver = require("archiver");
-import { isPackaged, unpackedName, zipName } from "./files.js";
+import { NOTICES, isPackaged, unpackedName, zipName } from "./files.js";
 
 // `out`: the dist folder; `bundle`: the worker bundle. Resolves once the build is written (the zip stream closed).
 export function buildFirefox(dev, { out = "./dist", bundle = "./serviceWorker/dist/bundle.js" } = {}) {
@@ -26,6 +26,7 @@ export function buildFirefox(dev, { out = "./dist", bundle = "./serviceWorker/di
     fs_Extra.copySync("./platform/src/", dirname + "/" + name, { filter: isPackaged });
     fs_Extra.copySync("./platform/" + platform, dirname + "/" + name);
     fs.copyFileSync(bundle, dirname + "/" + name + "/app/bundle.js");
+    for (const notice of NOTICES) fs.copyFileSync("./" + notice, dirname + "/" + name + "/" + notice);
     fs.writeFileSync(dirname + "/" + name + "/" + "manifest.json", JSON.stringify(manifest));
 
     console.log("Build packed to " + dirname + "/" + name);
@@ -42,6 +43,7 @@ export function buildFirefox(dev, { out = "./dist", bundle = "./serviceWorker/di
   });
   zipFile.directory("./platform/src", false, (entry) => (isPackaged(entry.name) ? entry : false));
   zipFile.file(bundle, { name: "app/bundle.js" });
+  for (const notice of NOTICES) zipFile.file("./" + notice, { name: notice });
   zipFile.append(Buffer.from(JSON.stringify(manifest)), { name: "manifest.json" });
   zipFile.finalize();
 

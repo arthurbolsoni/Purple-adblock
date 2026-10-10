@@ -7,7 +7,7 @@ import { tmpdir } from "os";
 import { join } from "path";
 import { buildChrome } from "./chrome_builder.js";
 import { buildFirefox } from "./firefox_builder.js";
-import { unpackedName, zipName } from "./files.js";
+import { NOTICES, unpackedName, zipName } from "./files.js";
 import { silenceConsole } from "../serviceWorker/test/harness/console";
 
 silenceConsole();
@@ -58,6 +58,8 @@ describe("extension builds (T-701)", () => {
     await build(false, { out: tmp, bundle });
     const zip = readFileSync(join(tmp, `purple-adblock-${pkg.version}-${platform}.zip`));
     expect(zip.subarray(0, 2).toString()).toBe("PK");
+    // T-704: entry names are stored as plain text in the zip
+    for (const notice of NOTICES) expect(zip.includes(Buffer.from(notice))).toBe(true);
   });
 
   test.each([
@@ -69,5 +71,14 @@ describe("extension builds (T-701)", () => {
     expect(JSON.parse(readFileSync(join(folder, "manifest.json"), "utf8")).version).toBe(pkg.version);
     expect(readFileSync(join(folder, "app", "bundle.js"), "utf8")).toBe("/* worker bundle stub */");
     expect(existsSync(join(folder, "content-script.spec.ts"))).toBe(false);
+    for (const notice of NOTICES) expect(readFileSync(join(folder, notice), "utf8")).toBe(readFileSync(join(ROOT, notice), "utf8"));
+  });
+
+  test("THIRD-PARTY-NOTICES.md credits both TwitchAdSolutions repositories and carries their MIT notice (T-704)", () => {
+    const notices = readFileSync(join(ROOT, "THIRD-PARTY-NOTICES.md"), "utf8");
+    expect(notices).toContain("https://github.com/pixeltris/TwitchAdSolutions");
+    expect(notices).toContain("https://github.com/ryanbr/TwitchAdSolutions");
+    expect(notices).toContain("Copyright (c) 2020-present TwitchAdSolutions Contributors");
+    expect(notices).toContain("The above copyright notice and this permission notice shall be included in all");
   });
 });

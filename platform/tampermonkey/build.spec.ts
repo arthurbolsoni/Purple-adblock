@@ -34,6 +34,12 @@ describe("userscript build", () => {
     expect(text).toContain(`// @version      ${VERSION}\n`);
     expect(text).toEndWith(BUNDLE);
     expect(existsSync(join(cwd, "platform"))).toBe(false);
+    // T-704: TwitchAdSolutions' MIT notice, after the header and before the bundle
+    const notice = text.slice(text.indexOf("// ==/UserScript==\n"), text.indexOf(BUNDLE));
+    expect(notice).toContain("https://github.com/pixeltris/TwitchAdSolutions");
+    expect(notice).toContain("https://github.com/ryanbr/TwitchAdSolutions");
+    expect(notice).toContain("// Copyright (c) 2020-present TwitchAdSolutions Contributors\n");
+    expect(notice).toContain("// The above copyright notice and this permission notice shall be included in all\n");
   });
 
   test("defaults to platform/tampermonkey/dist/purpleadblocker.user.js", () => {

@@ -113,8 +113,11 @@ The IDs point to [docs/feat.md](docs/feat.md); B-xxx are Twitch server behaviors
 
 [CONTRIBUTING.md](CONTRIBUTING.md) has the setup, the commands, the tests and the rules for changes. Bugs and feature requests go to the [issues](https://github.com/arthurbolsoni/Purple-adblock/issues/new/choose); help on the [Discord server](https://discord.gg/A6CHvgtGmq).
 
+## Credits
+
+- [TwitchAdSolutions](https://github.com/pixeltris/TwitchAdSolutions) by pixeltris, the original project, and its maintained fork [ryanbr/TwitchAdSolutions](https://github.com/ryanbr/TwitchAdSolutions) by ryanbr: the backup access tokens by player type, the blank segment for ad segments and the player reload come from their scripts, and part of their code is in Purple (MIT License, Copyright (c) 2020-present TwitchAdSolutions Contributors).
+- [brave/adblock-resources](https://github.com/brave/adblock-resources), which ships the same script in Brave and is Purple's reference implementation ([docs/research.md](docs/research.md)).
+
 ## License
 
-GNU General Public License v3.0 ([LICENSE](LICENSE)).
-
-Parts of the code are adapted from [ryanbr/TwitchAdSolutions](https://github.com/ryanbr/TwitchAdSolutions) (MIT), as shipped by Brave in [brave/adblock-resources](https://github.com/brave/adblock-resources) (MPL-2.0); the files that carry it keep the source URL and the license notices ([docs/research.md](docs/research.md#licenses)).
+GNU General Public License v3.0 ([LICENSE](LICENSE)). Third-party code and its notices: [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md), also included in every extension package and in the userscript.

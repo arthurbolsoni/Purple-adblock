@@ -459,6 +459,12 @@ Runs in parallel with phases 1 to 7. Phase 1 to 6 tasks list L2/L3 scenarios tha
 - Done when: a release reaches addons.mozilla.org and the Chrome Web Store through the workflow, and a pre-release has its signed `.xpi`.
 - Tests: TS-703
 
+### T-704 Credits and notices for TwitchAdSolutions
+- [x] Status · E11 · done 2026-10-10: `THIRD-PARTY-NOTICES.md` credits pixeltris/TwitchAdSolutions (the original project) and ryanbr/TwitchAdSolutions (its maintained fork, the script's source at commit `74f1248`), lists the files with their code and carries their MIT notice; it goes with `LICENSE` into both zips and the unpacked builds, and the userscript carries the MIT notice after its header. The headers of `blank-segment.ts` and `player-reload.ts` name both repositories; README has a Credits section
+- Origin: the maintainer, 2026-10-10: the rights of pixeltris/TwitchAdSolutions and ryanbr/TwitchAdSolutions in the project. The minified bundle in the packages had lost the MIT notice of the copied code.
+- Files: `THIRD-PARTY-NOTICES.md`, `cli/files.js`, `cli/chrome_builder.js`, `cli/firefox_builder.js`, `platform/tampermonkey/build.js`
+- Tests: TS-704
+
 ## Phase 8: investigations
 
 Odd behaviors seen in the runs. Each task ends with its cause in a finding (and in `docs/server/` when it is the server's), and a fix task when Purple causes it.
