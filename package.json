@@ -6,7 +6,6 @@
     "dev": "bun serviceWorker/build.ts dev && bun cli/build.ts dev",
     "build": "bun serviceWorker/build.ts && bun cli/build.ts && bun platform/tampermonkey/build.js",
     "build:tampermonkey": "bun serviceWorker/build.ts && bun platform/tampermonkey/build.js",
-    "lint": "eslint --ext .js,.ts serviceWorker/src platform/src cli && prettier --write \"**/*.{js,ts,css,html}\" --ignore-path .gitignore",
     "test": "bun test",
     "test:coverage": "bun test --coverage",
     "check": "bun test && cargo test --quiet --manifest-path sim/Cargo.toml",
@@ -14,32 +13,21 @@
     "e2e": "python e2e/run.py",
     "e2e:build": "bun serviceWorker/build.ts && bun cli/build.ts dev && bun platform/tampermonkey/build.js dist/purpleadblocker.user.js"
   },
-  "repository": "https://github.com/arthurbolsoni/Purple-adblock.git",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/arthurbolsoni/Purple-adblock.git"
+  },
   "author": "kingarthur",
   "license": "GPL-3.0",
-  "bugs": {
-    "url": "https://github.com/arthurbolsoni/Purple-adblock/issues"
-  },
-  "homepage": "https://github.com/arthurbolsoni/Purple-adblock#readme",
-  "pre-commit": [
-    "pre-commit"
-  ],
-  "lint-staged": {
-    "*.{ts,js,html,css}": [
-      "prettier --write",
-      "eslint --fix"
-    ]
-  },
+  "bugs": "https://github.com/arthurbolsoni/Purple-adblock/issues",
+  "homepage": "https://github.com/arthurbolsoni/Purple-adblock",
   "devDependencies": {
     "@happy-dom/global-registrator": "^20.14.5",
     "archiver": "^5.3.1",
     "bun-types": "^1.4.2",
     "concurrently": "^7.4.0",
     "dotenv": "^16.0.3",
-    "eslint": "^7.9.0",
     "fs-extra": "^10.1.0",
-    "lint-staged": "^12.2.2",
-    "prettier": "^2.5.1",
     "terser-webpack-plugin": "^5.3.6",
     "ts-loader": "^9.4.1",
     "typescript": "^4.5.4",

@@ -40,8 +40,12 @@ describe("package.json scripts (T-701)", () => {
     expect(readFileSync(join(ROOT, "serviceWorker", "build.ts"), "utf8")).toContain('buildServiceWorker(process.argv[2] === "dev")');
   });
 
-  test("lint has paths", () => {
-    expect(pkg.scripts.lint).toMatch(/^eslint --ext \.js,\.ts serviceWorker\/src platform\/src cli /);
+  // T-705: the ESLint config named plugins that were never installed, so `lint` failed, and Prettier ran nowhere (36
+  // files did not follow it): both left; the style follows the surrounding code
+  test("no ESLint or Prettier", () => {
+    const deps = { ...pkg.dependencies, ...pkg.devDependencies };
+    expect([deps.eslint, deps.prettier, deps["lint-staged"], pkg.prettier, pkg.scripts.lint, pkg.scripts.format]).toEqual([undefined, undefined, undefined, undefined, undefined, undefined]);
+    expect([".eslintrc.js", ".prettierrc"].filter((name) => existsSync(join(ROOT, name)))).toEqual([]);
   });
 });
 

@@ -29,17 +29,17 @@ describe("popup channel (T-603)", () => {
     ["https://www.twitch.tv/somechannel/videos", "somechannel"],
     ["https://www.twitch.tv/SomeChannel", "somechannel"],
   ])("%s → %s", (url, channel) => {
-    expect(openPopup(url)).toBe("Activated on : " + channel);
+    expect(openPopup(url)).toBe("Purple on: " + channel);
   });
 
   test("a whitelisted channel shows as disabled, also from m.twitch.tv and the popout", () => {
-    expect(openPopup("https://www.twitch.tv/listed")).toBe("Disabled on : listed");
-    expect(openPopup("https://m.twitch.tv/listed")).toBe("Disabled on : listed");
-    expect(openPopup("https://www.twitch.tv/popout/listed/chat")).toBe("Disabled on : listed");
+    expect(openPopup("https://www.twitch.tv/listed")).toBe("Purple off: listed");
+    expect(openPopup("https://m.twitch.tv/listed")).toBe("Purple off: listed");
+    expect(openPopup("https://www.twitch.tv/popout/listed/chat")).toBe("Purple off: listed");
   });
 
   test.each(["https://www.twitch.tv/", "https://example.com/somechannel", "chrome://extensions/"])("no channel in %s", (url) => {
-    expect(openPopup(url)).toBe("Waiting for channel");
+    expect(openPopup(url)).toBe("Open a Twitch channel");
     expect(document.getElementById("adblockbutton")!.onclick).toBeNull();
   });
 });

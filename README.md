@@ -1,18 +1,18 @@
-<div align="center">
+<p align="center">
+  <img src="https://raw.githubusercontent.com/arthurbolsoni/Purple-adblock/main/platform/src/images/logov2-128.png" alt="Purple Adblock logo" width="128">
+</p>
 
-<img src="https://raw.githubusercontent.com/arthurbolsoni/Purple-adblock/main/platform/src/images/logov2-128.png">
+<h1 align="center">Purple Adblock</h1>
 
-# Purple Adblock
+<p align="center">An adblocker for Twitch live streams</p>
 
-An adblocker for Twitch live streams
-
-![GitHub Repo stars](https://img.shields.io/github/stars/arthurbolsoni/Purple-adblock?label=Stars)
-[![Discord](https://img.shields.io/discord/829993555820019773?label=Discord)](https://discord.gg/A6CHvgtGmq)
-![License](https://img.shields.io/badge/license-GPLv3-blue.svg?label=License)
-[![Mozilla Add-on](https://img.shields.io/amo/dw/%7Ba7399979-5203-4489-9861-b168187b52e1%7D?label=Firefox%20Users)](https://addons.mozilla.org/firefox/addon/purpleadblock/)
-[![Chrome Web Store](https://img.shields.io/chrome-web-store/users/lkgcfobnmghhbhgekffaadadhmeoindg?label=Chrome%20Users)](https://chromewebstore.google.com/detail/purple-ads-blocker/lkgcfobnmghhbhgekffaadadhmeoindg)
-
-</div>
+<p align="center">
+  <a href="https://github.com/arthurbolsoni/Purple-adblock/stargazers"><img alt="GitHub stars" src="https://img.shields.io/github/stars/arthurbolsoni/Purple-adblock?label=Stars"></a>
+  <a href="https://discord.gg/A6CHvgtGmq"><img alt="Discord" src="https://img.shields.io/discord/829993555820019773?label=Discord"></a>
+  <a href="LICENSE"><img alt="License" src="https://img.shields.io/github/license/arthurbolsoni/Purple-adblock?label=License"></a>
+  <a href="https://addons.mozilla.org/firefox/addon/purpleadblock/"><img alt="Firefox users" src="https://img.shields.io/amo/dw/%7Ba7399979-5203-4489-9861-b168187b52e1%7D?label=Firefox%20Users"></a>
+  <a href="https://chromewebstore.google.com/detail/purple-ads-blocker/lkgcfobnmghhbhgekffaadadhmeoindg"><img alt="Chrome users" src="https://img.shields.io/chrome-web-store/users/lkgcfobnmghhbhgekffaadadhmeoindg?label=Chrome%20Users"></a>
+</p>
 
 ## About
 
@@ -118,6 +118,6 @@ The IDs point to [docs/feat.md](docs/feat.md); B-xxx are Twitch server behaviors
 - [TwitchAdSolutions](https://github.com/pixeltris/TwitchAdSolutions) by pixeltris, the original project, and its maintained fork [ryanbr/TwitchAdSolutions](https://github.com/ryanbr/TwitchAdSolutions) by ryanbr: the backup access tokens by player type, the blank segment for ad segments and the player reload come from their scripts, and part of their code is in Purple (MIT License, Copyright (c) 2020-present TwitchAdSolutions Contributors).
 - [brave/adblock-resources](https://github.com/brave/adblock-resources), which ships the same script in Brave and is Purple's reference implementation ([docs/research.md](docs/research.md)).
 
-## License
+## License and third-party notices
 
 GNU General Public License v3.0 ([LICENSE](LICENSE)). Third-party code and its notices: [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md), also included in every extension package and in the userscript.

@@ -49,10 +49,10 @@ function buttonStatusChange() {
 
   if (whitelist.includes(channel)) {
     document.getElementById("adblocktext").classList.add("disable");
-    document.getElementById("watching").textContent = "Disabled on : " + channel;
+    document.getElementById("watching").textContent = "Purple off: " + channel;
   } else {
     document.getElementById("adblocktext").classList.remove("disable");
-    document.getElementById("watching").textContent = "Activated on : " + channel;
+    document.getElementById("watching").textContent = "Purple on: " + channel;
   }
 }
 
@@ -66,7 +66,7 @@ tabs().query({ active: true, lastFocusedWindow: true }, function (tabs) {
     proxyToggle.checked = items.toggleProxy == undefined ? true : items.toggleProxy;
 
     document.getElementById("adblocktext").classList.add("disable");
-    document.getElementById("watching").textContent = "Waiting for channel";
+    document.getElementById("watching").textContent = "Open a Twitch channel";
 
     channel = channelFromUrl(tabs[0].url);
     if (!channel) {
@@ -78,11 +78,11 @@ tabs().query({ active: true, lastFocusedWindow: true }, function (tabs) {
 
     if (!whitelist.includes(channel)) {
       document.getElementById("adblocktext").classList.remove("disable");
-      document.getElementById("watching").textContent = "Activated on : " + channel;
+      document.getElementById("watching").textContent = "Purple on: " + channel;
       return;
     } else {
       document.getElementById("adblocktext").classList.add("disable");
-      document.getElementById("watching").textContent = "Disabled on : " + channel;
+      document.getElementById("watching").textContent = "Purple off: " + channel;
       return;
     }
   });

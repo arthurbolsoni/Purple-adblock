@@ -1,24 +1,22 @@
-## What does this PR do?
+## Change
 
-- [ ] Adds or edits a feature
-- [ ] Fixes a bug
-- [ ] Edits config files
-- [ ] Something else
+<!-- what changes for the viewer or for the code, and the issue it closes (Closes #123) -->
 
-## Things to check
+Kind:
+
+- [ ] blocking (a strategy, a fix in the ad handling)
+- [ ] extension, popup or userscript
+- [ ] tests, `sim/` or e2e
+- [ ] build, release or docs
+
+## Checks
 
 - [ ] `bun run check` passes (the pre-commit hook runs it)
 - [ ] Each change has its test in the same commit; a bug fix starts with a failing test ([CONTRIBUTING.md](../CONTRIBUTING.md#rules-for-changes))
-- [ ] Levels 2 or 3 run, when the change touches the player or twitch.tv (scenarios and results in the description)
+- [ ] Levels 2 or 3 run, when the change touches the player or twitch.tv (scenarios and results below)
 - [ ] `docs/feat.md`, `docs/task.md` and `docs/findings/` updated, when behavior changed
-- [ ] Formatted with `bun run lint`
+- [ ] New dependencies named below, with their license
 
-## Notes
-<!-- Change the following as needed; These are just templates -->
-- [ ] New dependencies added
-- [ ] Unsure of functionality
-- [ ] etc etc.
+## Results
 
-## Description
-
-Write your description here. If this fixes an issue, tag it with #IssueID.
+<!-- tests, level 2 or 3 runs, soaks: what ran and what came out -->

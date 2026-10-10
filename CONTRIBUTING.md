@@ -41,7 +41,6 @@ bun run hooks:install   # once per clone: the pre-commit hook runs `bun run chec
 | `bun run e2e:build` | the unpacked extensions and `dist/purpleadblocker.user.js`, used by levels 2 and 3 |
 | `python e2e/run.py <L2-xx\|L3-xx>` | one level 2 or 3 scenario; `--mode extension\|userscript\|sim`, `--repeat N`, `--report FILE` |
 | `python e2e/soak.py <session> --mode extension --debug --minutes N` | a long watch of live channels on twitch.tv, recorded under `~/purple-recordings/` |
-| `bun run lint` | ESLint, then Prettier over the repository |
 
 ## Loading a local build
 
@@ -76,6 +75,7 @@ Levels 2 and 3 use the Edge profile `~/nodriver/profile-edge-purple`, kept for t
 11. A discovery goes to a dated file in [docs/findings/](docs/findings/README.md), with the probe that produced it in `docs/findings/probes/`. Twitch server behavior also goes to [docs/server/](docs/server/README.md) (behavior, evidence level, source) before `sim/` reproduces it.
 12. Browser tests read page state as JSON (DOM, `window.__purple`, the `sim/` request log); screenshots only when the problem is visual.
 13. Tests run locally (`bun run check` and the pre-commit hook). No GitHub Actions workflow runs tests, and commits never skip the hook with `--no-verify`.
+14. Code reads like the code around it: its naming, indentation, comment density and idioms. There is no formatter; line endings follow `.gitattributes`.
 
 ## Commits and pull requests
 
@@ -101,7 +101,7 @@ A store step runs only when its secrets are set in the repository (Settings, Sec
 
 The stores refuse a version they already have: a release starts with a new `version` in `package.json`. The Firefox version of a pre-release is `<version>.<n>`, so a tag needs the package version and a number (`2.7.0-beta.1` gives `2.7.0.1`).
 
-The same steps run locally after `bun run build`, with the secrets in a `.env` file (ignored by git, loaded by Bun):
+The same steps run locally after `bun run build`, with the secrets in a `.env` file (copied from `.env.sample`, ignored by git, loaded by Bun):
 
 ```bash
 bun cli/publish.ts firefox --channel listed --dry-run            # what would be sent, with nothing sent

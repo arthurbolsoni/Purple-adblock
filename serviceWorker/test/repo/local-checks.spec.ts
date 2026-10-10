@@ -25,7 +25,9 @@ describe("local checks", () => {
     expect(hook).toStartWith("#!/bin/sh\n");
     expect(hook).toContain("bun run check");
     expect(hook).not.toContain("\r");
-    expect(read(".gitattributes")).toContain(".githooks/* text eol=lf");
+    // checked out with LF on Windows too (the `lf` macro of .gitattributes since T-705), so /bin/sh can run it
+    const attrs = Bun.spawnSync(["git", "check-attr", "text", "eol", "--", ".githooks/pre-commit"], { cwd: ROOT }).stdout.toString();
+    expect(attrs).toBe(".githooks/pre-commit: text: set\n.githooks/pre-commit: eol: lf\n");
   });
 
   test("the bun npm package, while present, is not older than the runtime", () => {
@@ -47,5 +49,31 @@ describe("GitHub Actions", () => {
     const workflow: any = Bun.YAML.parse(readFileSync(join(dir, file), "utf8"));
     const runs = Object.values(workflow.jobs ?? {}).flatMap((job: any) => (job.steps ?? []).map((step: any) => step.run ?? ""));
     expect(runs.filter((run: string) => RUNS_TESTS.test(run))).toEqual([]);
+  });
+});
+
+// T-705: the issue templates are GitHub issue forms; a form GitHub cannot read falls back to a blank issue
+describe("issue forms", () => {
+  const dir = join(ROOT, ".github", "ISSUE_TEMPLATE");
+  const files = readdirSync(dir);
+  const TYPES = ["markdown", "textarea", "input", "dropdown", "checkboxes"];
+
+  test("only forms, a bug report and an idea", () => {
+    expect(files.sort()).toEqual(["bug-report.yml", "feature-request.yml"]);
+  });
+
+  test.each(files)("%s: name, description, labels and a body of known fields with unique ids", (file) => {
+    const form: any = Bun.YAML.parse(readFileSync(join(dir, file), "utf8"));
+    expect(typeof form.name).toBe("string");
+    expect(typeof form.description).toBe("string");
+    expect(Array.isArray(form.labels)).toBe(true);
+    expect(form.body.length).toBeGreaterThan(0);
+    for (const field of form.body) {
+      expect(TYPES).toContain(field.type);
+      expect(typeof field.attributes.label).toBe("string");
+    }
+    const ids = form.body.map((field: any) => field.id);
+    expect(new Set(ids).size).toBe(ids.length);
+    expect(form.body.some((field: any) => field.validations?.required)).toBe(true);
   });
 });

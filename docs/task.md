@@ -465,6 +465,11 @@ Runs in parallel with phases 1 to 7. Phase 1 to 6 tasks list L2/L3 scenarios tha
 - Files: `THIRD-PARTY-NOTICES.md`, `cli/files.js`, `cli/chrome_builder.js`, `cli/firefox_builder.js`, `platform/tampermonkey/build.js`
 - Tests: TS-704
 
+### T-705 Repository housekeeping
+- [x] Status · done 2026-10-10: the popup's status texts are "Purple on: ", "Purple off: " and "Open a Twitch channel"; the issue templates are GitHub issue forms (a bug report and an idea) and the pull request template follows CONTRIBUTING.md; `.gitignore` lists what the project installs and generates (the same paths ignored before and after), `.gitattributes` uses `lf`/`crlf` macros (the same attributes on every tracked file); `FUNDING.yml`, the README header and the `package.json` fields (`repository`, `bugs`, `homepage`) are rewritten. The ESLint config named plugins that were never installed, so `lint` failed: it, `eslint`, `lint-staged` and the `pre-commit` key left. Prettier ran nowhere (36 files did not follow it, not in `check` or the hook) and left too; the style follows the surrounding code. `.editorconfig`, which no tool of the project read, left. `.env.sample` lists the variables of `cli/publish.ts`
+- Origin: the maintainer, 2026-10-10.
+- Tests: TS-701 (no ESLint or Prettier), `platform/src/common/js/popup.spec.ts` (the status texts), `serviceWorker/test/repo/local-checks.spec.ts` (the issue forms)
+
 ## Phase 8: investigations
 
 Odd behaviors seen in the runs. Each task ends with its cause in a finding (and in `docs/server/` when it is the server's), and a fix task when Purple causes it.
