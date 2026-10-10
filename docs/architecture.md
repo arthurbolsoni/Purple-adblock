@@ -19,18 +19,18 @@ The userscript has no content script or popup: `bundle.js` is the whole script a
 4. Every worker built this way joins a `WorkerRegistry` (`page/worker-registry.ts`) after the page's first message to it (the player's init), and leaves it on `terminate()` (T-107). Nothing from Purple reaches a worker before that message. On a direct channel load the player creates two workers. The page `fetch` hook (`page/fetch-hook.ts`, T-106) is installed when the bundle loads; it reads only the `https://gql.twitch.tv/integrity` response, from a clone, and the request headers of `https://gql.twitch.tv/gql` calls (F-05, T-401), and gives every response to the page unchanged. With `forcePopoutToken`, it rewrites the `playerType` of the page's `PlaybackAccessToken` operations to `popout`, `picture-by-picture` excepted (F-12, T-408).
 5. In the worker, `app.worker.ts` calls `bootstrapWorker(self)`, which keeps the original `fetch` as `self.request`, creates `AppController` and replaces `fetch` with a dispatcher over the `@Fetch` routes (first match in declaration order):
    - an ad URI Purple listed for the blank segment (F-14) → `onBlankSegment` → `BLANK_MP4`, with no request to Twitch (T-502);
-   - `usher.ttvnw.net/api/channel/hls/` and `usher.ttvnw.net/api/v2/channel/hls/` (except `picture-by-picture`) → `onChannel` → `Player.setChannel` with the channel from the URL path (T-103); with `forcePopoutToken`, `parent_domains` leaves the request first (F-12, T-408); the request URL is kept for the backups' usher requests (F-08, T-404);
-   - `ttvnw.net/v1/playlist/` → `onFetch` → `Player.onFetch`; an exception returns Twitch's playlist;
-   - `picture-by-picture` → `onChannelPicture` → stores the PbP stream and returns an empty response.
+   - `usher.ttvnw.net/api/channel/hls/` and `usher.ttvnw.net/api/v2/channel/hls/` (except `picture-by-picture`) → `onChannel` → `Player.setChannel` with the channel from the URL path (T-103); with `forcePopoutToken`, `parent_domains` leaves the request first (F-12, T-408); the request URL is kept for the backups' usher requests (F-08, T-404); the master's variants are kept, so their media playlists are routed by URL (T-407), and a new master clears the numbering state of F-23 and F-24; with `prewarmAtLoad`, tokens are requested for the backup types with no stored master (F-22, T-812);
+   - `ttvnw.net/v1/playlist/`, or a variant URL of the player's master → `onFetch` → `Player.onFetch`; an exception returns Twitch's playlist;
+   - `picture-by-picture` → `onChannelPicture` → stores the PbP stream and returns an empty response; with `prewarmBackups`, tokens are requested for the backup types with no stored master, a few seconds before a possible midroll (F-19, T-409).
 6. `Player.onFetch` (classes from `ad-detector.ts`, T-201; with a stitched-ad marker, segments titled other than `live`, inside a `twitch-stitched-ad` range or under a non-live stream source are ads, T-203):
    - no stream stored for the channel (playlist before the usher) → original text;
    - `MARKED_LIVE` (markers over live segments) → original text, no backup lookup, no pause/play (T-202); a stitched break announced past the last segment (B-034) loses the prefetch, preload and part lines after the announcement, and their URIs are answered blank (F-14);
    - channel on the whitelist → original text (never reached in 2.6.7, C-10; the worker keeps the `setSettings` value since T-602);
    - no ads → original text (T-101);
-   - ads → walks `backupPlayerTypes` (F-09: `site`, `popout`, `frontpage`, `picture-by-picture`, `mobile_web`, `embed`, then `autoplay` as `android` with `lowQualityFallback`; T-405), variants read with `m3u8-parser` (T-104) and picked in the quality and codec family of the variant the player polls (F-11, T-407); the first clean backup replaces the whole playlist: no ad segment and no stitched-ad marker, so a backup announcing its own break is skipped (T-204); a type without one gets a new token and is left out of the chain for 5 s; the type of the last clean backup goes first (F-10, T-406);
+   - ads → the backup chain over `backupPlayerTypes` (F-09: `site`, `popout`, `frontpage`, `mobile_web`, `embed`, `picture-by-picture`, then `autoplay` as `android` with `lowQualityFallback`; T-405, T-819), with the type of the last clean 720p backup first (F-10, T-406) and the types whose backup had ads in the last 5 s left out. The first type is asked alone; when it gives no backup to use, with `parallelBackupFetch` the others are asked at once and their answers taken in that order (F-26, T-823). Variants are read with `m3u8-parser` (T-104) and picked in the quality and codec family of the variant the player polls (F-11, T-407). A backup is clean with no ad segment and no stitched-ad marker, so one announcing its own break is skipped (T-204); a type without a clean backup gets a new token. The first clean backup replaces the whole playlist (E4), with its `MEDIA-SEQUENCE` shifted to the number the page's playlist gives the same date-time (F-23, T-817); at a switch of source, one that lists nothing past the player's newest number waits for a type ahead of it, and is used when none is (F-25, T-820);
    - none clean → `mergeM3u8Contents` edits the main playlist's lines: each ad segment with a live backup segment less than half a segment away gets the nearest one's `#EXTINF` and URI lines, with that backup's `EXT-X-MAP` when it differs and the main one back after it (F-13, T-501); every other line stays (T-101); ad segments on both sides come from the detector (T-203);
    - ad segments left → with `stripFallback`, their lines stay and their URIs, with any `EXT-X-MAP` only they use, are answered with the blank segment; part, preload and prefetch lines that point at ad media go (F-14, T-502). This also covers the first poll of a break, before any backup token is ready.
-7. When the ad state changes → pause and play on the player; with `reloadAfterAd`, a reload by the page at the end of a break (F-15, T-601).
+7. `Player` keeps the source (the page's playlist or a backup variant) and the newest number of the last playlist it gave the player. When a change of source brings that number down (after a preroll played on backups the page's playlist numbers from 0, B-029), the player gets pause and play once (F-24, T-818). At the edges of a break (`ad-break.ts`) the player gets pause and play only with `pausePlayOnBreaks` (E6, F-21, off since T-809); with `reloadAfterAd`, a reload by the page at the end of a break instead (F-15, T-601).
 
 ## Current messages
 
@@ -42,7 +42,7 @@ The userscript has no content script or popup: `bundle.js` is the whole script a
 | page → worker | `{ funcName: "setGqlHeaders", value }`, when a page GQL request changes one of the F-05 headers | sent to every registered worker; its token requests send them; a `Client-Integrity` among them becomes the integrity token (T-401) |
 | page → worker | `{ funcName: "setGqlBridge", value: true }`, when the bundle loads | sent to every registered worker (replayed to later ones); its GQL requests go through the page from then on (T-402) |
 | worker → page | `{ type: "gqlRequest", id, body, headers }` | the page runs it with its fetch from before Purple's hook and answers `{ funcName: "gqlResponse", value: { id, status, body } }` (or `status: 0, error`) to that worker; the worker sends the request itself after 5 s without an answer (T-402) |
-| worker → page | `{ type: "pause" }`, `{ type: "play" }` | page sends `{ funcName: "pause" \| "play", id }` to the worker that asked (player's internal RPC), with the `id` of the last `create` the page sent that worker, 1 before any (C-12) |
+| worker → page | `{ type: "pause" }`, `{ type: "play" }`: at a change of source with lower numbers (F-24), at the break edges with `pausePlayOnBreaks` (F-21), after a reload the page could not do (F-15) | page sends `{ funcName: "pause" \| "play", id }` to the worker that asked (player's internal RPC), with the `id` of the last `create` the page sent that worker, 1 before any (C-12) |
 | worker → page | `{ type: "reload" }`, at the end of a break with `reloadAfterAd` | page runs a soft `setSrc` on Twitch's player state and answers `{ funcName: "reloadResult", value: { ok } }` to the worker that asked; with `ok: false` (no player state found) the worker pauses and plays (F-15, T-601) |
 | player worker → page | `PlayerQualityChanged`, `arg.key === "quality"` | page sends `{ funcName: "setQuality", value }` to every registered worker |
 | player worker → page | `arg.key === "state"` | page sends `{ funcName: <state> }` to the worker that sent it |
@@ -62,7 +62,7 @@ E-xx are existing strategies; F-xx and C-xx are features and fixes from `docs/fe
   - `gql.twitch.tv/integrity`: captures the integrity token (E9);
   - `edge.ads.twitch.tv`: blocked (F-04).
 - GQL executor for worker requests, using the page credentials (F-06).
-- Ad break state machine (`ad-break.ts`, in the worker): pause/play (E6), optional reload (F-15).
+- Ad break state machine (`ad-break.ts`, in the worker): pause/play (E6) with `pausePlayOnBreaks` (F-21), optional reload (F-15).
 - Player reload (F-15, T-601): the page finds Twitch's player state in the React tree under `#root` (a node with `setSrc` and `setInitialPlaybackSettings`, as Brave's script does) and calls `setSrc({ isNewMediaPlayerInstance: false, refreshAccessToken: false })`, then `play` on the media player instance. The worker cannot reach the player's React state, and a pause/play through the worker RPC does not reload the source, so the reload runs in the page. Chosen over a hard reload with a new token: a new token can bring a preroll.
 - With `debug` on, worker events kept in `window.__purple.events` (F-17), read by the browser tests.
 
@@ -70,16 +70,19 @@ E-xx are existing strategies; F-xx and C-xx are features and fixes from `docs/fe
 
 ```
 intercepted fetch
- ├─ usher /channel/hls/ (v1 and v2) → stores channel, variants and usher params (C-03, C-04, F-08)
- ├─ picture-by-picture             → stores PbP stream (E10)
+ ├─ usher /channel/hls/ (v1 and v2) → stores channel, variants and usher params (C-03, C-04, F-08); backup tokens (F-22)
+ ├─ picture-by-picture             → stores PbP stream (E10); backup tokens (F-19)
  └─ media playlist (URL from the master, or the v1/playlist pattern)
       └─ detector (F-02, F-03)
            ├─ NONE         → original text (F-01)
            ├─ MARKED_LIVE  → original text; the CSAI ad is handled by F-04
            └─ SSAI
-                ├─ backups by playerType (E3, F-07..F-11) → first clean one replaces the playlist (E4)
+                ├─ backups by playerType (E3, F-07..F-11): the first type alone, then the others at once (F-26)
+                │    └─ first clean one in F-09's order, not behind the player (F-25), numbered as the page's
+                │       playlist (F-23) → replaces the playlist (E4)
                 ├─ none clean → merge by time (E5, F-13)
                 └─ ad segments left → their URIs answered with the blank segment in the worker (F-14)
+      └─ playlist given to the player: a change of source with lower numbers restarts the player (F-24)
 ```
 
 Any exception on this path returns Twitch's original response (rule 5 in `CLAUDE.md`).

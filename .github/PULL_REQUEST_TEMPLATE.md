@@ -7,9 +7,11 @@
 
 ## Things to check
 
-- [ ] Have you tested changes locally?
-- [ ] Have you ensured TypeScript compiles?
-- [ ] Have you ensured the code is formatted and linted with `npm run lint`?
+- [ ] `bun run check` passes (the pre-commit hook runs it)
+- [ ] Each change has its test in the same commit; a bug fix starts with a failing test ([CONTRIBUTING.md](../CONTRIBUTING.md#rules-for-changes))
+- [ ] Levels 2 or 3 run, when the change touches the player or twitch.tv (scenarios and results in the description)
+- [ ] `docs/feat.md`, `docs/task.md` and `docs/findings/` updated, when behavior changed
+- [ ] Formatted with `bun run lint`
 
 ## Notes
 <!-- Change the following as needed; These are just templates -->
