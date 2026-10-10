@@ -30,7 +30,7 @@ It ships as a Firefox add-on (Manifest V2), a Chromium extension (Manifest V3: C
 
 The extension's popup turns Purple off and on for the channel in the current tab (a per-channel allow list). The userscript has no popup and uses the default settings.
 
-Pre-releases on the [releases page](https://github.com/arthurbolsoni/Purple-adblock/releases) come with a Firefox build signed by Mozilla (`purple-adblock-<version>-firefox.xpi`), which Firefox installs from `about:addons` (gear menu, `Install Add-on From File...`) and keeps after a restart.
+Releases and pre-releases on the [releases page](https://github.com/arthurbolsoni/Purple-adblock/releases) come with a Firefox build signed by Mozilla (`purple-adblock-<version>-firefox.xpi`), which Firefox installs from `about:addons` (gear menu, `Install Add-on From File...`) and keeps after a restart.
 
 ### Manual installation
 
