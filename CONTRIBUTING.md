@@ -70,7 +70,7 @@ Levels 2 and 3 use the Edge profile `~/nodriver/profile-edge-purple`, kept for t
 6. A failure in the blocking logic must not break the player: catch it and return Twitch's original response.
 7. No bare `console.log`: use the `logger`, which prints only with `debug` on.
 8. Fixtures captured from Twitch are sanitized (token, sig, user id, device id) before commit ([docs/tests.md](docs/tests.md#sanitizing)).
-9. Code taken from Brave's scriptlet keeps a comment with the source URL and its license notice ([docs/research.md](docs/research.md#licenses)).
+9. Code taken from Brave's scriptlet (TwitchAdSolutions' vaft script) keeps a comment with the source URLs and the MIT notice, and is listed in [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md) ([docs/research.md](docs/research.md#licenses)).
 10. A finished task is ticked in [docs/task.md](docs/task.md), and [docs/feat.md](docs/feat.md) is updated when behavior changes.
 11. A discovery goes to a dated file in [docs/findings/](docs/findings/README.md), with the probe that produced it in `docs/findings/probes/`. Twitch server behavior also goes to [docs/server/](docs/server/README.md) (behavior, evidence level, source) before `sim/` reproduces it.
 12. Browser tests read page state as JSON (DOM, `window.__purple`, the `sim/` request log); screenshots only when the problem is visual.

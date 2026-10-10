@@ -1,16 +1,14 @@
 // Blank segment for ad segments no backup could replace (F-14, T-502).
 //
-// BLANK_MP4 is copied verbatim from Brave's Twitch scriptlet:
-//   https://github.com/brave/adblock-resources/blob/60346357addf85035833f3731cb025b058f9600d/resources/vaft-ublock-origin.js
-//   (hookWorkerFetch, `BLANK_MP4`). It is the same file as vaft/vaft-ublock-origin.js in TwitchAdSolutions:
+// BLANK_MP4 is copied verbatim from TwitchAdSolutions' vaft script, vaft/vaft-ublock-origin.js (hookWorkerFetch,
+// `BLANK_MP4`):
 //   by ryanbr, the maintained fork: https://github.com/ryanbr/TwitchAdSolutions/blob/74f1248f22a61fcbb559882f93cb60ca25b414e8/vaft/vaft-ublock-origin.js
 //   by pixeltris, the original project: https://github.com/pixeltris/TwitchAdSolutions
+//   Brave ships the same file without its first line, the uBO resource header:
+//   https://github.com/brave/adblock-resources/blob/60346357addf85035833f3731cb025b058f9600d/resources/vaft-ublock-origin.js
 //   (THIRD-PARTY-NOTICES.md)
 // It is an fMP4 init segment only (ftyp + moov with an mp4a and an avc1 track, no samples): the player gets a valid
 // file with nothing to play instead of the ad.
-//
-// This file is subject to the terms of the Mozilla Public License, v. 2.0 (brave/adblock-resources). If a copy of the
-// MPL was not distributed with this file, You can obtain one at https://mozilla.org/MPL/2.0/.
 //
 // MIT License (TwitchAdSolutions: pixeltris/TwitchAdSolutions and its fork ryanbr/TwitchAdSolutions)
 //

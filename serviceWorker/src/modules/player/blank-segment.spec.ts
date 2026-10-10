@@ -14,7 +14,7 @@ test("blankSegment: the 1137 bytes of BLANK_MP4, ftyp then moov, a new body for 
   expect(bytes.length).toBe(1137);
   expect(new TextDecoder().decode(bytes.slice(4, 8))).toBe("ftyp");
   expect(new TextDecoder().decode(bytes.slice(44, 48))).toBe("moov");
-  // the same bytes as the script at brave/adblock-resources@60346357
+  // the same bytes as TwitchAdSolutions' vaft script (ryanbr/TwitchAdSolutions@74f1248, shipped by Brave)
   expect(await sha256(bytes)).toBe("a49d65cbdf2b332a8925f1012329c441e3cefef5c20200d7c8494b67df403204");
   expect(again).toEqual(bytes);
 });

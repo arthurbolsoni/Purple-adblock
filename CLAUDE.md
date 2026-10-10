@@ -99,7 +99,7 @@ python e2e/run.py <L2-xx|L3-xx|all>         # levels 2 and 3; --mode extension|u
 5. A failure in the blocking logic must not break the player: catch it and return Twitch's original response.
 6. No bare `console.log`. Use the `logger`, which only prints with `debug` on.
 7. Fixtures captured from Twitch are sanitized (token, sig, user id, device id) before commit. See `docs/tests.md`.
-8. Code taken from Brave's scriptlet keeps a comment with the source URL and its license notice. See `docs/research.md`.
+8. Code taken from Brave's scriptlet (TwitchAdSolutions' vaft script) keeps a comment with the source URLs and the MIT notice, and is listed in `THIRD-PARTY-NOTICES.md`. See `docs/research.md`.
 9. When a task is done, tick it in `docs/task.md` and update `docs/feat.md` if behavior changed.
 10. Browser tests read page state as JSON (DOM, `window.__purple`, the `sim/` request log). No screenshots unless the problem is visual.
 11. Every discovery goes to a dated file in `docs/findings/`, with the probe that produced it in `docs/findings/probes/`. Server behavior also goes to `docs/server/` (behavior, evidence level, source) before `sim/` reproduces it.

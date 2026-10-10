@@ -92,6 +92,20 @@ describe("extension builds (T-701)", () => {
     expect(notices).toContain("The above copyright notice and this permission notice shall be included in all");
   });
 
+  // the copied parts are the same bytes in ryanbr's file (MIT) and in Brave's copy: the files carry the MIT notice
+  // with the source URLs, no MPL notice, and THIRD-PARTY-NOTICES.md names them
+  test.each(["serviceWorker/src/modules/player/blank-segment.ts", "serviceWorker/src/page/player-reload.ts"])(
+    "%s: TwitchAdSolutions' MIT notice and sources, no MPL notice (T-704)",
+    (file) => {
+      const text = readFileSync(join(ROOT, file), "utf8");
+      expect(text).toContain("// Copyright (c) 2020-present TwitchAdSolutions Contributors\n");
+      expect(text).toContain("https://github.com/ryanbr/TwitchAdSolutions/blob/74f1248f22a61fcbb559882f93cb60ca25b414e8/vaft/vaft-ublock-origin.js");
+      expect(text).toContain("https://github.com/pixeltris/TwitchAdSolutions");
+      expect(text).not.toContain("Mozilla Public License");
+      expect(readFileSync(join(ROOT, "THIRD-PARTY-NOTICES.md"), "utf8")).toContain(`\`${file}\``);
+    },
+  );
+
   // the bundle carries m3u8-parser and the modules its ES build imports (Vite follows `module`): each package reached
   // that way has its row and its license file's text in THIRD-PARTY-NOTICES.md, so a new import fails here until added
   test("THIRD-PARTY-NOTICES.md lists every package bundled with m3u8-parser, with its license text (T-704)", () => {
