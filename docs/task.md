@@ -678,11 +678,11 @@ Odd behaviors seen in the runs. Each task ends with its cause in a finding (and 
 - Tests: soak
 
 ### T-828 The page pauses the player at a break and does not play it again
-- [ ] Status · open
+- [x] Status · done 2026-10-31: the test harness's, not Purple's or Twitch's. The browser put the page's player on the desktop's media controls (MPRIS on Linux), headless and with `--mute-audio`, and media keys, Bluetooth earbuds and an audio output going away paused it: an MPRIS `Pause` on the level 2 page gives the same `pause` to the worker, with and without Purple. Six such pauses in the soaks of 2026-10-30 and 2026-10-31, three of them at the same instant in three browsers (one without Purple) when the earbuds dropped. `e2e/lib.py` adds `HardwareMediaKeyHandling` to `--disable-features` in every mode ([finding](findings/2026-10-31-page-pause-mpris.md))
 - Origin: 2026-10-31, two soaks with F-27 and F-28 (Brave, logged out): Twitch's page called the player's `pause` (a `pause` to the worker with no `pause` from Purple) and no `play` followed; the player seeked to 0 and stayed paused with nothing buffered, and the soak left the channel 3 minutes later. 15:21:37 on `/channel-ak` (fMP4), 2.7 min into a midroll with only markers (`MARKED_LIVE`), right after a switch to the 360p `autoplay` backup; 15:25:40 on `/channel-d` (TS), 5 s into such a midroll. On `/channel-d` the page had also paused at 15:22:13 and played again 2.3 s later, outside a break. No such pause in the other soaks of 2026-10-30 and 2026-10-31 (about 20 midrolls with only markers).
 - Check: the page's calls to the player around those breaks (the React player state, the `edge.ads.twitch.tv` requests Purple blocks, F-04), with and without Purple on the same channel; whether a missing `play` after a page `pause` can be answered by Purple.
 - Done when: the cause is in a finding; a fix task if Purple causes it.
-- Tests: soak
+- Tests: `docs/findings/probes/mpris_pause_probe.py` (no MPRIS name with the harness's flags; with `--media-keys`, the pause), L2-01 and L3-01 (extension) with the flag
 
 ## Open decisions
 

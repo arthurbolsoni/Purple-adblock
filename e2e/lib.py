@@ -81,18 +81,23 @@ RECORDER = _read('recorder.js').replace('__WORKER_LOGGER__', json.dumps(_read('w
 def browser_args(mode, extension=EXTENSION_BUILD):
     """Edge flags per mode. Every mode: no component extensions with background pages, no sync (a
     fresh profile signs in to the Windows Microsoft account on its own and syncs the account's
-    extensions and history), no sound out of the speakers (the page still sees an unmuted <video>)."""
+    extensions and history), no sound out of the speakers (the page still sees an unmuted <video>), no player on the
+    desktop's media controls (T-828)."""
     if mode not in MODES:
         raise ValueError(f'unknown mode {mode!r}; expected one of {MODES}')
     args = ['--lang=en-US', '--accept-lang=en-US', '--window-size=1400,950',
             '--disable-component-extensions-with-background-pages', '--disable-sync', '--mute-audio']
+    # The last --disable-features wins, so nodriver's own two stay in it. T-828: without HardwareMediaKeyHandling a
+    # page playing sound is a player on the desktop's media controls (MPRIS on Linux), even headless and with
+    # --mute-audio, and media keys, Bluetooth earbuds and audio device changes paused it
+    features = ['IsolateOrigins', 'site-per-process', 'HardwareMediaKeyHandling']
     if mode == 'extension':
-        # Chromium 137 and later ignore --load-extension unless DisableLoadExtensionCommandLineSwitch is off; the last
-        # --disable-features wins, so nodriver's own two stay in it
-        args += [f'--load-extension={extension}', f'--disable-extensions-except={extension}',
-                 '--disable-features=IsolateOrigins,site-per-process,DisableLoadExtensionCommandLineSwitch']
+        # Chromium 137 and later ignore --load-extension unless DisableLoadExtensionCommandLineSwitch is off
+        args += [f'--load-extension={extension}', f'--disable-extensions-except={extension}']
+        features.append('DisableLoadExtensionCommandLineSwitch')
     else:
         args.append('--disable-extensions')
+    args.append('--disable-features=' + ','.join(features))
     if mode == 'sim':
         args.append(SIM_HOST_RULES)
     if BRAVE:

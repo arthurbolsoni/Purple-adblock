@@ -96,5 +96,5 @@ Soak `t826-f28`, 2026-10-31 15:15 to 16:00 (`~/purple-recordings/2026-10-31-t826
 
 - `/channel-al`, 31 min on one load after a preroll, 3 midrolls (15:33:47, 15:43:51, 15:53:48): the page's offset moved by 6, 5 and 5 at their ends; F-28 restarted the player each time (`segmentRepeat` 6, 5, 5). The lag ended at +0.04 s, and the video had no still of 2 s or more.
 - `/channel-d`, the first 13 min: after the preroll at the load F-28 restarted the player twice (15:16:13, 15:17:03) with a count of 2427. The page's playlist numbered from 0 after the preroll (B-029), a backup delivered without a shift numbered the stream 2427 higher, and the number after the player's was not in it at all. The check now counts a number only when the new playlist lists it (TS-826).
-- At 15:25:40 on `/channel-d`, and at 15:21:37 in a session on `/channel-ak`, Twitch's page paused the player and did not play it again (T-828).
+- At 15:25:40 on `/channel-d`, and at 15:21:34 in a session on `/channel-ak`, the player was paused through the desktop's media controls (MPRIS) and nothing played it again; the test browsers stay off them since T-828 ([page pause](2026-10-31-page-pause-mpris.md)).
 
