@@ -95,6 +95,10 @@ pub struct PlayerType {
     /// (B-029, B-039), while the other tokens number the live sequence. Overrides `ahead`.
     #[serde(default)]
     pub from_zero: bool,
+    /// How many ms earlier than the other tokens this type dates the same segments (`PROGRAM-DATE-TIME`) and its breaks:
+    /// the page token's after its stitched breaks, 70 to 1600 ms on `/channel-d` (B-057).
+    #[serde(default)]
+    pub earlier_ms: i64,
 }
 
 #[derive(Clone, Debug, Default, Deserialize, Serialize, PartialEq)]
@@ -158,6 +162,11 @@ impl Scenario {
             Some(p) => p.ahead,
             None => 0,
         }
+    }
+
+    /// How many ms earlier than the stream clock `player_type` dates its segments (0 unless the scenario sets `earlierMs`).
+    pub fn earlier_for(&self, player_type: &str) -> i64 {
+        self.player_types.get(player_type).or_else(|| self.player_types.get("default")).map(|p| p.earlier_ms).unwrap_or(0)
     }
 
     pub fn variant(&self, name: &str) -> Option<&Variant> {
@@ -227,6 +236,13 @@ mod tests {
         let text = MINIMAL.replace(r#""variants""#, r#""playerTypes":{"popout":{"breaks":true,"ahead":2}},"variants""#);
         let s = Scenario::from_json(&text).unwrap();
         assert_eq!((s.ahead_for("popout", 500), s.ahead_for("site", 500)), (2, 0));
+    }
+
+    #[test]
+    fn earlier_ms_is_read_per_player_type_and_zero_otherwise() {
+        let text = MINIMAL.replace(r#""variants""#, r#""playerTypes":{"popout":{"breaks":true,"ahead":2,"earlierMs":1000}},"variants""#);
+        let s = Scenario::from_json(&text).unwrap();
+        assert_eq!((s.earlier_for("popout"), s.earlier_for("site")), (1000, 0));
     }
 
     #[test]

@@ -3,9 +3,10 @@ import { newestNumber, sequenceReference, sequenceShift, shiftSequence } from ".
 
 const T0 = Date.parse("2026-10-09T02:46:00.910Z");
 
-// segments from `first`, segment n at `base` + n x 2 s; `ads`: indexes with an ad title
-const playlist = (first: number, count: number, base: number, ads: number[] = [], eol = "\n") => {
-  const lines = ["#EXTM3U", `#EXT-X-MEDIA-SEQUENCE:${first}`, `#EXT-X-TWITCH-LIVE-SEQUENCE:${first}`];
+// segments from `first`, segment n at `base` + n x 2 s; `ads`: indexes with an ad title; `live`: the live sequence of
+// the first segment (`first` by default, null for none)
+const playlist = (first: number, count: number, base: number, ads: number[] = [], eol = "\n", live: number | null = first) => {
+  const lines = ["#EXTM3U", `#EXT-X-MEDIA-SEQUENCE:${first}`, ...(live == null ? [] : [`#EXT-X-TWITCH-LIVE-SEQUENCE:${live}`])];
   for (let i = 0; i < count; i++) {
     const n = first + i;
     lines.push(`#EXT-X-PROGRAM-DATE-TIME:${new Date(base + n * 2000).toISOString()}`, `#EXTINF:2.000,${ads.includes(i) ? "Amazon|AD_ID" : "live"}`, `https://example.net/${n}.ts`);
@@ -15,8 +16,13 @@ const playlist = (first: number, count: number, base: number, ads: number[] = []
 };
 
 describe("sequenceReference", () => {
-  test("the newest live segment with its number, date-time and duration", () => {
-    expect(sequenceReference(playlist(100, 14, T0))).toEqual({ sequence: 113, time: T0 + 113 * 2000, duration: 2 });
+  test("the newest live segment with its number, date-time, duration and live number", () => {
+    expect(sequenceReference(playlist(100, 14, T0))).toEqual({ sequence: 113, time: T0 + 113 * 2000, duration: 2, live: 113 });
+    expect(sequenceReference(playlist(100, 14, T0, [], "\n", 97))?.live).toBe(110);
+  });
+
+  test("no live number without EXT-X-TWITCH-LIVE-SEQUENCE", () => {
+    expect(sequenceReference(playlist(100, 14, T0, [], "\n", null))).toEqual({ sequence: 113, time: T0 + 113 * 2000, duration: 2 });
   });
 
   test("ad segments are skipped; with beforeAds, the newest before the first ad", () => {
@@ -47,6 +53,36 @@ describe("sequenceShift", () => {
 
   test("null for a backup with no date-time", () => {
     expect(sequenceShift(playlist(100, 3, T0).replace(/#EXT-X-PROGRAM-DATE-TIME:.*\n/g, ""), page)).toBeNull();
+  });
+
+  // F-27 (T-826): the page's playlist numbers live segment 111 as 113 (B-054) and dates it earlier than the backups do
+  // (B-057); the backup numbers it 111, at T0 + 111 x 2 s + offset
+  describe("by live number", () => {
+    const pageLive = { ...page, live: 111 };
+    const backup = (offset: number, live: number | null = 100) => playlist(100, 14, T0 + 4000 + offset, [], "\n", live);
+
+    test.each([
+      ["dated 0.32 s later on the backup (soak 2026-10-30, 00:11)", 320],
+      ["dated 1.60 s later on the backup (00:01)", 1600],
+      ["dated 0.07 s later on the backup (01:11)", 70],
+      ["the same date-time", 0],
+    ])("%s: 2, the page's numbers for the same live segments", (_, offset) => {
+      expect(sequenceShift(backup(offset), pageLive)).toBe(2);
+    });
+
+    test("by date-time the backup's copy of the page's newest segment took the next number", () => {
+      expect(sequenceShift(backup(320), pageLive, false)).toBe(3);
+      expect(sequenceShift(backup(1600), pageLive, false)).toBe(3);
+    });
+
+    test("by date-time when the backup or the reference has no live number", () => {
+      expect(sequenceShift(backup(320, null), pageLive)).toBe(3);
+      expect(sequenceShift(backup(320), page)).toBe(3);
+    });
+
+    test("a backup numbered like the page's playlist: 0", () => {
+      expect(sequenceShift(playlist(102, 14, T0 + 320, [], "\n", 100), pageLive)).toBe(0);
+    });
   });
 });
 

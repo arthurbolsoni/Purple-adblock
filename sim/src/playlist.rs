@@ -27,6 +27,8 @@ pub struct Timeline {
     pub ahead: i64,
     /// Its playlists start at its first segment and grow to the window, as a preroll playlist (B-029, `fromZero`).
     pub from_zero: bool,
+    /// How many ms earlier than the stream clock it dates its segments and breaks (the scenario's `earlierMs`, B-057).
+    pub earlier_ms: i64,
 }
 
 /// Number of files in a rendition folder, for the media loop (a discontinuity where it wraps).
@@ -161,7 +163,7 @@ pub fn media(scenario: &Scenario, v: &Variant, t: &Timeline, counts: Counts, now
         seen.push(index);
         let b = &scenario.breaks[index];
         let start_g = t.first + b.at as i64;
-        let start = t.epoch_ms + start_g * seg;
+        let start = t.epoch_ms - t.earlier_ms + start_g * seg;
         let duration = b.segments as f64 * scenario.segment_seconds;
         let _ = g;
         match b.kind {
@@ -210,7 +212,7 @@ pub fn media(scenario: &Scenario, v: &Variant, t: &Timeline, counts: Counts, now
                 map = Some(m);
             }
         }
-        out += &format!("#EXT-X-PROGRAM-DATE-TIME:{}\n", date(t.epoch_ms + g * seg));
+        out += &format!("#EXT-X-PROGRAM-DATE-TIME:{}\n", date(t.epoch_ms - t.earlier_ms + g * seg));
         let title = match k {
             Kind::Live => "live".to_string(),
             Kind::Ad(b, _) => scenario.breaks[*b].title.clone(),
@@ -306,7 +308,7 @@ mod tests {
     const COUNTS: Counts = Counts { live: 30, ad: 15 };
 
     fn timeline(breaks: bool) -> Timeline {
-        Timeline { session: 7, epoch_ms: EPOCH, first: 100, breaks, lag: 0, ahead: 0, from_zero: false }
+        Timeline { session: 7, epoch_ms: EPOCH, first: 100, breaks, lag: 0, ahead: 0, from_zero: false, earlier_ms: 0 }
     }
 
     fn preroll() -> Break {
@@ -420,7 +422,7 @@ mod tests {
     fn backups_share_the_stream_clock() {
         let s = scenario(vec![preroll()], false);
         let main = media(&s, &s.variants[0], &timeline(true), COUNTS, EPOCH + 112 * 2000).0;
-        let backup = media(&s, &s.variants[0], &Timeline { session: 8, epoch_ms: EPOCH, first: 110, breaks: false, lag: 0, ahead: 0, from_zero: false }, COUNTS, EPOCH + 112 * 2000).0;
+        let backup = media(&s, &s.variants[0], &Timeline { session: 8, epoch_ms: EPOCH, first: 110, breaks: false, lag: 0, ahead: 0, from_zero: false, earlier_ms: 0 }, COUNTS, EPOCH + 112 * 2000).0;
         let dates = |t: &str| t.lines().filter(|l| l.starts_with("#EXT-X-PROGRAM-DATE-TIME")).map(String::from).collect::<Vec<_>>();
         assert_eq!(dates(&main), dates(&backup));
     }
@@ -430,7 +432,7 @@ mod tests {
         let s = scenario(vec![], false);
         let now = EPOCH + 130 * 2000;
         let sequence = |lag: i64| {
-            let t = Timeline { session: 9, epoch_ms: EPOCH, first: 100, breaks: false, lag, ahead: 0, from_zero: false };
+            let t = Timeline { session: 9, epoch_ms: EPOCH, first: 100, breaks: false, lag, ahead: 0, from_zero: false, earlier_ms: 0 };
             let text = media(&s, &s.variants[0], &t, COUNTS, now).0;
             text.lines().find_map(|l| l.strip_prefix("#EXT-X-MEDIA-SEQUENCE:")).unwrap().parse::<i64>().unwrap()
         };
@@ -441,7 +443,7 @@ mod tests {
     fn a_token_ahead_numbers_the_same_segments_higher_and_keeps_the_live_sequence() {
         let s = scenario(vec![], false);
         let now = EPOCH + 130 * 2000;
-        let text = |ahead: i64| media(&s, &s.variants[0], &Timeline { session: 9, epoch_ms: EPOCH, first: 100, breaks: false, lag: 0, ahead, from_zero: false }, COUNTS, now).0;
+        let text = |ahead: i64| media(&s, &s.variants[0], &Timeline { session: 9, epoch_ms: EPOCH, first: 100, breaks: false, lag: 0, ahead, from_zero: false, earlier_ms: 0 }, COUNTS, now).0;
         let tag = |t: &str, name: &str| t.lines().find_map(|l| l.strip_prefix(name)).unwrap().parse::<i64>().unwrap();
         let (page, backup) = (text(2), text(0));
         assert_eq!(tag(&page, "#EXT-X-MEDIA-SEQUENCE:") - tag(&backup, "#EXT-X-MEDIA-SEQUENCE:"), 2);
@@ -451,9 +453,21 @@ mod tests {
     }
 
     #[test]
+    fn a_token_dated_earlier_lists_the_same_segments_and_live_numbers_with_earlier_date_times() {
+        let s = scenario(vec![], false);
+        let now = EPOCH + 130 * 2000;
+        let text = |earlier_ms: i64| media(&s, &s.variants[0], &Timeline { session: 9, epoch_ms: EPOCH, first: 100, breaks: false, lag: 0, ahead: 0, from_zero: false, earlier_ms }, COUNTS, now).0;
+        let (page, backup) = (text(1000), text(0));
+        let dates = |t: &str| t.lines().filter_map(|l| l.strip_prefix("#EXT-X-PROGRAM-DATE-TIME:")).map(|d| chrono::DateTime::parse_from_rfc3339(d).unwrap().timestamp_millis()).collect::<Vec<_>>();
+        assert!(dates(&page).iter().zip(dates(&backup)).all(|(p, b)| b - p == 1000));
+        let rest = |t: &str| t.lines().filter(|l| !l.starts_with("#EXT-X-PROGRAM-DATE-TIME:") && !l.starts_with("#EXT-X-DATERANGE")).map(String::from).collect::<Vec<_>>();
+        assert_eq!(rest(&page), rest(&backup));
+    }
+
+    #[test]
     fn a_from_zero_token_starts_its_playlist_at_its_first_segment_numbered_0() {
         let s = scenario(vec![preroll()], false);
-        let t = Timeline { session: 9, epoch_ms: EPOCH, first: 100, breaks: true, lag: 0, ahead: -1100, from_zero: true };
+        let t = Timeline { session: 9, epoch_ms: EPOCH, first: 100, breaks: true, lag: 0, ahead: -1100, from_zero: true, earlier_ms: 0 };
         let tag = |text: &str, name: &str| text.lines().find_map(|l| l.strip_prefix(name)).unwrap().parse::<i64>().unwrap();
         let first = media(&s, &s.variants[0], &t, COUNTS, EPOCH + 100 * 2000).0;
         assert_eq!((tag(&first, "#EXT-X-MEDIA-SEQUENCE:"), first.matches("#EXTINF").count()), (0, 1));

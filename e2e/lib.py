@@ -412,6 +412,7 @@ STATE = """(() => {
     server: e2e.server || [],
     delivered: e2e.delivered || [],
     csai: e2e.csai || [],
+    mse: e2e.mse || [],
     video: v ? { readyState: v.readyState, currentTime: Math.round(v.currentTime * 10) / 10, paused: v.paused, error: v.error && v.error.code } : null,
     adOverlay: !!document.querySelector(S.AD_OVERLAY),
     playerError: text(S.PLAYER_ERROR),

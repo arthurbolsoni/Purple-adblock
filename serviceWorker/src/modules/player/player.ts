@@ -289,15 +289,16 @@ export class Player {
   }
 
   // F-23 (T-817): with alignBackupSequence (default on), a backup replacing the page's playlist gets the numbers the page's playlist
-  // gives the same date-time, from its last poll without ads (else the live segments before the ads of this one). The
-  // shift is kept per backup variant for the break, so its numbers do not move between polls.
+  // gives the same segment, from its last poll without ads (else the live segments before the ads of this one): by live
+  // number with alignByLiveSequence (F-27, T-826, default on), else by date-time. The shift is kept per backup variant
+  // for the break, so its numbers do not move between polls.
   private alignSequence(backup: string, variant: StreamUrl | undefined, main: string): string {
     if (this.setting?.alignBackupSequence === false) return backup;
     const key = withoutQuery(variant?.url ?? "");
     let shift = this.sequenceShifts.get(key);
     if (shift == null) {
       const reference = this.pageSequence ?? sequenceReference(main, true);
-      const computed = reference ? sequenceShift(backup, reference) : null;
+      const computed = reference ? sequenceShift(backup, reference, this.setting?.alignByLiveSequence !== false) : null;
       if (computed == null) return backup;
       shift = computed;
       this.sequenceShifts.set(key, shift);

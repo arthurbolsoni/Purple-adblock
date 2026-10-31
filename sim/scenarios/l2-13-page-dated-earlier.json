@@ -1,0 +1,11 @@
+{
+  "id": "L2-13",
+  "description": "L2-10's midroll: the page's token (popout, F-12) numbers the stream 2 segments ahead of the live sequence (B-054) and dates each segment 1 s earlier than the backup tokens (B-057), as after stitched breaks on twitch.tv",
+  "channel": "simchannel",
+  "variants": [
+    { "name": "720p30", "resolution": "1280x720", "bandwidth": 3000000, "codecs": "avc1.4D401F,mp4a.40.2", "live": "live-720p", "ad": "ad-720p" },
+    { "name": "360p30", "resolution": "640x360", "bandwidth": 800000, "codecs": "avc1.4D401E,mp4a.40.2", "live": "live-360p", "ad": "ad-360p" }
+  ],
+  "breaks": [{ "at": 15, "segments": 8, "roll": "MIDROLL", "title": "3935266624" }],
+  "playerTypes": { "default": { "breaks": false }, "site": { "breaks": true }, "popout": { "breaks": true, "ahead": 2, "earlierMs": 1000 } }
+}

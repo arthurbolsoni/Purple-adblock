@@ -17,6 +17,7 @@ export type Setting = {
   pausePlayOnBreaks?: boolean;
   prewarmAtLoad?: boolean;
   alignBackupSequence?: boolean;
+  alignByLiveSequence?: boolean;
   restartOnSequenceBack?: boolean;
   skipBackupBehind?: boolean;
   parallelBackupFetch?: boolean;

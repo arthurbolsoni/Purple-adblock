@@ -644,7 +644,7 @@ Odd behaviors seen in the runs. Each task ends with its cause in a finding (and 
 - Tests: L3-11
 
 ### T-824 Black video on HEVC streams (#105)
-- [ ] Status · E8 · F-11 · open
+- [ ] Status · E8 · F-11 · B-058 · open, blocked: needs a logged-in session in a browser that plays HEVC, or the reporter's test of 2.7.0. Brave 156 on Linux, the browser the runs moved to, does not decode HEVC in Media Source (VA-API flags included), and Twitch's master leaves the HEVC source out for it (`FR_CODEC_NOT_REQUESTED`, and `AUTHZ_NOT_LOGGED_IN` logged out, B-058) ([finding](findings/2026-10-31-hevc-on-brave.md))
 - Origin: issue #105 (2025-03-08, a 2.6 release, Firefox 137 beta on Linux): on channels with Enhanced Broadcasting that send HEVC, the video stayed black with Purple on and played with it off. Builds before T-101 regenerated playlists without ads and lost `EXT-X-MAP`, and an fMP4 channel then played in 0 of 18 loads ([finding](findings/2026-10-08-rewritten-playlist-stall.md)); HEVC variants are fMP4. Since T-101 a playlist without ads reaches the player untouched, and since T-407 a backup comes in the codec family of the variant the player is on. The maintainer commented on #105 on 2026-10-10, asking for a test of 2.7.0.
 - Check: a channel whose master lists HEVC variants (`hvc1` or `hev1` in `CODECS`), loaded with 2.7.0 and in record mode (no Purple), in Firefox (`e2e/firefox.py`) and Edge: whether Twitch lists HEVC for that browser (`supported_codecs` in the page's usher request), the variant the player takes, the video moving; at a break, the codec of the backup variant and the video at each switch. At level 2, `sim/` with an HEVC rendition (`hevc` in `sim/src/media.rs`) and a break.
 - Done when: whether 2.7.0 plays HEVC streams, with and without breaks, is in a finding; a fix task if Purple causes a black video; the result commented on #105.
@@ -658,7 +658,7 @@ Odd behaviors seen in the runs. Each task ends with its cause in a finding (and 
 - Tests: soak ([`time_order_probe.py`](findings/probes/time_order_probe.py), [`av_buffer_probe.py`](findings/probes/av_buffer_probe.py))
 
 ### T-826 Backups numbered by the live sequence
-- [ ] Status · F-23 · B-054 · B-057 · open
+- [ ] Status · F-23 · F-27 · B-054 · B-057 · open: `alignByLiveSequence` (F-27, default on) with TS-826; `sim/` `earlierMs` and L2-13 (Brave, 3 runs each): by date-time the live segment at the switch requested again and the audio and video ends 2.03 s apart to the end of the run, by live number neither (ends within 0.08 s). The soak is next.
 - Origin: T-825. F-23 numbers a backup by the page's date-time, and after stitched breaks the page's playlist dates a segment 0.07 to 1.60 s earlier than the backups' (B-057). At 9 of 10 midroll starts on `/channel-d` the backup's copy of the page's newest segment got the next number, the player fetched that segment again, and the picture fell 2 s further behind the sound each time ([finding](findings/2026-10-31-same-segment-twice.md)). `EXT-X-TWITCH-LIVE-SEQUENCE` numbers the stream alike on every token.
 - Check:
   - F-23's shift from the live numbers when the page's reference playlist and the backup both carry `EXT-X-TWITCH-LIVE-SEQUENCE`: the page's `MEDIA-SEQUENCE` minus its live sequence, minus the backup's; by date-time as today when one of them lacks it. The same for a new playlist of a type already in use (another token of the same type).
