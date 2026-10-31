@@ -55,7 +55,7 @@ A backup token's media playlist came about 0.44 s after the worker asked for it 
 
 ### Sequence numbers and date-time
 
-Each token's playlist numbers the stream from its own base, a segment's `PROGRAM-DATE-TIME` minus its sequence number x 2 s. Tokens asked at the same time share it. The page token's base moves at each stitched midroll it gets; backup tokens asked before keep theirs, so they give the same moment a lower number (B-054, 2026-10-09, [finding](../findings/2026-10-09-sequence-numbering.md)). Segment boundaries of two tokens can be about 1 s apart (`.910` and `.875` past the second on `/channel-d`).
+Each token's playlist numbers the stream from its own base, a segment's `PROGRAM-DATE-TIME` minus its sequence number x 2 s. Tokens asked at the same time share it. The page token's base moves at each stitched midroll it gets; backup tokens asked before keep theirs, so they give the same moment a lower number (B-054, 2026-10-09, [finding](../findings/2026-10-09-sequence-numbering.md)). Segment date-times of two tokens can differ by a fraction of a second (`.910` and `.875` past the second on `/channel-d`). For the same segment (the same `EXT-X-TWITCH-LIVE-SEQUENCE` number) the page's playlist gave a date-time 0.07 to 1.60 s earlier than the backups' after stitched breaks (B-057, 2026-10-31, [finding](../findings/2026-10-31-same-segment-twice.md)): across tokens the live number tells the same segment, the date-time does not.
 
 ## Segment URIs
 

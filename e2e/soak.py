@@ -4,8 +4,9 @@ does during them (docs/server/) and what Purple delivers to the player.
     python e2e/soak.py <session> --mode extension|userscript|record [--debug] [--until HH:MM | --minutes N]
                        [--channel /name] [--avoid /a,/b] [--rotate MINUTES] [--out DIR] [--visible]
                        [--setting KEY=JSON ...] [--stop-after-breaks N] [--leave-after-breaks N] [--hop SECONDS]
+                       [--all-playlists]
 
-One Edge on a fresh temporary profile (deleted at the end). Every DRAIN seconds the recorder's arrays in the page
+One browser (Edge, or PURPLE_BROWSER) on a fresh temporary profile (deleted at the end). Every DRAIN seconds the recorder's arrays in the page
 (window.__e2e, and window.__purple.events with --debug) are emptied into JSONL files under
 <out>/<session>/ (default ~/purple-recordings/<date>-soak/), never inside the repo. Breaks are logged as they
 happen. The channel changes when it goes offline (also when the page plays a recorded video instead: no live media
@@ -15,6 +16,11 @@ once N stitched breaks (ad segments or stitched-ad markers) have ended; --until 
 --hop SECONDS the session goes from channel to channel, the directory's cards in random order: it leaves a channel
 SECONDS after opening it, or SECONDS after its last break ended (prerolls come at loads, T-818). Several sessions run in
 parallel as separate processes; each avoids the channels the others are on.
+
+Besides the recorder's arrays: the Media Source appends of e2e/mse-hook.js (mse.jsonl), and the browser's media log
+(CDP Media domain: the player's messages, errors, events and properties, mediaLog.jsonl). The texts of the media
+playlists the player got are kept when they carry ad markers, or all of them with --all-playlists (T-825: the date-time
+of each segment the player fetched).
 """
 import argparse
 import asyncio
@@ -30,6 +36,8 @@ import time
 import traceback
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import nodriver as uc
+
 import lib
 import twitch_selectors as sel
 from scenarios import common
@@ -132,6 +140,7 @@ DRAIN_JS = """(() => {
     delivered: take('delivered'),
     serverTexts: take('serverTexts'),
     playlists: take('playlists'),
+    mse: take('mse'),
     workerLog: take('workerLog'),
     csai: take('csai'),
     csaiAnswers: take('csaiAnswers'),
@@ -231,16 +240,43 @@ class Watch:
         self.last_break_end = None  # time of the last break end (--hop)
 
 
-async def drain(session, recorder, watch, mode, final=False):
+class MediaLog:
+    """The browser's media log for the session's tab (CDP Media domain, what chrome://media-internals shows), kept
+    until the next drain."""
+
+    def __init__(self):
+        self.entries = []
+
+    async def attach(self, tab):
+        for event, kind in ((uc.cdp.media.PlayerMessagesLogged, 'messages'), (uc.cdp.media.PlayerErrorsRaised, 'errors'),
+                            (uc.cdp.media.PlayerEventsAdded, 'events'), (uc.cdp.media.PlayerPropertiesChanged, 'properties')):
+            tab.add_handler(event, lambda e, kind=kind: self.add(kind, e))
+        await tab.send(uc.cdp.media.enable())
+
+    def add(self, kind, event):
+        items = {'messages': lambda: [{'level': m.level, 'message': m.message[:500]} for m in event.messages],
+                 'errors': lambda: [{'type': x.error_type, 'code': x.code, 'data': x.data} for x in event.errors],
+                 'events': lambda: [{'timestamp': x.timestamp, 'value': x.value[:500]} for x in event.events],
+                 'properties': lambda: [{'name': x.name, 'value': x.value[:300]} for x in event.properties]}[kind]()
+        for item in items:
+            self.entries.append({'wall': int(time.time() * 1000), 'player': str(event.player_id), 'kind': kind, **item})
+
+    def take(self):
+        entries, self.entries = self.entries, []
+        return entries
+
+
+async def drain(session, recorder, watch, mode, final=False, media_log=None, all_playlists=False):
     data = await lib.read(session.tab, DRAIN_JS % json.dumps(sel.as_dict()))
     wall = stamp()
     base = {'drain': wall, 'channel': watch.channel, 'load': watch.load}
+    data['mediaLog'] = media_log.take() if media_log else []
     watch.player_urls.update(d['url'] for d in data['delivered'] if (d.get('playlist') or {}).get('type') == 'media')
-    for name in ('server', 'delivered', 'serverTexts', 'workerLog', 'csai', 'csaiAnswers', 'media', 'events', 'transitions', 'player'):
+    for name in ('server', 'delivered', 'serverTexts', 'workerLog', 'csai', 'csaiAnswers', 'media', 'events', 'transitions', 'player', 'mse', 'mediaLog'):
         for entry in data[name]:
             recorder.write(name, {**base, **entry})
     for entry in data['playlists']:
-        if any(m in entry.get('text', '') for m in AD_TEXT_MARKERS):
+        if all_playlists or any(m in entry.get('text', '') for m in AD_TEXT_MARKERS):
             recorder.write('playlists', {**base, **entry})
     sample = {k: data[k] for k in ('url', 'video', 'adOverlay', 'playerError', 'contentGate', 'workers', 'timeOrigin')}
     sample['counts'] = {k: len(data[k]) for k in ('server', 'delivered', 'serverTexts', 'workerLog', 'csai', 'csaiAnswers', 'events', 'transitions')}
@@ -334,6 +370,8 @@ async def soak(args, recorder, end):
     stitched_before, offline = 0, set()  # stitched breaks ended on earlier channels; channels left as offline
     try:
         session = await lib.launch(args.mode, profile=profile, visible=args.visible, debug=args.debug)
+        media_log = MediaLog()
+        await media_log.attach(session.tab)
         settings = dict(args.setting or [])
         if settings:
             await lib.set_storage(session, **settings)
@@ -351,7 +389,7 @@ async def soak(args, recorder, end):
                     continue
             await asyncio.sleep(DRAIN)
             try:
-                data = await drain(session, recorder, watch, args.mode)
+                data = await drain(session, recorder, watch, args.mode, media_log=media_log, all_playlists=args.all_playlists)
                 failures = 0
             except Exception as err:
                 failures += 1
@@ -392,7 +430,7 @@ async def soak(args, recorder, end):
                 stitched_before += watch.stitched_ended
                 watch = None
         if watch:
-            await drain(session, recorder, watch, args.mode, final=True)
+            await drain(session, recorder, watch, args.mode, final=True, media_log=media_log, all_playlists=args.all_playlists)
             minutes = (time.time() - watch.started) / 60
             recorder.write('watches', {'channel': watch.channel, 'load': watch.load, 'start': stamp(watch.started * 1000),
                                        'end': stamp(), 'minutes': round(minutes, 1), 'breaks': watch.breaks, 'reason': ended})
@@ -443,6 +481,7 @@ def main():
     ap.add_argument('--visible', action='store_true')
     ap.add_argument('--setting', action='append', type=setting, metavar='KEY=JSON',
                     help='extension mode: a stored setting before the first channel, e.g. pausePlayDelayMs=0 (repeatable)')
+    ap.add_argument('--all-playlists', action='store_true', help='keep the text of every media playlist the player got (T-825)')
     args = ap.parse_args()
     sys.stdout.reconfigure(encoding='utf-8')
     recorder = Recorder(os.path.join(args.out, args.session))

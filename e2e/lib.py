@@ -1,11 +1,13 @@
-"""Edge + nodriver for the level 2 and 3 tests (docs/tests.md, "Browser setup").
+"""Edge + nodriver for the level 2 and 3 tests (docs/tests.md, "Browser setup"); PURPLE_BROWSER runs another Chromium
+browser instead (Brave on Linux for T-825).
 
 - Profile: ~/nodriver/profile-edge-purple, used only by these tests.
 - Modes: `extension` loads the unpacked Chromium build and nothing else; `userscript` runs with every
   extension off and injects the built userscript at document start in the main world; `record` runs
   with every extension off and without Purple.
 - On Windows, Edge starts on a separate hidden Win32 desktop (not headless): no window on the user's
-  screen, no physical input. nodriver drives it through CDP, and pages get focus emulation.
+  screen, no physical input. Elsewhere the browser runs headless (--headless=new) unless `visible`, with the user
+  agent of its headed build. nodriver drives it through CDP, and pages get focus emulation.
 - Page state is read as JSON. No screenshots.
 """
 import asyncio
@@ -25,13 +27,19 @@ import twitch_selectors as sel
 
 REPO = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 EDGE = r'C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe'
+# PURPLE_BROWSER: another Chromium browser's executable, e.g. /opt/brave-bin/brave
+BROWSER = os.environ.get('PURPLE_BROWSER') or EDGE
+BROWSER_NAME = os.path.basename(BROWSER).lower()
+BRAVE = BROWSER_NAME.startswith('brave')
+# the browser's extensions page: Brave opens chrome:// pages as brave://
+EXTENSIONS_PAGE = 'edge://extensions' if BROWSER_NAME.startswith('msedge') else 'chrome://extensions'
 PROFILE = os.path.expanduser('~/nodriver/profile-edge-purple')
 # logged in to Twitch (TR-007), apart from PROFILE so the logged-out runs keep their conditions:
 # python e2e/run.py <scenario> --profile ~/nodriver/profile-edge-purple-login
 LOGIN_PROFILE = os.path.expanduser('~/nodriver/profile-edge-purple-login')
 # PURPLE_EXTENSION_BUILD: another unpacked build, for instance an older commit's (T-806)
 EXTENSION_BUILD = os.environ.get('PURPLE_EXTENSION_BUILD') or os.path.join(REPO, 'dist', 'purple-adblock-chromium')
-# seconds for edge://extensions to list the unpacked build as enabled; a fresh profile took over 20 s twice in about 30 runs
+# seconds for the extensions page to list the unpacked build as enabled; a fresh profile took over 20 s twice in about 30 runs
 EXTENSION_WAIT = 45
 USERSCRIPT_BUILD = os.path.join(REPO, 'dist', 'purpleadblocker.user.js')
 MODES = ('extension', 'userscript', 'record', 'sim')
@@ -40,7 +48,7 @@ MODES = ('extension', 'userscript', 'record', 'sim')
 SIM_HOST_RULES = '--host-resolver-rules=MAP * ~NOTFOUND, EXCLUDE 127.0.0.1'
 WARM_UP_MARKER = 'purple-e2e-warm-up'  # in the profile directory, written after the warm-up launch
 
-# on edge://extensions: turns developer mode on and reads it back; null until the page's API is there
+# on the extensions page: turns developer mode on and reads it back; null until the page's API is there
 DEVELOPER_MODE = """(() => {
   const api = window.chrome && chrome.developerPrivate;
   if (!api) return null;
@@ -64,8 +72,10 @@ def _read(name):
         return f.read()
 
 
-# recorder.js with e2e/worker-logger.js inserted as a string (prepended to every worker script)
-RECORDER = _read('recorder.js').replace('__WORKER_LOGGER__', json.dumps(_read('worker-logger.js')))
+# recorder.js with e2e/worker-logger.js and e2e/mse-hook.js inserted as a string (prepended to every worker script),
+# then mse-hook.js for the page itself
+MSE_HOOK = _read('mse-hook.js')
+RECORDER = _read('recorder.js').replace('__WORKER_LOGGER__', json.dumps(_read('worker-logger.js') + '\n' + MSE_HOOK)) + '\n' + MSE_HOOK
 
 
 def browser_args(mode, extension=EXTENSION_BUILD):
@@ -77,11 +87,18 @@ def browser_args(mode, extension=EXTENSION_BUILD):
     args = ['--lang=en-US', '--accept-lang=en-US', '--window-size=1400,950',
             '--disable-component-extensions-with-background-pages', '--disable-sync', '--mute-audio']
     if mode == 'extension':
-        args += [f'--load-extension={extension}', f'--disable-extensions-except={extension}']
+        # Chromium 137 and later ignore --load-extension unless DisableLoadExtensionCommandLineSwitch is off; the last
+        # --disable-features wins, so nodriver's own two stay in it
+        args += [f'--load-extension={extension}', f'--disable-extensions-except={extension}',
+                 '--disable-features=IsolateOrigins,site-per-process,DisableLoadExtensionCommandLineSwitch']
     else:
         args.append('--disable-extensions')
     if mode == 'sim':
         args.append(SIM_HOST_RULES)
+    if BRAVE:
+        # a new profile gets Shields' filter lists through the component updater: without it Shields blocks nothing,
+        # and only Purple acts on twitch.tv
+        args.append('--disable-component-update')
     # PURPLE_EDGE_ARGS: more flags, separated by '|' (T-806: a host made unreachable with --host-resolver-rules)
     args += [a for a in os.environ.get('PURPLE_EDGE_ARGS', '').split('|') if a]
     return args
@@ -99,12 +116,12 @@ def userscript_source(path=USERSCRIPT_BUILD):
 # --- processes ----------------------------------------------------------------------------
 
 def profile_processes(profile=PROFILE):
-    """msedge.exe processes whose command line contains the profile directory name."""
+    """The browser's processes (msedge.exe by default) whose command line contains the profile directory name."""
     marker = os.path.basename(os.path.normpath(profile)).lower()
     found = []
     for p in psutil.process_iter(['name', 'cmdline']):
         try:
-            if (p.info['name'] or '').lower() != 'msedge.exe':
+            if (p.info['name'] or '').lower() != BROWSER_NAME:
                 continue
             if any(marker in arg.lower() for arg in p.info['cmdline'] or []):
                 found.append(p)
@@ -139,7 +156,7 @@ def _wait_port(port, alive, timeout=30):
             if s.connect_ex(('127.0.0.1', port)) == 0:
                 return
         if not alive():
-            raise RuntimeError('Edge exited before opening the CDP port (profile held by another process?)')
+            raise RuntimeError('the browser exited before opening the CDP port (profile held by another process?)')
         time.sleep(0.25)
     raise TimeoutError(f'CDP port {port} did not open in {timeout}s')
 
@@ -258,7 +275,7 @@ async def launch(mode, profile=PROFILE, visible=False, warm_up=True, debug=False
         # only in developer mode (docs/findings/2026-10-07-e2e-harness.md)
         warm = await launch(mode, profile, visible, warm_up=False)
         try:
-            await warm.navigate('edge://extensions')
+            await warm.navigate(EXTENSIONS_PAGE)
             on = await wait_for(warm.tab, DEVELOPER_MODE, timeout=20)
         finally:
             await warm.close()
@@ -267,15 +284,18 @@ async def launch(mode, profile=PROFILE, visible=False, warm_up=True, debug=False
         with open(marker, 'w', encoding='utf-8') as f:
             f.write('developer mode on\n')
 
-    config = uc.Config(user_data_dir=profile, browser_executable_path=EDGE, headless=False, browser_args=browser_args(mode))
+    headless = os.name != 'nt' and not visible
+    args = browser_args(mode) + ([f'--user-agent={headed_user_agent()}'] if headless else [])
+    config = uc.Config(user_data_dir=profile, browser_executable_path=BROWSER, headless=headless, browser_args=args)
     config.host, config.port = '127.0.0.1', _free_port()
-    cmdline = subprocess.list2cmdline([EDGE, *config()])
     desktop = None
     if os.name == 'nt' and not visible:
         desktop = HiddenDesktop()
-        pid = desktop.spawn(cmdline)
+        pid = desktop.spawn(subprocess.list2cmdline([BROWSER, *config()]))
+    elif os.name == 'nt':
+        pid = subprocess.Popen(subprocess.list2cmdline([BROWSER, *config()])).pid
     else:
-        pid = subprocess.Popen(cmdline).pid
+        pid = subprocess.Popen([BROWSER, *config()], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL).pid
     try:
         _wait_port(config.port, lambda: psutil.pid_exists(pid))
         browser = await uc.Browser.create(config=config)
@@ -291,7 +311,17 @@ async def launch(mode, profile=PROFILE, visible=False, warm_up=True, debug=False
     return session
 
 
-# on edge://extensions: id of the unpacked Purple build; null until the page's API is there
+def headed_user_agent():
+    """The user agent of the browser's headed build (headless says HeadlessChrome), from its --version line, e.g.
+    "Brave Browser 156.1.98.60": the reduced Chrome user agent of that major version."""
+    line = subprocess.run([BROWSER, '--version'], capture_output=True, text=True, timeout=30).stdout
+    major = next((word.split('.')[0] for word in line.split() if word[:1].isdigit()), None)
+    if not major:
+        raise RuntimeError(f'no version in {line!r}')
+    return f'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/{major}.0.0.0 Safari/537.36'
+
+
+# on the extensions page: id of the unpacked Purple build; null until the page's API is there
 EXTENSION_ID = """(() => {
   const api = window.chrome && chrome.developerPrivate;
   if (!api) return null;
@@ -304,7 +334,7 @@ EXTENSION_ID = """(() => {
 
 async def set_extension_settings(session, **settings):
     """chrome.storage.local.set on the unpacked build, from its popup page in a new tab."""
-    await session.navigate('edge://extensions')
+    await session.navigate(EXTENSIONS_PAGE)
     extension = await wait_for(session.tab, EXTENSION_ID, timeout=EXTENSION_WAIT)
     if not extension:
         raise RuntimeError('the unpacked Purple build is not enabled')
@@ -313,9 +343,9 @@ async def set_extension_settings(session, **settings):
 
 
 async def set_storage(session, **settings):
-    """set_extension_settings without touching the session's tab: edge://extensions and the popup page open in
+    """set_extension_settings without touching the session's tab: the extensions page and the popup page open in
     tabs of their own, so a channel playing in the session's tab keeps playing (L3-07)."""
-    page = await session.browser.get('edge://extensions', new_tab=True)
+    page = await session.browser.get(EXTENSIONS_PAGE, new_tab=True)
     try:
         extension = await wait_for(page, EXTENSION_ID, timeout=EXTENSION_WAIT)
     finally:

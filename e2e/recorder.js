@@ -3,7 +3,7 @@
 // Same worker checks as docs/findings/probes/worker_boot_probe.py, plus a log from inside each worker.
 (() => {
   if (window.__e2e) return;
-  const state = (window.__e2e = { workers: [], messages: [], hookAt: null, workerLog: [], media: [], playlists: [], server: [], delivered: [], csai: [], serverTexts: [] });
+  const state = (window.__e2e = { workers: [], messages: [], hookAt: null, workerLog: [], media: [], playlists: [], server: [], delivered: [], csai: [], serverTexts: [], mse: [] });
   const LOG_LIMIT = 2000;
   const now = () => Math.round(performance.now());
 
@@ -30,7 +30,7 @@
     if (type === "getSettings" || type === "setSettings") state.messages.push({ type, at: Math.round(performance.now()) });
   });
 
-  // e2e/worker-logger.js, inserted by lib.py; runs first in every worker
+  // e2e/worker-logger.js and e2e/mse-hook.js, inserted by lib.py; run first in every worker
   const WORKER_PREFIX = __WORKER_LOGGER__;
   new BroadcastChannel("purple-e2e").onmessage = (e) => {
     const kind = e.data && e.data.kind;
@@ -44,6 +44,9 @@
       if (state.serverTexts.length > 300) state.serverTexts.shift();
     } else if (kind === "server" || kind === "delivered") {
       if (state[kind].length < 3000) state[kind].push(e.data);
+    } else if (kind === "mse") {
+      // e2e/mse-hook.js, from the page and the workers
+      if (state.mse.length < 6000) state.mse.push(e.data);
     } else if (state.workerLog.length < LOG_LIMIT) state.workerLog.push(e.data);
   };
 
