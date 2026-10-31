@@ -53,6 +53,7 @@ class Sim:
         self.bridged = []  # (method, url, status) of every request answered through the bridge
         self.errors = []
         self.cancelled = []  # URLs the page cancelled before the answer reached it (not an error)
+        self.bridges = []  # (tab, handler) of each bridge, removed by unbridge
 
     def call(self, method, path, body=None):
         request = urllib.request.Request(self.base + path, data=body, method=method)
@@ -116,7 +117,19 @@ class Sim:
             task.add_done_callback(tasks.discard)
 
         tab.add_handler(cdp.fetch.RequestPaused, on_paused)
+        self.bridges.append((tab, on_paused))
         await tab.send(cdp.fetch.enable(patterns=[cdp.fetch.RequestPattern(url_pattern=p, request_stage=cdp.fetch.RequestStage.REQUEST) for p in PATTERNS]))
+
+    async def unbridge(self):
+        """Removes the bridge's handlers and Fetch: a tab bridged again for the next sim/ run (L2-08 runs four on one
+        tab) would otherwise also answer from this one, stopped by then, and the page would not load."""
+        for tab, handler in self.bridges:
+            try:
+                tab.remove_handler(cdp.fetch.RequestPaused, handler)
+                await tab.send(cdp.fetch.disable())
+            except Exception:
+                pass
+        self.bridges.clear()
 
 
 @asynccontextmanager
@@ -141,6 +154,7 @@ async def running(scenario):
         sim.load(scenario)
         yield sim
     finally:
+        await sim.unbridge()
         process.terminate()
         try:
             process.wait(timeout=5)
