@@ -650,6 +650,16 @@ Odd behaviors seen in the runs. Each task ends with its cause in a finding (and 
 - Done when: whether 2.7.0 plays HEVC streams, with and without breaks, is in a finding; a fix task if Purple causes a black video; the result commented on #105.
 - Tests: L3 run in Firefox and Edge, L2 scenario with HEVC; TS for any change
 
+### T-825 Audio out of step with the video during a break on Firefox (#112)
+- [ ] Status · E4 · E5 · F-14 · F-23 · F-24 · open
+- Origin: issue #112 (2026-10-19, the Firefox add-on, Firefox 157, not logged in to Twitch, `/channel-ai`; no Purple version, time, console or steps; 2.7.0 has been the addons.mozilla.org version since 2026-10-10): during an ad the video paused briefly and went on, and the audio then skipped "between present and past". The player asks for the number after the last segment it fetched, whatever the date-time under that number (T-816), so a switch to a source that gives the same moment a higher number hands the player a moment it already has. With F-23 a backup in a break is numbered from the page's last playlist before the break, a backup segment starting inside a page segment taking the next number; after a stitched midroll the page's playlist numbers the stream further ahead (B-054), so at the switch back to it at the break end its next number may start before the end of the player's last segment. Inside a break Purple also moves between backups and the page's playlist with merged or blanked segments (E5, F-14) every few seconds (350 switches in 17 sessions of soaks d to h, T-816). The soaks measured still video and decoded frames, never the audio nor the date-time of the segments the player fetched in order; `e2e/soak.py` keeps a delivered playlist's text only when it carries ad markers, so the switch back at a break end has no text. Every break run so far was on Edge; Firefox ran the injection checks only (T-111).
+- Check:
+  - the date-time of each segment the player fetched, in order, from the texts of every playlist Purple delivered (30 s before a break to 30 s after it) and the player's segment fetches: steps back (a moment played again) and forward (a moment skipped) at each switch of source;
+  - Firefox at breaks: `e2e/firefox.py` with the current build on channels with midrolls, not logged in, `/channel-ai` among them; the `<video>`'s `mozRequestDebugInfo()` each second (audio and video buffered ranges, positions) and whether the audio leaves the video and comes back; the same channels on Edge;
+  - level 2: `sim/` with the page's numbers moving ahead at the break (B-054; `ahead` is fixed for a load today) and the break ending on the page's playlist.
+- Done when: the cause is in a finding; a fix task if Purple hands the player a moment it already played or skips one, or if Firefox's player needs something Edge's does not; the result commented on #112.
+- Tests: L3 in Firefox and Edge, L2 with the page's numbers moving at the break; a level 1 test for any change
+
 ## Open decisions
 
 - E12 (proxy): the servers went offline in 2023 (#79) and the worker does not read `toggleProxy` or `proxyUrl`. Either bring back the proxy path with a user-provided URL or keep only the UI.
