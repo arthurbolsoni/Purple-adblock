@@ -5,7 +5,7 @@ import { Server, StreamUrl, type VariantTarget } from "../stream/interface/strea
 import { blankAds, mergeWithBackups, stripAdDateranges } from "./m3u8";
 import { AdClass, detectAds, isCleanBackup } from "./ad-detector";
 import { AdBreak } from "./ad-break";
-import { newestNumber, sequenceReference, sequenceShift, shiftSequence, type SequenceReference } from "./sequence";
+import { liveNumberAt, newestNumber, sequenceReference, sequenceShift, shiftSequence, type SequenceReference } from "./sequence";
 import { parseVariants } from "../stream/master";
 import type { PurpleEvent, WorkerContext } from "../../scope";
 
@@ -47,7 +47,7 @@ export class Player {
   private pageSequence: SequenceReference | null = null; // F-23: newest live segment of the last page playlist without ads
   private sequenceShifts = new Map<string, number>(); // F-23: backup variant URL (without query) -> shift, for this break
   private source = MAIN_SOURCE; // F-24: where the playlist being built comes from: the page's, or a backup variant URL
-  private delivered: { source: string; newest: number } | null = null; // F-24: the last playlist given to the player
+  private delivered: { source: string; newest: number; newestLive: number | null } | null = null; // F-24, F-28: the last playlist given to the player
   // F-15 (T-601): pause/play at the edges of a break (E6); with reloadAfterAd, a reload at its end
   private adBreak = new AdBreak({
     pauseAndPlay: () => this.edgePauseAndPlay(),
@@ -172,15 +172,28 @@ export class Player {
   // from another source than the last one and lists nothing up to that one's newest number (after a pre-roll the
   // page's playlist numbers from 0, B-029, while the backups number from the live sequence), it would wait for numbers
   // that do not come: with restartOnSequenceBack (default on) it is restarted, E6's pause and play, once
+  // F-28 (T-826): when the playlist lists a live segment the player already has under the number after the last one
+  // the player has (the page's playlist numbers the stream further ahead after a stitched midroll, B-054, and comes
+  // back untouched at the end of the break), the player would fetch it again: it writes its audio over itself and
+  // appends its video again, so the picture falls behind the sound by the segments fetched again. With restartOnRepeat
+  // (default on) it is restarted, E6's pause and play, so it starts over on that playlist
   private followSequence(text: string) {
     const newest = newestNumber(text);
     if (newest == null) return;
     const previous = this.delivered;
-    this.delivered = { source: this.source, newest };
-    if (!previous || previous.source === this.source || newest >= previous.newest) return;
-    if (this.setting?.restartOnSequenceBack === false) return;
-    this.scope.logger("sequence back", previous.newest, "->", newest);
-    this.emit({ type: "sequenceRestart", count: previous.newest - newest });
+    this.delivered = { source: this.source, newest, newestLive: liveNumberAt(text, newest) };
+    if (!previous) return;
+    if (previous.source !== this.source && newest < previous.newest && this.setting?.restartOnSequenceBack !== false) {
+      this.scope.logger("sequence back", previous.newest, "->", newest);
+      this.emit({ type: "sequenceRestart", count: previous.newest - newest });
+      this.pauseAndPlay();
+      return;
+    }
+    if (this.setting?.restartOnRepeat === false || previous.newestLive == null) return;
+    const next = liveNumberAt(text, previous.newest + 1);
+    if (next == null || next > previous.newestLive) return;
+    this.scope.logger("segment again", previous.newestLive, "->", next);
+    this.emit({ type: "segmentRepeat", count: previous.newestLive - next + 1 });
     this.pauseAndPlay();
   }
 

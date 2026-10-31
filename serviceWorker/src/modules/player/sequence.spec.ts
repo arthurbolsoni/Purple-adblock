@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { newestNumber, sequenceReference, sequenceShift, shiftSequence } from "./sequence";
+import { liveNumberAt, newestNumber, sequenceReference, sequenceShift, shiftSequence } from "./sequence";
 
 const T0 = Date.parse("2026-10-09T02:46:00.910Z");
 
@@ -115,5 +115,25 @@ describe("newestNumber", () => {
 
   test("null without MEDIA-SEQUENCE", () => {
     expect(newestNumber(playlist(100, 3, T0).replace(/#EXT-X-MEDIA-SEQUENCE:\d+\n/, ""))).toBeNull();
+  });
+});
+
+describe("liveNumberAt", () => {
+  test("EXT-X-TWITCH-LIVE-SEQUENCE + the offset from MEDIA-SEQUENCE, prefetch URIs included", () => {
+    const text = playlist(107, 14, T0, [], "\n", 103);
+    expect(liveNumberAt(text, 107)).toBe(103);
+    expect(liveNumberAt(text, 121)).toBe(117);
+  });
+
+  test("null for a number the playlist does not list", () => {
+    const text = playlist(107, 14, T0, [], "\n", 103);
+    expect(liveNumberAt(text, 106)).toBeNull();
+    expect(liveNumberAt(text, 122)).toBeNull();
+  });
+
+  test("null without EXT-X-TWITCH-LIVE-SEQUENCE or MEDIA-SEQUENCE, or with ad segments", () => {
+    expect(liveNumberAt(playlist(100, 3, T0, [], "\n", null), 101)).toBeNull();
+    expect(liveNumberAt(playlist(100, 3, T0).replace(/#EXT-X-MEDIA-SEQUENCE:\d+\n/, ""), 101)).toBeNull();
+    expect(liveNumberAt(playlist(100, 4, T0, [2, 3]), 101)).toBeNull();
   });
 });

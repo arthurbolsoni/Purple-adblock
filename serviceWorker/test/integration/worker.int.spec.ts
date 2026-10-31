@@ -1152,6 +1152,100 @@ describe("player restart when the numbers go back", () => {
   });
 });
 
+// F-28 (T-826): soak 2026-10-31 14:38, /channel-d: the page's playlist came back after a stitched midroll numbering the
+// stream 4 further ahead (B-054), listing the 4 segments the player had just fetched from the backup under the numbers
+// after its last; the player fetched them again and the picture fell 8 s behind the sound
+describe("player restart when it would get a segment again", () => {
+  const SEGMENTS = "https://edge.j.cloudfront.hls.ttvnw.net/v1/segment/";
+  const BASE = Date.parse("2026-10-31T17:35:00.000Z") - 100 * 2000; // live segment L at BASE + L x 2 s on every token
+
+  // `count` 2 s segments from MEDIA-SEQUENCE `first`, numbered `ahead` past their live numbers and named by live number;
+  // `ads`: indexes with an ad title; prefetch URIs after; `live`: false for no EXT-X-TWITCH-LIVE-SEQUENCE
+  const playlist = (prefix: string, first: number, count: number, { ahead = 0, ads = [] as number[], prefetch = 2, live = true } = {}) => {
+    const lines = ["#EXTM3U", "#EXT-X-VERSION:3", "#EXT-X-TARGETDURATION:6", `#EXT-X-MEDIA-SEQUENCE:${first}`, ...(live ? [`#EXT-X-TWITCH-LIVE-SEQUENCE:${first - ahead}`] : [])];
+    for (let i = 0; i < count; i++) {
+      const l = first - ahead + i;
+      lines.push(`#EXT-X-PROGRAM-DATE-TIME:${new Date(BASE + l * 2000).toISOString()}`, `#EXTINF:2.000,${ads.includes(i) ? "Amazon|AD_ID" : "live"}`, `${SEGMENTS}${prefix}-${l}.ts`);
+    }
+    for (let p = 1; p <= prefetch; p++) lines.push(`#EXT-X-TWITCH-PREFETCH:${SEGMENTS}${prefix}-${first - ahead + count - 1 + p}.ts`);
+    return lines.join("\n");
+  };
+  const free = playlist("live", 100, 14); // live 100 to 113, prefetch 114 and 115
+  const withAds = playlist("live", 101, 16, { ads: [14, 15], prefetch: 0 });
+  const backup = playlist("backup", 101, 14); // live 101 to 114, prefetch 115 and 116: the player's newest is 116
+  const renumbered = playlist("live", 107, 14, { ahead: 4 }); // live 103 to 116 as 107 to 120, prefetch 117 and 118
+
+  const run = async (settings: Record<string, unknown>, main: string[], backups: string[]) => {
+    const worker = createWorkerScope(undefined, { productDefaults: true });
+    worker.twitch.master("channel", masterFor(""));
+    worker.send("setSettings", { whitelist: [], toggleProxy: false, proxyUrl: "", debug: true, backupPlayerTypes: [StreamType.FRONTPAGE], lowQualityFallback: false, prewarmAtLoad: false, ...settings });
+    worker.twitch.mediaPlaylist(MAIN, ...main);
+    worker.twitch.mediaPlaylist(FRONTPAGE, ...backups);
+    await worker.text(USHER);
+    worker.player.currentStream().setStreamAccess(masterFor("frontpage-"), StreamType.FRONTPAGE);
+    worker.player.currentStream().createStreamAccess = async () => {};
+    const out: string[] = [];
+    for (let i = 0; i < main.length; i++) out.push(await worker.text(MAIN));
+    return {
+      out,
+      pauses: worker.posted.filter((m) => m.type === "pause").length,
+      repeats: worker.posted.filter((m) => m.type === "purpleEvent" && m.event.type === "segmentRepeat").map((m) => m.event.count),
+    };
+  };
+
+  test("the page's playlist after a break listing the backup's last segments under the next numbers: pause and play once", async () => {
+    const { out, pauses, repeats } = await run({}, [free, withAds, renumbered], [backup]);
+
+    expect(out[1]).toBe(backup);
+    expect(out[2]).toBe(renumbered);
+    // 117 is live 113 on the page's playlist; the player had up to live 116
+    expect(repeats).toEqual([4]);
+    expect(pauses).toBe(1);
+  });
+
+  test("restartOnRepeat off: no pause", async () => {
+    const { pauses, repeats } = await run({ restartOnRepeat: false }, [free, withAds, renumbered], [backup]);
+
+    expect(repeats).toEqual([]);
+    expect(pauses).toBe(0);
+  });
+
+  test("the page's playlist renumbered between two of its own polls: pause and play once", async () => {
+    // the player had up to 115 (live 115); now 116 is live 112
+    const { pauses, repeats } = await run({}, [free, playlist("live", 105, 14, { ahead: 4 })], []);
+
+    expect(repeats).toEqual([4]);
+    expect(pauses).toBe(1);
+  });
+
+  test("the page's playlist going on after the break with the live segment after the player's: no pause", async () => {
+    const after = playlist("live", 103, 14); // live 103 to 116, prefetch 117 and 118: 117 is live 117
+    const { pauses, repeats } = await run({}, [free, withAds, after, playlist("live", 104, 14)], [backup]);
+
+    expect(repeats).toEqual([]);
+    expect(pauses).toBe(0);
+  });
+
+  // soak 2026-10-31 15:16: after a preroll the page numbers from 0 (B-029); a playlist numbering the stream thousands
+  // higher does not list the number after the player's at all
+  test("a playlist that does not list the number after the player's: no pause", async () => {
+    const { pauses, repeats } = await run({}, [playlist("live", 10, 14, { ahead: -2427 }), playlist("live", 2440, 14)], []);
+
+    expect(repeats).toEqual([]);
+    expect(pauses).toBe(0);
+  });
+
+  test("without EXT-X-TWITCH-LIVE-SEQUENCE: no pause", async () => {
+    const { pauses } = await run(
+      {},
+      [playlist("live", 100, 14, { live: false }), playlist("live", 101, 16, { ads: [14, 15], prefetch: 0, live: false }), playlist("live", 107, 14, { ahead: 4, live: false })],
+      [playlist("backup", 101, 14, { live: false })],
+    );
+
+    expect(pauses).toBe(0);
+  });
+});
+
 // F-25 (T-820): soak j 16:08, a switch to a backup token asked a moment before, whose playlist listed nothing past the
 // player's newest number by date-time: the video stood still 2 s until it moved
 describe("a backup that lists nothing past the player's", () => {

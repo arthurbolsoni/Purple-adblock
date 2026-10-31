@@ -17,7 +17,7 @@ Phases run in order. Inside a phase, the "Depends on" column says what must come
 | 5. Playlist assembly | T-501, T-502 | T-101, T-201 |
 | 6. Player control and settings | T-601 to T-604 | T-107, T-201 |
 | 7. Build and release | T-701 to T-706 | Phase 0 |
-| 8. Investigations | T-801 to T-827 | - |
+| 8. Investigations | T-801 to T-828 | - |
 
 ## Phase 0: test base
 
@@ -651,14 +651,14 @@ Odd behaviors seen in the runs. Each task ends with its cause in a finding (and 
 - Tests: L3 run in Firefox and Edge, L2 scenario with HEVC; TS for any change
 
 ### T-825 Audio out of step with the video during a break on Firefox (#112)
-- [ ] Status · E4 · F-23 · B-054 · B-057 · cause found 2026-10-31, fix in T-826; the comment on #112 is pending. Soaks on Brave 156 (the maintainer moved the browser runs from Edge and Firefox to Brave; Firefox not run). On a TS channel watched for 114 min (`/channel-d`), the player got the segment it had just played again at 9 of 10 midroll starts, and 6 more times inside breaks. Each time it wrote the segment's audio over the same 2 s and appended its video after the video it had, so the picture ran 2 s further behind the sound: 35.7 s behind after the last midroll. No lag on 7 loads without Purple. At the midroll starts the cause is F-23: after stitched breaks the page's playlist dates a segment 0.07 to 1.60 s earlier than the backups' (B-057), and F-23, which numbers backups by date-time rounded up, gave the backup's copy of the page's newest segment the next number ([finding](findings/2026-10-31-same-segment-twice.md))
+- [x] Status · E4 · F-23 · B-054 · B-057 · done 2026-10-31, fix in T-826 (F-27, F-28); commented on #112 the same day. Soaks on Brave 156 (the maintainer moved the browser runs from Edge and Firefox to Brave; Firefox not run). On a TS channel watched for 114 min (`/channel-d`), the player got the segment it had just played again at 9 of 10 midroll starts, and 6 more times inside breaks. Each time it wrote the segment's audio over the same 2 s and appended its video after the video it had, so the picture ran 2 s further behind the sound: 35.7 s behind after the last midroll. No lag on 7 loads without Purple. At the midroll starts the cause is F-23: after stitched breaks the page's playlist dates a segment 0.07 to 1.60 s earlier than the backups' (B-057), and F-23, which numbers backups by date-time rounded up, gave the backup's copy of the page's newest segment the next number ([finding](findings/2026-10-31-same-segment-twice.md))
 - Origin: issue #112 (2026-10-19, the Firefox add-on, Firefox 157, not logged in to Twitch, `/channel-ai`; no Purple version, time, console or steps; 2.7.0 has been the addons.mozilla.org version since 2026-10-10): during an ad the video paused briefly and went on, and the audio then skipped "between present and past". The soaks so far had measured still video and decoded frames, never the audio nor the order of the segments the player fetched.
 - Files: `e2e/mse-hook.js`, `e2e/recorder.js`, `e2e/lib.py` (`PURPLE_BROWSER`), `e2e/soak.py` (`--all-playlists`, `mse.jsonl`, `mediaLog.jsonl`)
 - Done when: the cause is in a finding; a fix task; the result commented on #112.
 - Tests: soak ([`time_order_probe.py`](findings/probes/time_order_probe.py), [`av_buffer_probe.py`](findings/probes/av_buffer_probe.py))
 
 ### T-826 Backups numbered by the live sequence
-- [ ] Status · F-23 · F-27 · B-054 · B-057 · open: `alignByLiveSequence` (F-27, default on) with TS-826; `sim/` `earlierMs` and L2-13 (Brave, 3 runs each): by date-time the live segment at the switch requested again and the audio and video ends 2.03 s apart to the end of the run, by live number neither (ends within 0.08 s). The soak is next.
+- [x] Status · F-23 · F-27 · F-28 · B-054 · B-057 · done 2026-10-31: `alignByLiveSequence` (F-27) and `restartOnRepeat` (F-28), both on by default, with TS-826. L2-13: by date-time the live segment at the switch requested again and the audio and video ends 2.03 s apart, by live number neither (3 runs each). The first soak with F-27 alone (`/channel-d`, 4 midrolls) had every midroll start continuous and every midroll end fetching the backup's last 4 or 5 segments again (the page's numbers moved 4 or 5 ahead inside the break, B-054): 8 to 10 s of lag each. With F-28, L2-14 (`sim/` `aheadAfterBreak`): one restart at the page's playlist after the break and the ends within 0.06 s, against 8.05 s apart without it (3 runs each); soak `t826-f28`, 3 midrolls on `/channel-al`: 3 restarts (5 and 6 segments), the lag +0.04 s at the end, no still of 2 s or more. Two restarts of F-28 during a preroll, with the page numbered from 0, led to the check only counting a number the new playlist lists ([finding](findings/2026-10-31-same-segment-twice.md#with-f-28))
 - Origin: T-825. F-23 numbers a backup by the page's date-time, and after stitched breaks the page's playlist dates a segment 0.07 to 1.60 s earlier than the backups' (B-057). At 9 of 10 midroll starts on `/channel-d` the backup's copy of the page's newest segment got the next number, the player fetched that segment again, and the picture fell 2 s further behind the sound each time ([finding](findings/2026-10-31-same-segment-twice.md)). `EXT-X-TWITCH-LIVE-SEQUENCE` numbers the stream alike on every token.
 - Check:
   - F-23's shift from the live numbers when the page's reference playlist and the backup both carry `EXT-X-TWITCH-LIVE-SEQUENCE`: the page's `MEDIA-SEQUENCE` minus its live sequence, minus the backup's; by date-time as today when one of them lacks it. The same for a new playlist of a type already in use (another token of the same type).
@@ -671,9 +671,16 @@ Odd behaviors seen in the runs. Each task ends with its cause in a finding (and 
 - Tests: TS-826, L2-13, soak
 
 ### T-827 The video stands still 2 s about every 88 s on an fMP4 channel
-- [ ] Status · open
+- [x] Status · B-054 · F-28 · done 2026-10-31: Purple's. With and without Purple on `/channel-ak` at the same time, 18 stills against 2 and a median latency of 10.1 s against 4.3 s. At the end of the midroll the page's playlist came back numbering the stream further ahead (B-054) and the player fetched its last segments again; on an fMP4 stream, one SourceBuffer for both tracks, they went over themselves and the player counted them as 6 s of new buffer, then played at 1.03 to bring its latency down and ran the SourceBuffer dry every 88 s. With F-28 (T-826): no still in 33 min, latency median 1.83 s, two restarts at the midroll ends ([finding](findings/2026-10-31-fmp4-stills.md))
 - Origin: T-825, soak `ext-hop` (Purple on, Brave): on `/channel-aj` (fMP4, one SourceBuffer for both tracks) the video stood still 2 to 3 s 68 times in 116 min, about every 88 s, with breaks and without, at about 15 s of latency. At a still the SourceBuffer ended 0.1 s past the playhead while the player counted 15 s of buffer. TS loads the same night: 0 to 2 stills each. No session without Purple on that channel ([finding](findings/2026-10-31-same-segment-twice.md#fmp4-channel)).
 - Check: a record-mode session (no Purple) next to an extension session on an fMP4 channel: stills, latency, the SourceBuffer's end against the playhead, the player's appends per segment.
+- Done when: the cause is in a finding; a fix task if Purple causes it.
+- Tests: soak
+
+### T-828 The page pauses the player at a break and does not play it again
+- [ ] Status · open
+- Origin: 2026-10-31, two soaks with F-27 and F-28 (Brave, logged out): Twitch's page called the player's `pause` (a `pause` to the worker with no `pause` from Purple) and no `play` followed; the player seeked to 0 and stayed paused with nothing buffered, and the soak left the channel 3 minutes later. 15:21:37 on `/channel-ak` (fMP4), 2.7 min into a midroll with only markers (`MARKED_LIVE`), right after a switch to the 360p `autoplay` backup; 15:25:40 on `/channel-d` (TS), 5 s into such a midroll. On `/channel-d` the page had also paused at 15:22:13 and played again 2.3 s later, outside a break. No such pause in the other soaks of 2026-10-30 and 2026-10-31 (about 20 midrolls with only markers).
+- Check: the page's calls to the player around those breaks (the React player state, the `edge.ads.twitch.tv` requests Purple blocks, F-04), with and without Purple on the same channel; whether a missing `play` after a page `pause` can be answered by Purple.
 - Done when: the cause is in a finding; a fix task if Purple causes it.
 - Tests: soak
 

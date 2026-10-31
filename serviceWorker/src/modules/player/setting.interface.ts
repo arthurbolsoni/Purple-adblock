@@ -19,6 +19,7 @@ export type Setting = {
   alignBackupSequence?: boolean;
   alignByLiveSequence?: boolean;
   restartOnSequenceBack?: boolean;
+  restartOnRepeat?: boolean;
   skipBackupBehind?: boolean;
   parallelBackupFetch?: boolean;
 };

@@ -77,3 +77,24 @@ Its video stood still 2 to 3 s about every 88 s through the whole load (68 times
 ## Firefox
 
 Issue #112 came from Firefox 157; these runs are on Brave 156. The segment the player gets again comes from the playlists Purple gives it, which do not depend on the browser. How Firefox's player places a segment it already has was not measured.
+
+## With F-27: the ends of the breaks
+
+Soak `t826-mid`, 2026-10-31 14:35 to 15:10 (`~/purple-recordings/2026-10-31-t826`), the build with `alignByLiveSequence` (F-27, T-826), `/channel-d` on one load, 4 stitched midrolls (14:35:37, 14:45:33, 14:55:37, 15:05:37) and 5 page-side breaks:
+
+- Midroll starts: each backup got the page's offset of the time (`MEDIA-SEQUENCE` minus the live sequence: 0, 4, 8, 12); every page → backup switch was one past the previous fetch (39 of 39), with no lag change.
+- Midroll ends: the page's playlist came back numbering the stream further ahead, by 4 at the first three (0 → 4, 4 → 8, 8 → 12) and by 5 at the fourth (12 → 17). It listed the last 4 (5) segments the player had from the backup under the numbers after its last, and the player fetched them again (14:38:09, 14:48:08, 14:59:00, 15:09:04; live steps −3, −3, −3, −4). The lag moved by −7.97, −7.98, −7.94 and −9.93 s.
+- At 14:49:45, with the lag at −15.94 s, the audio's buffer ran out 16 s before the video's; the player stood still 3 s and jumped 16.7 s forward, and the lag came back to 0.
+
+In `ext-mid` (date-time numbering) the page's offset moved by 2 per midroll, in two steps: 1 a few seconds into the break and 1 near its end. The backup's off-by-one number at the start matched the first step, so the switches back to the page were one past the previous fetch; the second step is where the player fetched a number again from another playlist (00:13:00, 01:12:43, 01:22:39). With every number exact at the start, each move of the page's numbers inside the break comes back as segments fetched again at its end. The page's playlist without ads goes back to the player untouched (rule 3), so F-28 restarts the player there instead: E6's pause and play, after which the player starts over on that playlist with a new timeline (the restarts of F-24 after the prerolls in `ext-mid` left no lag).
+
+## With F-28
+
+L2-14 (`sim/` `aheadAfterBreak` 4: the page's token numbers the stream 4 further ahead once the break is over), Brave, 3 runs each: with `restartOnRepeat` one restart (`segmentRepeat` 4) at the page's playlist after the break, and the audio and video ends within 0.06 s over the last 20 appends; without it the player requested those 4 segments again and the ends stayed 8.05 s apart.
+
+Soak `t826-f28`, 2026-10-31 15:15 to 16:00 (`~/purple-recordings/2026-10-31-t826`), the build with F-27 and F-28:
+
+- `/channel-al`, 31 min on one load after a preroll, 3 midrolls (15:33:47, 15:43:51, 15:53:48): the page's offset moved by 6, 5 and 5 at their ends; F-28 restarted the player each time (`segmentRepeat` 6, 5, 5). The lag ended at +0.04 s, and the video had no still of 2 s or more.
+- `/channel-d`, the first 13 min: after the preroll at the load F-28 restarted the player twice (15:16:13, 15:17:03) with a count of 2427. The page's playlist numbered from 0 after the preroll (B-029), a backup delivered without a shift numbered the stream 2427 higher, and the number after the player's was not in it at all. The check now counts a number only when the new playlist lists it (TS-826).
+- At 15:25:40 on `/channel-d`, and at 15:21:37 in a session on `/channel-ak`, Twitch's page paused the player and did not play it again (T-828).
+

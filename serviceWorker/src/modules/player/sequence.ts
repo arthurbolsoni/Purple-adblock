@@ -39,6 +39,18 @@ export function newestNumber(text: string): number | null {
   return first + count - 1;
 }
 
+// F-28: the live number of the segment or prefetch URI a playlist lists under `number` (EXT-X-TWITCH-LIVE-SEQUENCE +
+// its offset from MEDIA-SEQUENCE). null when the playlist does not list `number`, without both tags, or with ad
+// segments, whose positions have no live number.
+export function liveNumberAt(text: string, number: number): number | null {
+  const lines = text.split("\n");
+  const first = mediaSequence(lines);
+  const live = tagNumber(lines, LIVE_SEQUENCE);
+  const newest = newestNumber(text);
+  if (first == null || live == null || newest == null || number < first || number > newest || detectAds(text).adSegments.length) return null;
+  return live + number - first;
+}
+
 // The newest segment that is not an ad and has a date-time; with `beforeAds`, the newest before the first ad segment
 export function sequenceReference(text: string, beforeAds = false): SequenceReference | null {
   const lines = text.split("\n");

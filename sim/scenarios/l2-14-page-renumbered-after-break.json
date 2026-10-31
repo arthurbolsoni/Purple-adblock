@@ -1,0 +1,45 @@
+{
+  "id": "L2-14",
+  "description": "L2-13's midroll, with the page's token (popout, F-12) numbering the stream 4 further ahead once the break is over (B-054), as on /channel-d on 2026-10-31: its playlist after the break lists the segments the player got from the backup under the numbers after its last",
+  "channel": "simchannel",
+  "variants": [
+    {
+      "name": "720p30",
+      "resolution": "1280x720",
+      "bandwidth": 3000000,
+      "codecs": "avc1.4D401F,mp4a.40.2",
+      "live": "live-720p",
+      "ad": "ad-720p"
+    },
+    {
+      "name": "360p30",
+      "resolution": "640x360",
+      "bandwidth": 800000,
+      "codecs": "avc1.4D401E,mp4a.40.2",
+      "live": "live-360p",
+      "ad": "ad-360p"
+    }
+  ],
+  "breaks": [
+    {
+      "at": 15,
+      "segments": 8,
+      "roll": "MIDROLL",
+      "title": "3935266624"
+    }
+  ],
+  "playerTypes": {
+    "default": {
+      "breaks": false
+    },
+    "site": {
+      "breaks": true
+    },
+    "popout": {
+      "breaks": true,
+      "ahead": 2,
+      "earlierMs": 1000,
+      "aheadAfterBreak": 4
+    }
+  }
+}
