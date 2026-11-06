@@ -47,7 +47,12 @@ def short(uri):
 
 
 def pdt(value):
-    return datetime.datetime.fromisoformat(value.replace('Z', '+00:00')).timestamp() * 1000
+    """ms since the epoch; None for a value that is not a date-time (2026-11-06: a recorded video's playlist, played
+    by the page after the channel went offline, had `2026-11-06T15:43:07.`)."""
+    try:
+        return datetime.datetime.fromisoformat(value.strip().replace('Z', '+00:00')).timestamp() * 1000
+    except ValueError:
+        return None
 
 
 def segments(text):

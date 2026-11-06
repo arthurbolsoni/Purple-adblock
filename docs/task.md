@@ -17,7 +17,7 @@ Phases run in order. Inside a phase, the "Depends on" column says what must come
 | 5. Playlist assembly | T-501, T-502 | T-101, T-201 |
 | 6. Player control and settings | T-601 to T-604 | T-107, T-201 |
 | 7. Build and release | T-701 to T-706 | Phase 0 |
-| 8. Investigations | T-801 to T-828 | - |
+| 8. Investigations | T-801 to T-829 | - |
 
 ## Phase 0: test base
 
@@ -683,6 +683,14 @@ Odd behaviors seen in the runs. Each task ends with its cause in a finding (and 
 - Check: the page's calls to the player around those breaks (the React player state, the `edge.ads.twitch.tv` requests Purple blocks, F-04), with and without Purple on the same channel; whether a missing `play` after a page `pause` can be answered by Purple.
 - Done when: the cause is in a finding; a fix task if Purple causes it.
 - Tests: `docs/findings/probes/mpris_pause_probe.py` (no MPRIS name with the harness's flags; with `--media-keys`, the pause), L2-01 and L3-01 (extension) with the flag
+
+### T-829 Picture and sound still apart at breaks on 2.7.1, fMP4 channel (#112)
+- [ ] Status · F-25 · F-28 · B-036 · B-054 · B-059 · open, blocked: needs Firefox, the browser of the report, or the reporter's details. Soaks of 2026-11-06 on Brave, 109.6 min on `/channel-ao` with and without Purple at the same time, 2 stitched midrolls: with 2.7.1 the player fetched no segment twice inside the breaks (59 changes of source, every one with a live step of +1), no still of 1 s or more, no ad overlay; latency median 1.69 s against 2.85 s without Purple. Each midroll still had 3 trips of 2 to 4 s to a 360p backup and back (6 changes of video configuration in the one SourceBuffer) and, at its end, F-28's restart: about 1 s still and 1.46 s skipped. The same live segment has the same audio and video decode times on every token and rendition (B-059), so no change of source moved a track. Firefox was not run ([finding](findings/2026-11-06-fmp4-breaks-on-2.7.1.md))
+- Origin: issue #112, the reporter's comment of 2026-11-04 after 2.7.1 (T-826): it still happened on `/channel-ao`, "not to the same intensity, but still very distracting". The Firefox add-on (Firefox 157 in the first report); no time or Purple version given. `/channel-ao` serves fMP4 (`.mp4` with `EXT-X-MAP`, `avc1` and `mp4a` in each variant, B-023), where IVS appends both tracks to one SourceBuffer; the runs of T-825 and T-826 measured the lag between audio and video on TS channels only.
+- Check: a soak on `/channel-ao` with the 2.7.1 build (extension, `--debug --all-playlists`) next to one without Purple, through the same breaks: the live step of every segment the player fetched at each change of source (`time_order_probe.py`), F-28's and F-24's restarts, still video and latency (`stills_probe.py`), playlists merged or blanked inside breaks (no clean backup).
+- Check (Firefox): Firefox 157 on `/channel-ao` with 2.7.1, `e2e/firefox.py` with the Media Source hook and the recorder, at a stitched midroll: the audio against the video around the trips to 360p, the changes of source and F-28's restart.
+- Done when: the cause is in a finding; a fix task if Purple causes it; the result commented on #112.
+- Tests: soak
 
 ## Open decisions
 
