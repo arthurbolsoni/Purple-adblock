@@ -6,7 +6,17 @@ import { join } from "path";
 import { usePageEnv } from "../../serviceWorker/test/harness/page-env";
 
 const STORED = { whitelist: ["somechannel"], toggleProxy: false, proxyUrl: "" };
-const MANIFEST = await Bun.file(join(import.meta.dir, "..", "firefox", "manifest.json")).json();
+const RAW = await Bun.file(join(import.meta.dir, "..", "firefox", "manifest.json")).json();
+// the manifest as Firefox's runtime.getManifest() returns it: each content script's `js` as a full moz-extension://
+// URL (Firefox 157, 2026-11-07, T-830; the content script added the bundle a second time when it looked for the
+// bare path)
+const MANIFEST = {
+  ...RAW,
+  content_scripts: RAW.content_scripts.map((script: any) => ({
+    ...script,
+    js: script.js.map((path: string) => `moz-extension://4b5c8a2e-1f3d-4c6b-9a7e-2d8f0c1b3e5a/${path}`),
+  })),
+};
 
 const env = usePageEnv({ chrome: STORED, manifest: MANIFEST, deferStorage: true });
 const replies: any[] = [];

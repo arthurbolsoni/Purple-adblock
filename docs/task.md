@@ -17,7 +17,7 @@ Phases run in order. Inside a phase, the "Depends on" column says what must come
 | 5. Playlist assembly | T-501, T-502 | T-101, T-201 |
 | 6. Player control and settings | T-601 to T-604 | T-107, T-201 |
 | 7. Build and release | T-701 to T-706 | Phase 0 |
-| 8. Investigations | T-801 to T-829 | - |
+| 8. Investigations | T-801 to T-830 | - |
 
 ## Phase 0: test base
 
@@ -691,6 +691,13 @@ Odd behaviors seen in the runs. Each task ends with its cause in a finding (and 
 - Check (Firefox): `soak.py --browser firefox --moz-log "timestamp,MediaFormatReader:4"` on an fMP4 channel with stitched midrolls (`/channel-ao` comes back hourly), with and without Purple: Firefox's media log around the trips to 360p and F-28's restart (`firefox_media_log_probe.py`), and each `<video>` element's muted state and time during the break.
 - Done when: the cause is in a finding; a fix task if Purple causes it; the result commented on #112.
 - Tests: soak
+
+### T-830 The bundle added twice to the page on Firefox
+- [x] Status · done 2026-11-07: `content-script.js` looked for `app/bundle.js` among the content scripts of `runtime.getManifest()`, which Firefox lists as full `moz-extension://` URLs, so on Firefox 128 and later it added the bundle to the page as a `<script>` element besides the `MAIN` world content script. The content script's run hooked the page; the second copy failed at its top-level `let` before running any code (`SyntaxError: redeclaration of let b` on every Twitch page). It now also takes a path ending with `/app/bundle.js` ([finding](findings/2026-11-07-firefox-bundle-twice.md))
+- Origin: 2026-11-07, the first Firefox soak that kept the page's console (T-829): one error naming `bundle.js` at each page load, the directory and the channel.
+- Check: the `<script>` elements added to the page and the runs that replace `window.Worker`, with the 2.7.1 build and with the fix (`firefox_bundle_twice_probe.py`).
+- Done when: no `<script>` element and no console error naming `bundle.js` on Firefox 157; the content script still adds the bundle on Firefox before 128.
+- Tests: `platform/src/content-script.firefox.spec.ts` (the manifest as Firefox returns it), `content-script.spec.ts`, `firefox_bundle_twice_probe.py`
 
 ## Open decisions
 
