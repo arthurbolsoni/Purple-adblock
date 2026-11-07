@@ -85,7 +85,7 @@ export function amoMetadata(packageJson: { version: string; license: string }) {
     version: {
       license: packageJson.license,
       approval_notes:
-        "Built from the attached source with Bun 1.4.1: `bun install --frozen-lockfile`, then `bun run build`. " +
+        `Built from the attached source with Bun ${Bun.version}: \`bun install --frozen-lockfile\`, then \`bun run build\`. ` +
         `The package is dist/purple-adblock-${packageJson.version}-firefox.zip, with the files of this upload ` +
         "(app/bundle.js is the minified worker bundle from serviceWorker/src). Third-party code: THIRD-PARTY-NOTICES.md.",
     },

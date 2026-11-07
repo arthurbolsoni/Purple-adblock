@@ -122,6 +122,8 @@ describe("signFirefox", () => {
     expect(metadata.version.license).toBe("Apache-2.0");
     expect(metadata.version.approval_notes).toContain("bun install --frozen-lockfile");
     expect(metadata.version.approval_notes).toContain("bun run build");
+    // the Bun that builds the package (the notes said 1.4.1 when 2.7.2 was built with 1.4.4)
+    expect(metadata.version.approval_notes).toContain(`Bun ${Bun.version}:`);
   });
 
   test("release: listed, the package version, no file to collect", async () => {
