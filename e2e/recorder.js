@@ -13,7 +13,10 @@
   const media = (entry, el) =>
     state.media.length < 400 &&
     state.media.push(Object.assign({ at: now(), readyState: el.readyState, currentTime: Math.round(el.currentTime * 10) / 10, paused: el.paused, muted: el.muted }, entry));
-  for (const type of MEDIA_EVENTS) document.addEventListener(type, (e) => e.target instanceof HTMLMediaElement && media({ event: type }, e.target), true);
+  // an `error` event carries the MediaError's code and message (Firefox names the media error there)
+  const mediaError = (el) => (el.error ? { error: el.error.code + " " + String(el.error.message || "").slice(0, 300) } : {});
+  for (const type of MEDIA_EVENTS)
+    document.addEventListener(type, (e) => e.target instanceof HTMLMediaElement && media(Object.assign({ event: type }, type === "error" ? mediaError(e.target) : {}), e.target), true);
   const nativePlay = HTMLMediaElement.prototype.play;
   HTMLMediaElement.prototype.play = function (...args) {
     const result = nativePlay.apply(this, args);

@@ -6,7 +6,7 @@
 //   masters and media playlists, and of PlaybackAccessToken responses (status, errors, token flags; no ids, no tokens)
 // - "serverText": full text of a media playlist from the server that carries ad markers
 // - "delivered": the digest of each media playlist the player got from Purple's hook; "playlist": its text
-// - "console": Purple's console lines and console errors; "error" and "rejection": uncaught ones
+// - "console": Purple's console lines and console errors and warnings; "error" and "rejection": uncaught ones
 (() => {
   const channel = new BroadcastChannel("purple-e2e");
   const id = Math.random().toString(36).slice(2, 8);
@@ -236,7 +236,7 @@
           }
         })
         .join(" ");
-      if (name === "error" || line.includes("[Purple]")) post({ kind: "console", level: name, text: line.slice(0, 500) });
+      if (name !== "log" || line.includes("[Purple]")) post({ kind: "console", level: name, text: line.slice(0, 500) });
       return original.apply(this, args);
     };
   }

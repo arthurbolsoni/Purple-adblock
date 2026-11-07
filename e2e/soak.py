@@ -25,7 +25,13 @@ of each segment the player fetched).
 With --browser firefox (T-829) the session runs Firefox through e2e/firefox.py (PURPLE_FIREFOX, WebDriver BiDi) in
 extension or record mode, with the same page scripts; settings and --debug reach the page through its settings
 preload. Firefox has no CDP Media domain: with --moz-log MODULES (e.g. MediaFormatReader:4,MediaSource:4) its own
-media log goes to mozlog*.txt in the session directory (MOZ_LOG, MOZ_LOG_FILE), and mediaLog.jsonl stays empty.
+media log goes to mozlog*.txt in the session directory (MOZ_LOG, MOZ_LOG_FILE), and mediaLog.jsonl stays empty. The
+page's console warnings and errors and its uncaught errors (BiDi log.entryAdded) go to console.jsonl.
+
+Errors go to the session log as notes as they come (T-829): the page player's error events (playerEvents.jsonl also
+keeps its warnings, rebuffering and seeks), the <video>'s `error` event with its code and message, a SourceBuffer
+`error` event, an append or removal that throws and endOfStream with an error (mse.jsonl), and uncaught errors in the
+workers.
 """
 import argparse
 import asyncio
@@ -58,7 +64,8 @@ LIVE_CLASSES = ('timestamp', 'twitch-session', 'twitch-stream-source', 'twitch-t
 
 # Installed in the page after each load: transitions of the ad overlay, the player error, video progress
 # (currentTime of the first <video> advancing within the last second), the number of <video> elements and of
-# playing ones (a client-side ad plays in its own element), and page elements whose data-a-target or
+# playing ones (a client-side ad plays in its own element), each <video>'s sound (`videoSound`: playing or not, muted,
+# volume below 1; T-829, a second element playing the stream with sound), and page elements whose data-a-target or
 # data-test-selector names an ad or picture-by-picture, with wall-clock times. Every second also the page player's own
 # buffer, latency, low-latency mode and playback rate (T-814) and the frame counters (T-819): the
 # `props.mediaPlayerInstance` of the React component with `setPlayerActive`, found by a fiber walk written here
@@ -67,8 +74,20 @@ MONITOR = """(() => {
   if (window.__soak) return true;
   const S = %s;
   const AD_UI = /(^|[-_])ads?([-_]|$)|pbyp|picture-by-picture|commercial|stitched/i;
-  const soak = (window.__soak = { transitions: [], player: [] });
+  const soak = (window.__soak = { transitions: [], player: [], playerEvents: [] });
   let instance = null;
+  // T-829: the page player's errors and warnings (event names of the IVS player; one that does not exist never fires)
+  const PLAYER_EVENTS = ['PlayerError', 'PlayerRecoverableError', 'PlayerWarning', 'PlayerRebuffering', 'PlayerSeekCompleted'];
+  const hooked = new WeakSet();
+  const listen = (player) => {
+    if (!player || hooked.has(player) || typeof player.addEventListener !== 'function') return;
+    hooked.add(player);
+    for (const type of PLAYER_EVENTS) player.addEventListener(type, (e) => {
+      let detail = null;
+      try { detail = e === undefined ? null : JSON.stringify(e).slice(0, 400); } catch (err) { detail = String(e).slice(0, 400); }
+      if (soak.playerEvents.length < 2000) soak.playerEvents.push({ wall: Date.now(), type, detail });
+    });
+  };
   const findPlayer = () => {
     const root = document.querySelector('#root');
     const key = root && Object.keys(root).find((k) => k.startsWith('__reactContainer') || k.startsWith('__reactFiber'));
@@ -91,6 +110,7 @@ MONITOR = """(() => {
     try {
       if (!instance || typeof instance.getBufferDuration !== 'function' || instance.getHTMLVideoElement?.() !== document.querySelector('video')) instance = findPlayer();
       if (!instance) return;
+      listen(instance);
       // T-819: frames, cumulative: the player's dropped and decoded ones, the <video>'s dropped, total and corrupted
       // ones (getVideoPlaybackQuality), and its picture size
       const v = document.querySelector('video');
@@ -120,6 +140,8 @@ MONITOR = """(() => {
       progressing: t !== null && lastTime !== null && t > lastTime,
       videos: videos.length,
       playingVideos: videos.filter((el) => !el.paused && el.readyState >= 3).length,
+      videoSound: videos.map((el, i) => `${i}:${!el.paused && el.readyState >= 3 ? 'playing' : 'stopped'}${el.muted ? ' muted' : ''}`
+        + (el.volume < 1 ? ` volume ${Math.round(el.volume * 100) / 100}` : '')).join(', '),
       adUi: adUi(),
     };
     lastTime = t;
@@ -154,9 +176,14 @@ DRAIN_JS = """(() => {
     events: window.__purple && Array.isArray(window.__purple.events) ? window.__purple.events.splice(0) : [],
     transitions: window.__soak ? window.__soak.transitions.splice(0) : [],
     player: window.__soak ? window.__soak.player.splice(0) : [],
+    playerEvents: window.__soak ? window.__soak.playerEvents.splice(0) : [],
     workers: (e2e.workers || []).map((w) => ({ at: w.at, viaInjector: w.viaInjector, purpleCode: w.purpleCode, purpleBoot: w.purpleBoot, errors: w.errors,
       messages: (w.messages || []).slice(-20) })),
     video: v ? { readyState: v.readyState, currentTime: Math.round(v.currentTime * 10) / 10, paused: v.paused, muted: v.muted, error: v.error && v.error.code } : null,
+    // T-829: every <video>, to compare a second element's position and sound with the first's
+    videos: [...document.querySelectorAll('video')].map((el) => ({ currentTime: Math.round(el.currentTime * 10) / 10, paused: el.paused,
+      readyState: el.readyState, muted: el.muted, volume: el.volume, size: el.videoWidth + 'x' + el.videoHeight,
+      hasAudio: typeof el.mozHasAudio === 'boolean' ? el.mozHasAudio : null, blob: el.src.startsWith('blob:') })),
     adOverlay: !!document.querySelector(S.AD_OVERLAY),
     playerError: text(S.PLAYER_ERROR),
     contentGate: !!document.querySelector(S.CONTENT_GATE),
@@ -277,16 +304,30 @@ async def drain(session, recorder, watch, mode, final=False, media_log=None, all
     wall = stamp()
     base = {'drain': wall, 'channel': watch.channel, 'load': watch.load}
     data['mediaLog'] = media_log.take() if media_log else []
+    data['console'] = session.take_console() if hasattr(session, 'take_console') else []  # Firefox: the page's console
     watch.player_urls.update(d['url'] for d in data['delivered'] if (d.get('playlist') or {}).get('type') == 'media')
-    for name in ('server', 'delivered', 'serverTexts', 'workerLog', 'csai', 'csaiAnswers', 'media', 'events', 'transitions', 'player', 'mse', 'mediaLog'):
+    for name in ('server', 'delivered', 'serverTexts', 'workerLog', 'csai', 'csaiAnswers', 'media', 'events', 'transitions', 'player', 'playerEvents', 'mse', 'mediaLog', 'console'):
         for entry in data[name]:
             recorder.write(name, {**base, **entry})
     for entry in data['playlists']:
         if all_playlists or any(m in entry.get('text', '') for m in AD_TEXT_MARKERS):
             recorder.write('playlists', {**base, **entry})
-    sample = {k: data[k] for k in ('url', 'video', 'adOverlay', 'playerError', 'contentGate', 'workers', 'timeOrigin')}
+    sample = {k: data[k] for k in ('url', 'video', 'videos', 'adOverlay', 'playerError', 'contentGate', 'workers', 'timeOrigin')}
     sample['counts'] = {k: len(data[k]) for k in ('server', 'delivered', 'serverTexts', 'workerLog', 'csai', 'csaiAnswers', 'events', 'transitions')}
     recorder.write('samples', {**base, **sample})
+    # T-829: errors of the player, the <video> and its Media Source, and uncaught ones, as notes in the session log
+    for entry in data['playerEvents']:
+        if 'Error' in entry['type']:
+            recorder.note('player error', type=entry['type'], detail=entry['detail'], at=stamp(entry['wall']))
+    for entry in data['media']:
+        if entry.get('event') == 'error':
+            recorder.note('video error', error=entry.get('error'), currentTime=entry.get('currentTime'))
+    for entry in data['mse']:
+        if entry.get('op') in ('error', 'appendBuffer threw', 'remove threw', 'endOfStream'):
+            recorder.note('media source error', op=entry['op'], sb=entry.get('sb'), error=entry.get('error'), at=stamp(entry['wall']))
+    for entry in data['workerLog']:
+        if entry.get('kind') in ('error', 'rejection'):
+            recorder.note('worker uncaught', kind=entry['kind'], text=str(entry.get('text'))[:300], at=stamp(entry['wall']))
 
     # breaks: without Purple every media playlist is the player's; with Purple, the ones it delivered
     for entry in data['server']:

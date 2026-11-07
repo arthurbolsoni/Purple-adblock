@@ -11,13 +11,19 @@ on its own:
   frame, changes of picture size;
 - the decoded output of each track in order (`ReturnOutput: Resolved data promise for Audio [start, end]`, in
   microseconds of the media timeline): `back` when an output starts more than --min-ms (default 5) before the end of
-  the one before it, `gap` when it starts more than --min-ms after it. A seek or reset in between is shown with them.
+  the one before it, `gap` when it starts more than --min-ms after it. A seek or reset in between is shown with them;
+- `media error`: a line of any module (also MediaSource:4, TrackBuffersManager's appends) naming an NS_ERROR other
+  than waiting for data, end of stream or canceled (2026-11-07).
 
 The main stream's reader is the one with the most decoded outputs; the others (the page's picture-by-picture player,
 players of page-side ads) are counted apart. Then per break of the soak (log.jsonl: break start to break end, 10 s on
 each side) and for the whole session, on the main reader: the counts of stream id changes, decoder inits, resets,
-seeks, `back` and `gap` and their sum in ms, and the changes of source Purple made (events.jsonl `backupUsed`, a debug
-run). --events prints the main reader's events and every back or gap with its local time (--all: every reader's).
+seeks, `back` and `gap` and their sum in ms, the changes of source Purple made (events.jsonl `backupUsed`, a debug
+run), and each change of the page's `<video>` elements' sound (transitions.jsonl `videoSound`: playing or stopped,
+muted, volume below 1; 2026-11-07), with `(N with sound)` when more than one element played unmuted, and the soak's
+error notes (log.jsonl: `player error`, `video error`, `media source error`, `worker uncaught`) and the page
+console's errors and warnings (console.jsonl) in the window, each with its time and text.
+--events prints the main reader's events and every back or gap with its local time (--all: every reader's).
 """
 import collections
 import datetime
@@ -26,7 +32,10 @@ import json
 import re
 import sys
 
-LINE = re.compile(r'^(\d{4}-\d\d-\d\d \d\d:\d\d:\d\d\.\d+) UTC - .*?/MediaFormatReader (.*)$')
+LINE = re.compile(r'^(\d{4}-\d\d-\d\d \d\d:\d\d:\d\d\.\d+) UTC - .*?: [VDIWE]/(\w+) (.*)$')
+ERROR = re.compile(r'NS_ERROR_\w+')
+BENIGN = {'NS_ERROR_DOM_MEDIA_WAITING_FOR_DATA', 'NS_ERROR_DOM_MEDIA_END_OF_STREAM', 'NS_ERROR_DOM_MEDIA_CANCELED'}
+NOTES = ('player error', 'video error', 'media source error', 'worker uncaught')
 READER = re.compile(r'MediaFormatReader\[(0x[0-9a-f]+)\]')
 OUTPUT = re.compile(r'Resolved data promise for (Audio|Video) \[(-?\d+), (-?\d+)\]')
 STREAM_ID = re.compile(r'(Audio|Video) stream id has changed from:(\d+) to:(\d+), recyclable=(\w+)')
@@ -61,7 +70,7 @@ def read_log(folder, min_us):
             m = LINE.match(line)
             if not m:
                 continue
-            at, text = wall(m.group(1)), m.group(2)
+            at, text = wall(m.group(1)), m.group(3)
             found = READER.search(text)
             current = found.group(1) if found else current
             r = readers[current]
@@ -78,6 +87,10 @@ def read_log(folder, min_us):
                     elif start > previous + min_us:
                         r['events'].append((at, f'{track.lower()} gap', (start - previous) / 1000))
                 r['last'][track] = max(end, previous or end) if track == 'Video' else end
+                continue
+            errors = [name for name in ERROR.findall(text) if name not in BENIGN]
+            if errors:
+                r['events'].append((at, 'media error', f'{m.group(2)}: {text[:200]}'))
                 continue
             s = STREAM_ID.search(text)
             if s:
@@ -115,6 +128,10 @@ def breaks(folder):
 def main(folder, show=False, min_ms=5.0):
     readers = read_log(folder, min_ms * 1000)
     used = [(r['at'], r.get('playerType')) for r in rows(f'{folder}/events.jsonl') if r.get('type') == 'backupUsed']
+    sound = [(r['wall'], r['value']) for r in rows(f'{folder}/transitions.jsonl') if r.get('key') == 'videoSound']
+    notes = [(datetime.datetime.fromisoformat(r.get('at') or r['wall']).timestamp() * 1000, r['note'],
+              {k: v for k, v in r.items() if k not in ('wall', 'note', 'at')}) for r in rows(f'{folder}/log.jsonl') if r.get('note') in NOTES]
+    console = [(r['wall'], r['level'], r.get('text', '')) for r in rows(f'{folder}/console.jsonl') if r.get('wall')]
     spans = breaks(folder)
     # the main stream's reader decodes the most; the others are the page's picture-by-picture player and ad players
     main_reader = max(readers, key=lambda k: readers[k]['outputs']) if readers else None
@@ -138,6 +155,19 @@ def main(folder, show=False, min_ms=5.0):
         switches = len([1 for at, _ in used if lo <= at <= hi])
         parts = [f'{kind} {count[kind]}' + (f' ({ms[kind]:.0f} ms)' if kind in ms else '') for kind in sorted(count)]
         print(f'  {label}: backupUsed {switches}; ' + ('; '.join(parts) or 'no events') + (f'; other readers {other} events' if other else ''))
+        for at, value in sound:
+            if lo <= at <= hi:
+                audible = len([1 for v in value.split(', ') if 'playing' in v and 'muted' not in v])
+                print(f'    {clock(at)} videos {value}' + (f'  ({audible} with sound)' if audible > 1 else ''))
+        for at, note, fields in notes:
+            if lo <= at <= hi:
+                print(f'    {clock(at)} {note} {json.dumps(fields)[:300]}')
+        for at, kind, value in inside:
+            if kind == 'media error':
+                print(f'    {clock(at)} media error {value}')
+        for at, level, text in console:
+            if lo <= at <= hi:
+                print(f'    {clock(at)} console {level} {text[:200]}')
 
     print('== per break (10 s on each side)')
     for start, end, kind, channel in spans:

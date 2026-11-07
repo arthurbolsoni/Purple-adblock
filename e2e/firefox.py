@@ -78,6 +78,11 @@ class Firefox:
         self.context = None
         self.extension = None
         self.tab = Tab(self)
+        self.console = []  # the page's console warnings and errors and its uncaught errors (log.entryAdded), until taken
+        self.pending = {}  # command id -> future of its answer
+        # every message is read as it comes, also between commands: unread events would stop the connection from
+        # reading the browser's keepalive answers (2026-11-07: closed after a 60 s wait with console events queued)
+        self.reader = asyncio.ensure_future(self._read())
 
     @classmethod
     async def launch(cls, build=BUILD, visible=False, settings=None, env=None):
@@ -109,19 +114,54 @@ class Firefox:
         if settings:
             await self.send('script.addPreloadScript', {'functionDeclaration': SETTINGS_PRELOAD % json.dumps(settings)})
         await self.send('script.addPreloadScript', {'functionDeclaration': '() => {' + lib.RECORDER + '\n}'})
+        await self.send('session.subscribe', {'events': ['log.entryAdded']})
         return self
 
+    async def _read(self):
+        """Answers go to their command; events are dropped, but for the console's warnings and errors (`console`)."""
+        try:
+            async for raw in self.ws:
+                message = json.loads(raw)
+                if message.get('method') == 'log.entryAdded':
+                    self._console(message['params'])
+                    continue
+                future = self.pending.pop(message.get('id'), None)
+                if future and not future.done():
+                    future.set_result(message)
+        except Exception as err:
+            closed = err
+        else:
+            closed = ConnectionError('BiDi connection closed')
+        for future in self.pending.values():
+            if not future.done():
+                future.set_exception(closed)
+        self.pending.clear()
+
     async def send(self, method, params):
-        """One BiDi command; events in between are dropped."""
+        """One BiDi command and its result."""
+        if self.reader.done():
+            raise ConnectionError('BiDi connection closed')
         command_id = next(self.ids)
+        future = asyncio.get_running_loop().create_future()
+        self.pending[command_id] = future
         await self.ws.send(json.dumps({'id': command_id, 'method': method, 'params': params}))
-        while True:
-            message = json.loads(await self.ws.recv())
-            if message.get('id') != command_id:
-                continue
-            if message.get('type') == 'error':
-                raise RuntimeError(f"{method}: {message.get('error')}: {message.get('message')}")
-            return message.get('result')
+        message = await future
+        if message.get('type') == 'error':
+            raise RuntimeError(f"{method}: {message.get('error')}: {message.get('message')}")
+        return message.get('result')
+
+    def _console(self, entry):
+        level = entry.get('level')
+        if level not in ('warn', 'error') or len(self.console) >= 5000:
+            return
+        frames = ((entry.get('stackTrace') or {}).get('callFrames') or [])[:1]
+        self.console.append({'wall': entry.get('timestamp'), 'level': level, 'type': entry.get('type'),
+                             'realm': (entry.get('source') or {}).get('realm'), 'text': str(entry.get('text'))[:500],
+                             'at': f"{frames[0].get('url', '')[-80:]}:{frames[0].get('lineNumber')}" if frames else None})
+
+    def take_console(self):
+        entries, self.console = self.console, []
+        return entries
 
     async def navigate(self, url, wait='none'):
         await self.send('browsingContext.navigate', {'context': self.context, 'url': url, 'wait': wait})
@@ -143,6 +183,7 @@ class Firefox:
             await self.ws.close()
         except Exception:
             pass
+        self.reader.cancel()
         procs = [p for p in psutil.process_iter(['name', 'cmdline'])
                  if (p.info['name'] or '').lower() in PROCESS_NAMES and any(self.profile in arg for arg in p.info['cmdline'] or [])]
         await asyncio.to_thread(psutil.wait_procs, procs, 10)

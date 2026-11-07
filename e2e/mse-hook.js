@@ -3,6 +3,8 @@
 // MediaSource in a worker (MediaSource.canConstructInDedicatedWorker). Each SourceBuffer gets an id and its MIME type
 // is posted once; after each append, removal or abort its timestampOffset and the newest 3 buffered ranges are posted,
 // so the audio track and the video track can be compared with each other and with the segments the player fetched.
+// An append or removal that throws is posted as `appendBuffer threw` or `remove threw` with the error's name and
+// message, an endOfStream with an error as `endOfStream` (T-829: player errors on Firefox when Purple joins pieces).
 (() => {
   if (self.__purpleMse || typeof MediaSource === "undefined" || typeof SourceBuffer === "undefined") return;
   self.__purpleMse = true;
@@ -46,11 +48,25 @@
     SourceBuffer.prototype[name] = function (...args) {
       const info = buffers.get(this);
       if (info) info.pending = pending(...args);
-      return native.apply(this, args);
+      try {
+        return native.apply(this, args);
+      } catch (err) {
+        if (info) {
+          info.pending = null;
+          post({ op: name + " threw", sb: info.id, error: String(err && err.name) + ": " + String(err && err.message).slice(0, 300) });
+        }
+        throw err;
+      }
     };
   };
   wrap("appendBuffer", (data) => ({ op: "append", bytes: data ? data.byteLength : 0 }));
   wrap("remove", (start, end) => ({ op: "remove", start: round(start), end: Number.isFinite(end) ? round(end) : String(end) }));
+
+  const nativeEnd = MediaSource.prototype.endOfStream;
+  MediaSource.prototype.endOfStream = function (error) {
+    if (error) post({ op: "endOfStream", error: String(error) });
+    return nativeEnd.apply(this, arguments);
+  };
 
   const nativeAbort = SourceBuffer.prototype.abort;
   SourceBuffer.prototype.abort = function () {
