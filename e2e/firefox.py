@@ -85,12 +85,15 @@ class Firefox:
         self.reader = asyncio.ensure_future(self._read())
 
     @classmethod
-    async def launch(cls, build=BUILD, visible=False, settings=None, env=None):
+    async def launch(cls, build=BUILD, visible=False, settings=None, env=None, audio=False, preloads=()):
         """`settings`: values the page gets as if they were stored (SETTINGS_PRELOAD), e.g. {'debug': True}. `env`:
-        extra environment variables for the browser, e.g. MOZ_LOG and MOZ_LOG_FILE (outside Windows)."""
+        extra environment variables for the browser, e.g. MOZ_LOG and MOZ_LOG_FILE (outside Windows). `audio`: sound on
+        (muted otherwise). `preloads`: more function declarations run before any page script, ahead of the recorder."""
         profile = tempfile.mkdtemp(prefix='purple-e2e-firefox-')
         with open(os.path.join(profile, 'user.js'), 'w', encoding='utf-8') as f:
             for key, value in PREFS.items():
+                if audio and key == 'media.volume_scale':
+                    continue
                 f.write(f'user_pref({json.dumps(key)}, {json.dumps(value)});\n')
         port = lib._free_port()
         command = [FIREFOX, '-no-remote', '-profile', profile, '--remote-debugging-port', str(port), 'about:blank']
@@ -113,6 +116,8 @@ class Firefox:
         self.context = tree['contexts'][0]['context']
         if settings:
             await self.send('script.addPreloadScript', {'functionDeclaration': SETTINGS_PRELOAD % json.dumps(settings)})
+        for source in preloads:
+            await self.send('script.addPreloadScript', {'functionDeclaration': source})
         await self.send('script.addPreloadScript', {'functionDeclaration': '() => {' + lib.RECORDER + '\n}'})
         await self.send('session.subscribe', {'events': ['log.entryAdded']})
         return self

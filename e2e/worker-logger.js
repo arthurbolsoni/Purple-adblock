@@ -7,6 +7,14 @@
 // - "serverText": full text of a media playlist from the server that carries ad markers
 // - "delivered": the digest of each media playlist the player got from Purple's hook; "playlist": its text
 // - "console": Purple's console lines and console errors and warnings; "error" and "rejection": uncaught ones
+// - "fakeBreak": a media playlist of the player's own given to Purple with its segments titled as ads (fake breaks,
+//   below)
+//
+// Fake breaks (T-829 test, soak.py --fake-breaks): with self.__e2eFakeBreaks = { start, every, length } (ms since the
+// epoch, s, s; recorder.js puts the page's window.__e2eFakeBreaks in front of this script), while a window is on (each
+// `every` s from `start`, for `length` s) every media playlist the player asked for (its own URL, which Purple fetches
+// on its behalf) reaches Purple with each segment titled `Amazon|e2e-fake-break`, an ad title Purple knows. Purple
+// gives the player a backup and goes back to the page's playlist when the window ends. Backups are left alone.
 (() => {
   const channel = new BroadcastChannel("purple-e2e");
   const id = Math.random().toString(36).slice(2, 8);
@@ -192,10 +200,26 @@
     }
   };
 
+  const fake = self.__e2eFakeBreaks || null;
+  const playerUrls = new Set();
+  const inFakeBreak = () => !!fake && Date.now() >= fake.start && (Date.now() - fake.start) % (fake.every * 1000) < fake.length * 1000;
+  const asAds = (body) => body.replace(/^(#EXTINF:[^,\n]*,).*$/gm, (line, head) => head + "Amazon|e2e-fake-break");
+  const fakeBreak = (url, r) => {
+    if (!fake || !r || !r.ok || !url.endsWith(".m3u8") || !playerUrls.has(url) || !inFakeBreak()) return Promise.resolve(r);
+    return r.text().then((body) => {
+      const marked = body.includes("#EXTINF") ? asAds(body) : body;
+      if (marked !== body) post({ kind: "fakeBreak", url });
+      return new Response(marked, { status: r.status, statusText: r.statusText, headers: r.headers });
+    });
+  };
+
   const wrap = (fn, level) =>
     function (input, init) {
       const url = short(input);
-      return Promise.resolve(fn.apply(this, arguments)).then(
+      if (level === "player" && fake) playerUrls.add(url);
+      return Promise.resolve(fn.apply(this, arguments))
+        .then((r) => (level === "network" ? fakeBreak(url, r) : r))
+        .then(
         (r) => {
           post({ kind: "fetch", level, url, status: r && r.status });
           if (level === "network") describeServer(input, init, r);

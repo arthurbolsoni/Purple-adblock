@@ -10,8 +10,10 @@ on its own:
   that track's decoder and builds a new one), decoder inits, Reset(Audio/Video), seeks, video skips to the next key
   frame, changes of picture size;
 - the decoded output of each track in order (`ReturnOutput: Resolved data promise for Audio [start, end]`, in
-  microseconds of the media timeline): `back` when an output starts more than --min-ms (default 5) before the end of
-  the one before it, `gap` when it starts more than --min-ms after it. A seek or reset in between is shown with them;
+  microseconds of the media timeline): `gap` when an output starts more than --min-ms (default 5) after the end of the
+  one before it; `back` when an audio output starts more than --min-ms before that end, or a video frame before the
+  start of the frame before it (video frames can come with longer durations than their spacing: 100 ms every 33 ms
+  on a TS channel's break, 2026-11-07). A seek or reset in between is shown with them;
 - `media error`: a line of any module (also MediaSource:4, TrackBuffersManager's appends) naming an NS_ERROR other
   than waiting for data, end of stream or canceled (2026-11-07).
 
@@ -82,11 +84,12 @@ def read_log(folder, min_us):
                 track, start, end = o.group(1), int(o.group(2)), int(o.group(3))
                 previous = r['last'].get(track)
                 if previous is not None:
-                    if start < previous - min_us:
-                        r['events'].append((at, f'{track.lower()} back', (previous - start) / 1000))
-                    elif start > previous + min_us:
-                        r['events'].append((at, f'{track.lower()} gap', (start - previous) / 1000))
-                r['last'][track] = max(end, previous or end) if track == 'Video' else end
+                    limit = previous[0] if track == 'Video' else previous[1] - min_us
+                    if start < limit:
+                        r['events'].append((at, f'{track.lower()} back', (limit + (0 if track == 'Video' else min_us) - start) / 1000))
+                    elif start > previous[1] + min_us:
+                        r['events'].append((at, f'{track.lower()} gap', (start - previous[1]) / 1000))
+                r['last'][track] = (start, end)
                 continue
             errors = [name for name in ERROR.findall(text) if name not in BENIGN]
             if errors:

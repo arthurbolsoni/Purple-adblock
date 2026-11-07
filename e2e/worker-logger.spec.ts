@@ -67,3 +67,50 @@ ${H}/live-1.mp4
     expect(digest.prefetch).toBe(1);
   });
 });
+
+// soak.py --fake-breaks (T-829 test): during a window the player's own media playlists reach Purple's hook with their
+// segments titled as ads; backups (URLs the player never asked for) and playlists outside a window are left alone.
+describe("worker logger fake breaks", () => {
+  const LIVE = `#EXTM3U
+#EXT-X-TWITCH-LIVE-SEQUENCE:100
+#EXTINF:2.000,live
+${H}/live-1.ts
+#EXTINF:2.000,live
+${H}/live-2.ts
+#EXT-X-TWITCH-PREFETCH:${H}/live-3.ts
+`;
+  const MAIN = "https://video-weaver.example.hls.ttvnw.net/v1/playlist/main.m3u8";
+  const BACKUP = "https://video-weaver.example.hls.ttvnw.net/v1/playlist/backup.m3u8";
+
+  // a scope whose page fetch is the worker's, then Purple's hook (set on self.fetch) reads through the original
+  const run = async (fake: object) => {
+    class Channel {
+      postMessage() {}
+    }
+    const scope: any = { fetch: async () => new Response(LIVE), addEventListener: () => {}, __e2eFakeBreaks: fake };
+    const quiet = { log() {}, warn() {}, error() {} };
+    new Function("self", "BroadcastChannel", "console", SOURCE)(scope, Channel, quiet);
+    const request = scope.fetch; // what Purple keeps as scope.request
+    const seen: Record<string, string> = {};
+    scope.fetch = async (url: string) => {
+      const text = await (await request(url)).text();
+      seen[url] = text;
+      await (await request(BACKUP)).text().then((backup: string) => (seen[BACKUP] = backup));
+      return new Response(text);
+    };
+    await scope.fetch(MAIN);
+    return seen;
+  };
+
+  test("inside a window: the player's playlist titled as ads, the backup left alone", async () => {
+    const seen = await run({ start: Date.now() - 1000, every: 60, length: 30 });
+    expect(seen[MAIN].match(/^#EXTINF:.*$/gm)).toEqual(["#EXTINF:2.000,Amazon|e2e-fake-break", "#EXTINF:2.000,Amazon|e2e-fake-break"]);
+    expect(seen[MAIN]).toContain(`#EXT-X-TWITCH-PREFETCH:${H}/live-3.ts`);
+    expect(seen[BACKUP]).toBe(LIVE);
+  });
+
+  test("outside a window: the player's playlist as the server sent it", async () => {
+    const seen = await run({ start: Date.now() - 40_000, every: 60, length: 30 });
+    expect(seen[MAIN]).toBe(LIVE);
+  });
+});

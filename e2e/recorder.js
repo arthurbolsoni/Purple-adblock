@@ -210,7 +210,9 @@
         entry.size = text.length;
         entry.purpleCode = text.includes("Script running");
         entry.tail = text.slice(-300);
-        const prefixed = URL.createObjectURL(new Blob([WORKER_PREFIX + text], { type: "text/javascript" }));
+        // fake breaks (soak.py --fake-breaks): their schedule goes in front of worker-logger.js, which reads it
+        const fake = window.__e2eFakeBreaks ? "self.__e2eFakeBreaks = " + JSON.stringify(window.__e2eFakeBreaks) + ";\n" : "";
+        const prefixed = URL.createObjectURL(new Blob([fake + WORKER_PREFIX + text], { type: "text/javascript" }));
         args = [prefixed, ...args.slice(1)];
       } catch (err) {
         entry.purpleCode = "xhr failed: " + err.message;

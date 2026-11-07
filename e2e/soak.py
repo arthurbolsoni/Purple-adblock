@@ -26,7 +26,11 @@ With --browser firefox (T-829) the session runs Firefox through e2e/firefox.py (
 extension or record mode, with the same page scripts; settings and --debug reach the page through its settings
 preload. Firefox has no CDP Media domain: with --moz-log MODULES (e.g. MediaFormatReader:4,MediaSource:4) its own
 media log goes to mozlog*.txt in the session directory (MOZ_LOG, MOZ_LOG_FILE), and mediaLog.jsonl stays empty. The
-page's console warnings and errors and its uncaught errors (BiDi log.entryAdded) go to console.jsonl.
+page's console warnings and errors and its uncaught errors (BiDi log.entryAdded) go to console.jsonl. --audio leaves
+the sound on. --fake-breaks EVERY:LENGTH makes breaks on any live channel: the player's own media playlists reach
+Purple with their segments titled as ads for LENGTH s every EVERY s (FAKE_BREAKS_JS, e2e/worker-logger.js), so Purple
+switches to a backup and back; --pauses also clicks the player's pause and play button inside them (PAUSES). Each
+window and click is a note (fake.jsonl).
 
 Errors go to the session log as notes as they come (T-829): the page player's error events (playerEvents.jsonl also
 keeps its warnings, rebuffering and seeks), the <video>'s `error` event with its code and message, a SourceBuffer
@@ -177,6 +181,7 @@ DRAIN_JS = """(() => {
     transitions: window.__soak ? window.__soak.transitions.splice(0) : [],
     player: window.__soak ? window.__soak.player.splice(0) : [],
     playerEvents: window.__soak ? window.__soak.playerEvents.splice(0) : [],
+    fake: window.__e2eFake ? window.__e2eFake.events.splice(0) : [],
     workers: (e2e.workers || []).map((w) => ({ at: w.at, viaInjector: w.viaInjector, purpleCode: w.purpleCode, purpleBoot: w.purpleBoot, errors: w.errors,
       messages: (w.messages || []).slice(-20) })),
     video: v ? { readyState: v.readyState, currentTime: Math.round(v.currentTime * 10) / 10, paused: v.paused, muted: v.muted, error: v.error && v.error.code } : null,
@@ -191,6 +196,46 @@ DRAIN_JS = """(() => {
 })()"""
 
 AD_TEXT_MARKERS = ('stitched', 'maf-ad', 'X-TV-TWITCH-AD', 'Amazon|', 'DCM,')
+
+# Fake breaks (T-829 test, --fake-breaks EVERY:LENGTH, Firefox): runs before any page script of every page. Sets the
+# schedule the page's workers get (window.__e2eFakeBreaks: the first window WARM_UP s after the page opens, then one
+# every EVERY s for LENGTH s; e2e/worker-logger.js titles the player's own playlists as ads inside them) and, with
+# --pauses, clicks the player's play/pause button inside windows, cycling through PAUSES: [seconds after the window
+# starts, seconds paused] or null. Its events are drained with the rest (`fake`).
+FAKE_WARM_UP = 30
+PAUSES = [[8, 3], [0.5, 3], ['end', 3], None]  # the middle; the change to the backup; across the change back; none
+FAKE_BREAKS_JS = """() => {
+  const config = __CONFIG__;
+  const start = Date.now() + config.warmUp * 1000;
+  window.__e2eFakeBreaks = { start, every: config.every, length: config.length };
+  const fake = (window.__e2eFake = { events: [] });
+  const push = (type, extra) => fake.events.length < 2000 && fake.events.push(Object.assign({ wall: Date.now(), type }, extra));
+  const done = new Set();
+  let on = false;
+  const click = (want, index) => {
+    const v = document.querySelector('video');
+    const button = document.querySelector('[data-a-target="player-play-pause-button"]');
+    if (!v || !button) return push('no player button', { index });
+    if ((want === 'pause') === v.paused) return push('already ' + (v.paused ? 'paused' : 'playing'), { index });
+    button.click();
+    push(want === 'pause' ? 'test pause' : 'test play', { index, currentTime: Math.round(v.currentTime * 10) / 10 });
+  };
+  setInterval(() => {
+    const now = Date.now();
+    if (now < start) return;
+    const index = Math.floor((now - start) / (config.every * 1000));
+    const offset = ((now - start) % (config.every * 1000)) / 1000;
+    if ((offset < config.length) !== on) {
+      on = offset < config.length;
+      push(on ? 'fake break start' : 'fake break end', { index });
+    }
+    const plan = config.pauses.length ? config.pauses[index % config.pauses.length] : null;
+    if (!plan) return;
+    const at = plan[0] === 'end' ? config.length - 1 : plan[0];
+    if (!done.has(index + 'pause') && offset >= at) { done.add(index + 'pause'); click('pause', index); }
+    if (done.has(index + 'pause') && !done.has(index + 'play') && offset >= at + plan[1]) { done.add(index + 'play'); click('play', index); }
+  }, 200);
+}"""
 
 
 def stamp(wall_ms=None):
@@ -325,6 +370,9 @@ async def drain(session, recorder, watch, mode, final=False, media_log=None, all
     for entry in data['mse']:
         if entry.get('op') in ('error', 'appendBuffer threw', 'remove threw', 'endOfStream'):
             recorder.note('media source error', op=entry['op'], sb=entry.get('sb'), error=entry.get('error'), at=stamp(entry['wall']))
+    for entry in data['fake']:
+        recorder.write('fake', {**base, **entry})
+        recorder.note(entry['type'], **{k: v for k, v in entry.items() if k not in ('type', 'wall')}, at=stamp(entry['wall']))
     for entry in data['workerLog']:
         if entry.get('kind') in ('error', 'rejection'):
             recorder.note('worker uncaught', kind=entry['kind'], text=str(entry.get('text'))[:300], at=stamp(entry['wall']))
@@ -420,8 +468,13 @@ async def soak(args, recorder, end):
         if args.browser == 'firefox':
             forced = {**settings, **({'debug': True} if args.debug else {})}
             env = {'MOZ_LOG': args.moz_log, 'MOZ_LOG_FILE': os.path.join(recorder.directory, 'mozlog.txt')} if args.moz_log else None
+            preloads = []
+            if args.fake_breaks:
+                every, length = (float(x) for x in args.fake_breaks.split(':'))
+                config = {'warmUp': FAKE_WARM_UP, 'every': every, 'length': length, 'pauses': PAUSES if args.pauses else []}
+                preloads.append(FAKE_BREAKS_JS.replace("__CONFIG__", json.dumps(config)))
             session = await firefox.Firefox.launch(None if args.mode == 'record' else firefox.BUILD, visible=args.visible,
-                                                   settings=forced or None, env=env)
+                                                   settings=forced or None, env=env, audio=args.audio, preloads=preloads)
             media_log = None
         else:
             session = await lib.launch(args.mode, profile=profile, visible=args.visible, debug=args.debug)
@@ -539,9 +592,15 @@ def main():
     ap.add_argument('--browser', choices=('chromium', 'firefox'), default='chromium',
                     help='chromium: Edge or PURPLE_BROWSER through nodriver; firefox: e2e/firefox.py (extension or record mode)')
     ap.add_argument('--moz-log', metavar='MODULES', help='Firefox: MOZ_LOG modules, written to mozlog*.txt in the session directory')
+    ap.add_argument('--fake-breaks', metavar='EVERY:LENGTH',
+                    help='Firefox: the player\'s own playlists titled as ads for LENGTH s every EVERY s (Purple switches to a backup)')
+    ap.add_argument('--pauses', action='store_true', help='with --fake-breaks: click pause and play inside the windows (PAUSES)')
+    ap.add_argument('--audio', action='store_true', help='Firefox: sound on (the runs are muted otherwise)')
     args = ap.parse_args()
     if args.browser == 'firefox' and args.mode not in ('extension', 'record'):
         ap.error('--browser firefox runs in extension or record mode')
+    if (args.fake_breaks or args.audio) and args.browser != 'firefox':
+        ap.error('--fake-breaks and --audio run on --browser firefox')
     sys.stdout.reconfigure(encoding='utf-8')
     recorder = Recorder(os.path.join(args.out, args.session))
     try:
