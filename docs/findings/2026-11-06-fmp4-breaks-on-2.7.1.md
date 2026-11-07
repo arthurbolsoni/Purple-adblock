@@ -35,12 +35,30 @@ After the first midroll the page's playlist dated a live number 1.455 s later th
 
 ## Firefox
 
-The report on #112 came from the Firefox add-on. These runs are on Brave; Firefox was not run (it is not installed on this machine, and `e2e/firefox.py` starts the Windows install). Three things happen at every midroll and were not measured on Firefox:
+The report on #112 came from the Firefox add-on. Firefox 157.0.1, the reporter's version, now runs here: Mozilla's Linux build in `~/firefox/157.0.1`, driven by `e2e/firefox.py` headless, and `e2e/soak.py --browser firefox` with `--moz-log` for Firefox's own media log ([`firefox_media_log_probe.py`](probes/firefox_media_log_probe.py)). On an fMP4 channel IVS appends both tracks to one SourceBuffer in Firefox too (`avc1.4D401F,mp4a.40.2`); on a TS channel it uses one for each.
 
-- 6 changes of video configuration in one SourceBuffer (720p60 to 360p30 and back);
-- a new init segment at each change of source, from another token's `EXT-X-MAP` URI;
-- F-28's restart at the end.
+### Init segments and repeats
+
+[`firefox_init_append_probe.py`](probes/firefox_init_append_probe.py), 2026-11-07 on `/channel-aj` (fMP4): 8 live segments from a `site` token at 720p and 360p and from a `popout` token at 720p, appended by a local page into one SourceBuffer in Firefox 157.0.1, and Firefox's media log (`MediaFormatReader`) read per scenario. The `site` and `popout` init segments, and the two tokens' copies of a segment, had the same bytes.
+
+| Scenario | Stream id changes | Audio decoder rebuilt | Decoded audio back or gap (0.1 ms) | Played 16 s in |
+| --- | --- | --- | --- | --- |
+| init, 8 segments | 0 | 0 | 0 | 16.97 s |
+| the same init before each segment | 0 | 0 | 0 | 17.05 s |
+| `site` and `popout` init and segment in turn | 0 | 0 | 0 | 16.99 s |
+| 720p, 2 segments at 360p with their init, 720p | 2 | 2 | 0 | 17.02 s |
+| live pace (a segment every 2 s while playing) | 0 | 0 | 0 | 16.98 s |
+| live pace, the 4th segment twice in a row | 0 | 0 | 0 | 17.19 s |
+| live pace, the 4th segment again from the other token, with its init | 0 | 0 | 0 | 17.20 s |
+
+An init segment with the same bytes changes nothing in Firefox. An init segment of another rendition gives both tracks a new stream id, and Firefox drains the AAC decoder and builds a new one (`recyclable=false`); the decoded audio stays continuous. A segment appended again while playing went over itself with no step in the decoded audio or video.
+
+So the 23 or 24 init segments IVS appends per midroll with Purple (one at almost every change of source; 6 to 9 per midroll without Purple, Brave `t829-ext` and `t829-rec`) do nothing in Firefox, and each trip to a 360p backup rebuilds the audio decoder twice.
+
+### Soaks
+
+Two soaks on `/channel-aj`, 2026-11-06 22:40 to 2026-11-07 00:06 (`ff-ext` with the 2.7.1 build and `debug`, `ff-rec` without Purple, `~/purple-recordings/2026-11-06-t829`), were stopped by the system for low memory near the end of their 90 min. The channel had 17 `twitch-maf-ad` slots and no stitched midroll in that time, so Purple changed no source. In both, the main stream's decoders had no stream id change after the first change of quality, no reset and no step in the decoded audio through the slots.
 
 ## Open
 
-- T-829: whether Firefox 157 plays these midrolls with the audio and the video apart, and which of the three causes it.
+- T-829: a stitched midroll on Firefox with Purple, on an fMP4 channel: F-28's restart, the trips to 360p and the page's other players around the break, with each `<video>` element's muted state.

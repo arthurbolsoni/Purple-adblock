@@ -4,7 +4,7 @@ does during them (docs/server/) and what Purple delivers to the player.
     python e2e/soak.py <session> --mode extension|userscript|record [--debug] [--until HH:MM | --minutes N]
                        [--channel /name] [--avoid /a,/b] [--rotate MINUTES] [--out DIR] [--visible]
                        [--setting KEY=JSON ...] [--stop-after-breaks N] [--leave-after-breaks N] [--hop SECONDS]
-                       [--all-playlists]
+                       [--all-playlists] [--browser chromium|firefox] [--moz-log MODULES]
 
 One browser (Edge, or PURPLE_BROWSER) on a fresh temporary profile (deleted at the end). Every DRAIN seconds the recorder's arrays in the page
 (window.__e2e, and window.__purple.events with --debug) are emptied into JSONL files under
@@ -21,6 +21,11 @@ Besides the recorder's arrays: the Media Source appends of e2e/mse-hook.js (mse.
 (CDP Media domain: the player's messages, errors, events and properties, mediaLog.jsonl). The texts of the media
 playlists the player got are kept when they carry ad markers, or all of them with --all-playlists (T-825: the date-time
 of each segment the player fetched).
+
+With --browser firefox (T-829) the session runs Firefox through e2e/firefox.py (PURPLE_FIREFOX, WebDriver BiDi) in
+extension or record mode, with the same page scripts; settings and --debug reach the page through its settings
+preload. Firefox has no CDP Media domain: with --moz-log MODULES (e.g. MediaFormatReader:4,MediaSource:4) its own
+media log goes to mozlog*.txt in the session directory (MOZ_LOG, MOZ_LOG_FILE), and mediaLog.jsonl stays empty.
 """
 import argparse
 import asyncio
@@ -38,6 +43,7 @@ import traceback
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import nodriver as uc
 
+import firefox
 import lib
 import twitch_selectors as sel
 from scenarios import common
@@ -369,12 +375,19 @@ async def soak(args, recorder, end):
     tried, load, failures = set(args.avoid.split(',')) if args.avoid else set(), 0, 0
     stitched_before, offline = 0, set()  # stitched breaks ended on earlier channels; channels left as offline
     try:
-        session = await lib.launch(args.mode, profile=profile, visible=args.visible, debug=args.debug)
-        media_log = MediaLog()
-        await media_log.attach(session.tab)
         settings = dict(args.setting or [])
-        if settings:
-            await lib.set_storage(session, **settings)
+        if args.browser == 'firefox':
+            forced = {**settings, **({'debug': True} if args.debug else {})}
+            env = {'MOZ_LOG': args.moz_log, 'MOZ_LOG_FILE': os.path.join(recorder.directory, 'mozlog.txt')} if args.moz_log else None
+            session = await firefox.Firefox.launch(None if args.mode == 'record' else firefox.BUILD, visible=args.visible,
+                                                   settings=forced or None, env=env)
+            media_log = None
+        else:
+            session = await lib.launch(args.mode, profile=profile, visible=args.visible, debug=args.debug)
+            media_log = MediaLog()
+            await media_log.attach(session.tab)
+            if settings:
+                await lib.set_storage(session, **settings)
         recorder.note('launched', mode=args.mode, debug=args.debug, settings=settings, until=end.isoformat(timespec='minutes'))
         watch, ended = None, 'end of run'
         while datetime.datetime.now() < end:
@@ -482,7 +495,12 @@ def main():
     ap.add_argument('--setting', action='append', type=setting, metavar='KEY=JSON',
                     help='extension mode: a stored setting before the first channel, e.g. pausePlayDelayMs=0 (repeatable)')
     ap.add_argument('--all-playlists', action='store_true', help='keep the text of every media playlist the player got (T-825)')
+    ap.add_argument('--browser', choices=('chromium', 'firefox'), default='chromium',
+                    help='chromium: Edge or PURPLE_BROWSER through nodriver; firefox: e2e/firefox.py (extension or record mode)')
+    ap.add_argument('--moz-log', metavar='MODULES', help='Firefox: MOZ_LOG modules, written to mozlog*.txt in the session directory')
     args = ap.parse_args()
+    if args.browser == 'firefox' and args.mode not in ('extension', 'record'):
+        ap.error('--browser firefox runs in extension or record mode')
     sys.stdout.reconfigure(encoding='utf-8')
     recorder = Recorder(os.path.join(args.out, args.session))
     try:
