@@ -61,4 +61,4 @@ Two soaks on `/channel-aj`, 2026-11-06 22:40 to 2026-11-07 00:06 (`ff-ext` with 
 
 ## Open
 
-- T-829: a stitched midroll on Firefox with Purple, on an fMP4 channel: F-28's restart, the trips to 360p and the page's other players around the break, with each `<video>` element's muted state.
+- 2026-11-07: the cause in Firefox is old audio left in the one SourceBuffer, played after each restart of the player's timeline (F-28's at the end of a midroll, or a viewer's pause and play); F-29 fixes it ([finding](2026-11-07-firefox-audio-left-behind.md)). A stitched midroll on an fMP4 channel in Firefox with Purple was not caught.

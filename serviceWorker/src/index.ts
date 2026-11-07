@@ -4,6 +4,7 @@ import txt from "../dist/app.worker.js?raw";
 import { createFetchHook } from "./page/fetch-hook";
 import { runGqlRequest } from "./page/gql-bridge";
 import { installXhrHook } from "./page/xhr-hook";
+import { installBufferRemovalWidening } from "./page/buffer-removal";
 import { reloadTwitchPlayer } from "./page/player-reload";
 import { WorkerRegistry } from "./page/worker-registry";
 
@@ -21,6 +22,9 @@ const logger = (...args: any[]) => debug && console.log("[Purple]:", ...args);
 let blockCsai = true;
 // F-12: the page's PlaybackAccessToken asks for popout (default on, so the userscript does it too)
 let forcePopoutToken = true;
+// F-29: removals from a SourceBuffer with both tracks leave nothing outside the buffered range (default on, so the
+// userscript does it too)
+let widenBufferRemovals = true;
 const csaiBlocked: Record<string, number> = {};
 
 (function () {
@@ -183,6 +187,7 @@ const csaiBlocked: Record<string, number> = {};
   // kept by the registry and sent to the workers when they are created
   declareEventWindow();
   integrity();
+  installBufferRemovalWidening(window, () => widenBufferRemovals);
 
   function declareEventWindow() {
     //Event listener from window and extension.
@@ -191,6 +196,7 @@ const csaiBlocked: Record<string, number> = {};
         debug = event.data.value?.debug === true;
         blockCsai = event.data.value?.blockCsai !== false;
         forcePopoutToken = event.data.value?.forcePopoutToken !== false;
+        widenBufferRemovals = event.data.value?.widenBufferRemovals !== false;
         if (debug && !window.__purple) window.__purple = { events: [] };
         //send settings to every worker
         registry.broadcast({ funcName: "setSettings", value: event.data.value });

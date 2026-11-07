@@ -17,6 +17,20 @@ silenceConsole();
 
 let main: FakeWorker;
 
+// F-29: a Media Source the page's player could use, recording the ranges it is asked to remove
+class FakeSourceBuffer {
+  removed: [number, number][] = [];
+  buffered = { length: 1, start: () => 2, end: () => 34.5 };
+  remove(start: number, end: number) {
+    this.removed.push([start, end]);
+  }
+}
+class FakeMediaSource {
+  addSourceBuffer(_type: string) {
+    return new FakeSourceBuffer();
+  }
+}
+
 // the player's own first message to its worker; Purple sends nothing before it (docs/findings/2026-10-07-l3-server-observations.md)
 const PLAYER_INIT = { id: 0, funcName: "init", args: [] };
 
@@ -32,6 +46,8 @@ const nextWindowMessage = (type: string) =>
 
 beforeAll(async () => {
   FakeXMLHttpRequest.scripts.set(WORKER_URL, WORKER_SCRIPT);
+  (window as any).MediaSource = FakeMediaSource;
+  (window as any).SourceBuffer = FakeSourceBuffer;
   await import("../../src/index");
   // the page requests /integrity before the player creates its first worker (directory page, client-side navigation)
   await fetch("https://gql.twitch.tv/integrity", { method: "POST" });
@@ -187,6 +203,22 @@ describe("messages", () => {
 
 // T-107: on a direct channel load the player creates two workers and Purple runs in both (T-111)
 // (docs/findings/2026-10-07-e2e-harness.md)
+// F-29 (T-829): with both tracks in one SourceBuffer, a removal from the buffered start starts at 0, until a
+// setSettings turns widenBufferRemovals off
+describe("SourceBuffer removals", () => {
+  test("widened by default, as asked with widenBufferRemovals off", async () => {
+    const buffer: any = new (window as any).MediaSource().addSourceBuffer('video/mp4;codecs="avc1.4D401F,mp4a.40.2"');
+    buffer.remove(2, 2.5);
+    window.postMessage({ type: "setSettings", value: { whitelist: [], toggleProxy: false, proxyUrl: "", widenBufferRemovals: false } }, "*");
+    await Bun.sleep(5);
+    buffer.remove(2, 2.5);
+    window.postMessage({ type: "setSettings", value: { whitelist: [], toggleProxy: false, proxyUrl: "" } }, "*");
+    await Bun.sleep(5);
+    buffer.remove(2, 2.5);
+    expect(buffer.removed).toEqual([[0, 2.5], [2, 2.5], [0, 2.5]]);
+  });
+});
+
 describe("worker registry", () => {
   const settings = { whitelist: ["other"], toggleProxy: false, proxyUrl: "" };
   let second: FakeWorker;

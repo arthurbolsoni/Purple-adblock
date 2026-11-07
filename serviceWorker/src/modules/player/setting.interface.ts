@@ -22,4 +22,6 @@ export type Setting = {
   restartOnRepeat?: boolean;
   skipBackupBehind?: boolean;
   parallelBackupFetch?: boolean;
+  // F-29: read by the page (index.ts), not by the worker
+  widenBufferRemovals?: boolean;
 };
