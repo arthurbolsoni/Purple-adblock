@@ -11,6 +11,9 @@
     "check": "bun test && cargo test --quiet --manifest-path sim/Cargo.toml",
     "hooks:install": "git config core.hooksPath .githooks",
     "e2e": "python e2e/run.py",
+    "model:traces": "bun serviceWorker/test/model/quint.ts traces",
+    "model:check": "bun serviceWorker/test/model/quint.ts check",
+    "model:verify": "bun serviceWorker/test/model/quint.ts verify",
     "e2e:build": "bun serviceWorker/build.ts && bun cli/build.ts dev && bun platform/tampermonkey/build.js dist/purpleadblocker.user.js"
   },
   "repository": {
@@ -25,6 +28,7 @@
     "@happy-dom/global-registrator": "^20.14.5",
     "archiver": "^5.3.1",
     "bun-types": "^1.4.2",
+    "fast-check": "4.10.2",
     "fs-extra": "^10.1.0",
     "terser": "^5.31.2",
     "typescript": "^4.5.4",

@@ -19,6 +19,7 @@ Jest is the fallback when `bun test` cannot cover a case (missing API or a runti
 Exceptions to Bun:
 
 - `sim/`, the level 2 server that reproduces Twitch's server behavior, is Rust (`cargo build`, `cargo test`).
+- Quint, on demand only, for the models of Purple's protocols (`serviceWorker/test/model/*.qnt`, T-010): `bun run model:traces`, `bun run model:check` and `bun run model:verify` (each takes model names, all by default) run it through `bunx` (Node, a simulator binary it downloads, and for `model:verify` the Apalache it downloads, whose jar carries TLC, on Java 21 or later). `bun run check` only replays the traces they wrote, under `bun test`.
 - Levels 2 and 3 drive Microsoft Edge with nodriver (Python) and the dedicated profile `~/nodriver/profile-edge-purple`, used only for these tests. No other extension runs under nodriver (`--disable-extensions` or `--disable-extensions-except=<our build>`, plus `--disable-component-extensions-with-background-pages`). The Firefox checks (T-111) drive Firefox through WebDriver BiDi on a new temporary profile per run (`e2e/firefox.py`), with only the Purple build installed.
 
 Recorded Twitch sessions live in `~/purple-recordings/`, never in the repo.
@@ -61,8 +62,12 @@ bun install
 bun run hooks:install                       # once per clone: pre-commit hook runs `bun run check`
 bun run check                               # every local check (bun test; cargo test after T-006)
 bun test                                    # all tests
-bun test serviceWorker/src/modules/player   # one directory
+bun test serviceWorker/test/unit/modules/player   # one directory
 bun test --coverage
+FC_SEED=random FC_RUNS=5000 bun test --timeout 600000 .prop.spec   # the properties with more cases (T-010)
+bun run model:check [model...]              # the Quint models against their invariants, random runs (T-010; Quint via bunx)
+bun run model:verify [model...]             # the same over every state of a bounded run (TLC through Quint, Java 21+)
+bun run model:traces [model...]             # their traces for the replays, after a change to a model
 bun serviceWorker/build.ts                  # builds serviceWorker/dist/bundle.js
 bun platform/tampermonkey/build.js          # userscript from serviceWorker/dist/bundle.js
 bun run build                               # worker, dist/purple-adblock-<version>-<platform>.zip and the userscript
@@ -85,7 +90,8 @@ python e2e/run.py <L2-xx|L3-xx|all>         # levels 2 and 3; --mode extension|u
 - `serviceWorker/src/modules/player/`: ad decision, backup selection, playlist assembly (`m3u8.ts`).
 - `serviceWorker/src/modules/stream/`: backup streams per playerType.
 - `serviceWorker/src/modules/twitch/twitch.service.ts`: GQL `PlaybackAccessToken` and usher.
-- `platform/src/`: content script and popup. Manifests in `platform/chromium` and `platform/firefox`. The builders copy it without `*.spec.ts` (`cli/files.js`).
+- Tests are never among the sources: `serviceWorker/test/` (`unit/` mirrors `src/`; `integration/`, `harness/`, `fixtures/`, `model/` for the Quint models), `platform/test/`, `cli/test/`; `e2e/` is test code.
+- `platform/src/`: content script and popup. Manifests in `platform/chromium` and `platform/firefox`. The builders copy it (without any `*.spec.ts`, `cli/files.js`); its tests are in `platform/test/`.
 - `platform/tampermonkey/`: userscript build.
 - `sim/`: Rust server reproducing Twitch's server (`src/`), scenarios (`scenarios/*.json`), synthetic media (`cargo run --bin media`, into the gitignored `media/`), the isolated player page (`page/`, `bun install && bun run build` there for the IVS SDK). `e2e/sim.py` starts it and runs the CDP `Fetch` bridge; level 2 scenarios are `e2e/scenarios/l2_*.py`.
 - `e2e/`: nodriver drivers for levels 2 and 3. `lib.py` starts Edge on a hidden desktop in extension, userscript or record mode; `recorder.js` records workers and a log from inside them (`window.__e2e`); `scenarios/` holds one module per scenario; `record.py` is the level 3 recorder (CDP `Fetch`, T-005) and `soak.py` the long runs. `firefox.py` drives Firefox through WebDriver BiDi.

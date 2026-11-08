@@ -30,6 +30,12 @@ The player fetches those segments again: their audio goes over itself and their 
 
 With a clean backup on every poll of the break, the model found no live segment fetched again and no wait for numbers that do not come: with a 14-segment window, the page 4 further ahead after each break, backups 0 or 5 behind and two breaks, all 134,574 states.
 
+## The Quint model (T-010)
+
+`bun run model:check` breaks `noRepeat` of `test/model/player.qnt` the same way, also with one poll at a time. In the trace it keeps, the backup has an ad segment of its own, so it is unclean and the page's ads get its live segments (merged), then the type is left out for 5 s (F-10, blanked); the page comes back 4 further ahead and the player fetches live 23 and 24 again. The real `Player` replays that trace (`player-model.int.spec.ts`).
+
+`bun run model:verify` (TLC over every state up to one break and the polls after it) found the shortest sequence, 19 steps with one poll at a time: a clean backup gives live 25; the next backup has ads at the page's ad positions, so the page's playlist is given blanked; the type is then left out (F-10) and the page's playlist blanked again; the break ends with the page 4 further ahead, and the player fetches live 24 and 25 again.
+
 ## Open
 
 - Whether it happens on Twitch. Soaks with `--all-playlists` record what the player got; `time_order_probe.py` gives the live step of each segment it fetched. The breaks to look at end with merged or blanked playlists (no clean backup), which T-829 already counts.

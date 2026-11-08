@@ -26,6 +26,15 @@ The model found a second order: B starts between A's `useBackup` and A's `follow
 
 After B, the next poll from that backup counts as the same source, so neither runs: the player can be left waiting for numbers that do not come (T-818) or switched to a backup behind it (T-820).
 
+## The Quint model (T-010)
+
+`bun run model:check` breaks two invariants of `test/model/player.qnt` with two polls in flight:
+
+- `recordedIsDelivered`: the case above.
+- `noWait`: a poll that started earlier and waited longer for its backup gives its playlist after the playlists of later polls. The player, already past that playlist's newest number, waits for numbers past it, and F-24 does not run because both playlists are the page's.
+
+With one poll at a time both held in 30,000 runs. `bun run model:verify` (TLC over every state) found the shortest sequences: 10 steps for `recordedIsDelivered`, 11 for `noWait`, with each backup answering within 2 segments. The real `Player` replays the traces that break them (`player-model.int.spec.ts`).
+
 ## Open
 
 - Whether two media playlist requests are ever in flight in one worker. The player polls about every 2 s (Q-002), and a poll with ads can take longer: one backup type after another took 0.44 s each (B-056), and F-26 asks the other types together. Two cases to check: a quality switch, and the picture-by-picture players the page creates in the main player's worker (B-051, C-13), if they poll media playlists while the main player does.

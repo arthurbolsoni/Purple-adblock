@@ -8,7 +8,7 @@ Phases run in order. Inside a phase, the "Depends on" column says what must come
 
 | Phase | Tasks | Depends on |
 | --- | --- | --- |
-| 0. Test base (level 1) | T-001 to T-003 | - |
+| 0. Test base (level 1) | T-001 to T-003, T-010 | - |
 | 0b. Levels 2 and 3 | T-004 to T-009 | - (parallel with phases 1 to 7) |
 | 1. Fixes to existing code | T-101 to T-111 | Phase 0 |
 | 2. Detection | T-201 to T-204 | T-101 |
@@ -23,7 +23,7 @@ Phases run in order. Inside a phase, the "Depends on" column says what must come
 
 ### T-001 Move the suite to `bun test`
 - [x] Status · done 2026-10-03: `bootstrapWorker` lives in `serviceWorker/src/bootstrap.ts`; modules receive the scope (`WorkerContext` in `serviceWorker/src/scope.ts`) instead of reading globals; the `TARGETDURATION` spec expects `5`, the current default; findings in `docs/findings/2026-10-03-worker-unit-tests.md`
-- Files: `package.json`, `bunfig.toml` (new), `serviceWorker/test/preload.ts` (new), `jest.config.js` (removed), `serviceWorker/src/decorator/*.ts`, `serviceWorker/src/app.worker.ts`, `serviceWorker/src/modules/player/player.spec.ts`, `serviceWorker/src/modules/stream/stream.spec.ts`, `serviceWorker/src/modules/player/m3u8.spec.ts`
+- Files: `package.json`, `bunfig.toml` (new), `serviceWorker/test/preload.ts` (new), `jest.config.js` (removed), `serviceWorker/src/decorator/*.ts`, `serviceWorker/src/app.worker.ts`, `serviceWorker/test/unit/modules/player/player.spec.ts`, `serviceWorker/test/unit/modules/stream/stream.spec.ts`, `serviceWorker/test/unit/modules/player/m3u8.spec.ts`
 - Done when:
   - `bunfig.toml` sets `[test] preload` to `serviceWorker/test/preload.ts`, which registers the `?raw` plugin;
   - `jest`, `@swc/jest`, `@types/jest`, `@types/mocha` and `jest.config.js` are gone (Jest comes back only under the fallback rule in `docs/tests.md`); `@happy-dom/global-registrator` is added for page tests;
@@ -52,6 +52,13 @@ Phases run in order. Inside a phase, the "Depends on" column says what must come
   - a failing test blocks the commit;
   - no workflow in `.github/workflows` runs tests.
 - Tests: TS-003
+
+### T-010 Properties and models of Purple's protocols
+- [x] Status · done 2026-11-08: 18 fast-check properties in 4 `*.prop.spec.ts` files over generated Twitch-shaped playlists (`harness/arbitraries.ts`), one seed per run. Four Quint models in `test/model/`, each with a replay of its traces on the real code under `bun run check` (86 traces): Player's poll logic with its backup tokens (`player.qnt`), AdBreak (`ad-break.qnt`), the GQL bridge (`gql-bridge.qnt`), the page and its workers (`page-workers.qnt`). `bun run model:check` and `bun run model:verify` find T-831 (`recordedIsDelivered`; and `noWait`: a slower poll gives the player an older playlist after a newer one) and T-832 (`noRepeat`); the other invariants hold in the random runs; in every state of `exhaustive`: AdBreak's, the bridge's, `page-workers`' `newestSettings`, `newestQuality` and `nothingToTerminated`, `serverOrToken` (one poll, 2 tokens) and `noMiss` (2 polls, 1 token), and `notToSecondPlayer`. Not checked in every state: `noMiss` with 2 polls and 2 tokens, `serverOrToken` with 2 polls (random runs only; limits in `docs/tests.md`). `page-workers`' `notToSecondPlayer` held in every state once the model let the page create no player under the id of a living one (what soaks e, f and g show; with that case allowed it breaks in 10 steps). Every change made to the code that changes its behavior failed a replay (`docs/tests.md`, "Properties and the Quint models")
+- Origin: 2026-11-07, a study of formal methods for Purple: model checking found T-831 and T-832, which the example-based tests did not cover.
+- Files: `package.json` (`fast-check` 4.10.2, `model:traces`, `model:check`, `model:verify`), `serviceWorker/test/harness/property.ts`, `serviceWorker/test/harness/arbitraries.ts`, `serviceWorker/test/unit/**/*.prop.spec.ts`, `serviceWorker/test/model/`, `serviceWorker/test/integration/*-model.int.spec.ts`, `serviceWorker/test/integration/page.int.spec.ts` ("against the Quint model")
+- Done when: the properties pass under `bun test` with the fixed seed and with random seeds at 5000 cases; each replay passes on every trace and fails when the code it covers changes its behavior; `bun run model:check` and `bun run model:verify` report the invariants T-831 and T-832 break.
+- Tests: TS-010
 
 ## Phase 0b: levels 2 and 3
 
@@ -468,7 +475,7 @@ Runs in parallel with phases 1 to 7. Phase 1 to 6 tasks list L2/L3 scenarios tha
 ### T-705 Repository housekeeping
 - [x] Status · done 2026-10-10: the popup's status texts are "Purple on: ", "Purple off: " and "Open a Twitch channel"; the issue templates are GitHub issue forms (a bug report and an idea) and the pull request template follows CONTRIBUTING.md; `.gitignore` lists what the project installs and generates (the same paths ignored before and after), `.gitattributes` uses `lf`/`crlf` macros (the same attributes on every tracked file); `FUNDING.yml`, the README header and the `package.json` fields (`repository`, `bugs`, `homepage`) are rewritten. The ESLint config named plugins that were never installed, so `lint` failed: it, `eslint`, `lint-staged` and the `pre-commit` key left. Prettier ran nowhere (36 files did not follow it, not in `check` or the hook) and left too; the style follows the surrounding code. `.editorconfig`, which no tool of the project read, left. `.env.sample` lists the variables of `cli/publish.ts`. `m3u8-parser` is the only dependency; Vite moved to `devDependencies`, next to `terser`, which Vite's `minify: 'terser'` needs and which came before only through `terser-webpack-plugin`; that plugin, `ts-loader`, `concurrently` and `dotenv`, imported by nothing, left (the worker bundle is byte-identical). Ads that got through are reported as comments on the pinned issue #111: the issue chooser links to it (`config.yml`), and the bug report form, now "Player stopped or other bug", names it first; CONTRIBUTING and README point to it
 - Origin: the maintainer, 2026-10-10.
-- Tests: TS-701 (no ESLint or Prettier; the dependency lists), `platform/src/common/js/popup.spec.ts` (the status texts), `serviceWorker/test/repo/local-checks.spec.ts` (the issue forms)
+- Tests: TS-701 (no ESLint or Prettier; the dependency lists), `platform/test/common/js/popup.spec.ts` (the status texts), `serviceWorker/test/repo/local-checks.spec.ts` (the issue forms)
 
 ### T-706 Apache License 2.0
 - [x] Status · done 2026-10-10: Purple is licensed under the Apache License 2.0 from 2.7.0 (GPL-3.0 before). `LICENSE` has the license text, `NOTICE` Purple's copyright and the TwitchAdSolutions credit, `package.json` says `Apache-2.0`. Both files go with `THIRD-PARTY-NOTICES.md` into every package; the userscript has `@license Apache-2.0` and the notices after its header. Each addons.mozilla.org submission sends the license (AMO's slug `Apache-2.0`, from `package.json`) and the build steps for its reviewers (`--amo-metadata`). README, `THIRD-PARTY-NOTICES.md`, `docs/research.md` and CONTRIBUTING (contributions under the license's section 5) follow it
@@ -697,13 +704,14 @@ Odd behaviors seen in the runs. Each task ends with its cause in a finding (and 
 - Origin: 2026-11-07, the first Firefox soak that kept the page's console (T-829): one error naming `bundle.js` at each page load, the directory and the channel.
 - Check: the `<script>` elements added to the page and the runs that replace `window.Worker`, with the 2.7.1 build and with the fix (`firefox_bundle_twice_probe.py`).
 - Done when: no `<script>` element and no console error naming `bundle.js` on Firefox 157; the content script still adds the bundle on Firefox before 128.
-- Tests: `platform/src/content-script.firefox.spec.ts` (the manifest as Firefox returns it), `content-script.spec.ts`, `firefox_bundle_twice_probe.py`; in the Firefox run with the fix of 2026-11-07 (`ff-fix`), no console error naming `bundle.js` (one per page with 2.7.1)
+- Tests: `platform/test/content-script.firefox.spec.ts` (the manifest as Firefox returns it), `content-script.spec.ts`, `firefox_bundle_twice_probe.py`; in the Firefox run with the fix of 2026-11-07 (`ff-fix`), no console error naming `bundle.js` (one per page with 2.7.1)
 
 ### T-831 Overlapping polls record the wrong source
 - [ ] Status · F-24 · F-25 · cause known 2026-11-08, not fixed: `Player.source` is one field for every poll, set to the page's at the start of `onFetch` and read by `followSequence` after the await. When a poll starts while another waits for its backups, one of them records the other's source in `delivered`: a page playlist (blanked) recorded under the backup the other poll gave. At the next poll from that backup, F-24's restart and F-25's check see the same source and do not run ([finding](findings/2026-11-08-overlapping-polls-source.md))
 - Origin: 2026-11-08, a review of `player.ts` for model checking of the poll logic; reproduced on `main` with `overlapping_polls_probe.ts`.
 - Check: whether two media playlist requests are ever in flight in one worker (the worker log with the start and the end of each request): at a quality switch, and with the picture-by-picture players the page creates in the main player's worker (B-051, C-13).
 - Done when: a level 1 test with two overlapping polls, their backups answered in either order, fails on `main`; with the fix each poll records the source of the playlist it gave.
+- Model (T-010): `bun run model:check` and `bun run model:verify` break `recordedIsDelivered` and `noWait` with two polls in flight (shortest: 10 and 11 steps): also a slower poll gives the player an older playlist after a newer one, and the player waits for numbers past it. The fix changes `player.qnt` too (then `bun run model:traces`), and both invariants hold.
 - Tests: TS-831 (written with the fix), `overlapping_polls_probe.ts`
 
 ### T-832 F-28 skipped after a blanked or merged playlist
@@ -711,6 +719,7 @@ Odd behaviors seen in the runs. Each task ends with its cause in a finding (and 
 - Origin: 2026-11-08, a model of the numbering across polls checked with a model checker; reproduced on `main` with `repeat_after_blank_probe.ts`.
 - Check: soaks with `--all-playlists`: the live step of each segment the player fetched at the end of breaks whose last playlists were merged or blanked (`time_order_probe.py`).
 - Done when: a level 1 test with a backup, then the page's playlist blanked or merged, then the page's playlist further ahead after the break fails on `main`; with the fix the player fetches no live segment it already has (a restart, or a playlist that lists none); TS-826 unchanged.
+- Model (T-010): `bun run model:check` and `bun run model:verify` break `noRepeat` this way, also with one poll at a time (shortest: 19 steps). The fix changes `player.qnt` too (then `bun run model:traces`), and `noRepeat` holds.
 - Tests: TS-832 (written with the fix), `repeat_after_blank_probe.ts`, soak
 
 ## Open decisions

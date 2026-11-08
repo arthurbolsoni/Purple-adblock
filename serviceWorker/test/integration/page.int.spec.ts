@@ -5,6 +5,7 @@ import { beforeAll, describe, expect, test } from "bun:test";
 import { silenceConsole } from "../harness/console";
 import { FakeWorker, FakeXMLHttpRequest, usePageEnv } from "../harness/page-env";
 import WORKER_BUNDLE_STUB from "../stubs/worker-bundle";
+import pageWorkerTraces from "../model/traces/page-workers.json";
 
 const WORKER_URL = "https://assets.twitch.tv/assets/amazon-ivs-wasmworker.min-0000.js";
 const WORKER_SCRIPT = "/* original twitch worker */";
@@ -399,4 +400,56 @@ describe("client-side ads", () => {
     await fetch(ADS("midroll"));
     expect(env.pageFetch.calls.at(-1)!.url).toBe(ADS("midroll"));
   });
+});
+
+// T-010: index.ts and the worker registry against the Quint model (test/model/page-workers.qnt). Each trace in
+// test/model/traces/page-workers.json (`bun run model:traces page-workers`) is replayed step by step on new workers: the
+// player creates them, with Purple's code or without (no script), the page posts its own messages to them (its first
+// one, creating and deleting players), the content script sets the settings, Purple's code in a worker asks for pause
+// or play or reports a quality, and a worker is terminated; after each step what each worker got must be what the model
+// says. The registry is this file's (index.ts keeps module state): the model starts once it holds settings s0 and
+// quality q0, and the messages it does not track (setGqlBridge, setIntegrity, setGqlHeaders) are left out.
+describe("the page and its workers against the Quint model (T-010)", () => {
+  type Sent = [name: string, value: string, id: number][];
+  type State = [action: string, worker: number, arg: string, id: number, value: string, sent1: Sent, sent2: Sent];
+  const MISSING = "https://assets.twitch.tv/assets/missing-worker.js"; // Purple cannot download it: its code does not run
+  const TRACKED: Record<string, string> = { init: "init", create: "create", delete: "delete", setSettings: "settings", setQuality: "quality", pause: "pause", play: "play" };
+  // window.postMessage reaches index.ts on a later task
+  const settle = () => Bun.sleep(5);
+
+  for (const trace of pageWorkerTraces as { name: string; states: State[] }[]) {
+    test(trace.name, async () => {
+      window.postMessage({ type: "setSettings", value: "s0" }, "*");
+      await settle();
+      main.emit({ type: "PlayerQualityChanged", arg: { name: "q0" } });
+      const workers: Record<number, FakeWorker> = {};
+      const seen: Record<number, number> = {};
+      // what a worker got since the last step, as the model writes it
+      const got = (w: number): Sent => {
+        const worker = workers[w];
+        if (!worker) return [];
+        const out = worker.posted
+          .slice(seen[w])
+          .filter((m: any) => m?.funcName in TRACKED)
+          .map((m: any): Sent[number] => (m.funcName === "setSettings" || m.funcName === "setQuality" ? [TRACKED[m.funcName], m.value, -1] : [TRACKED[m.funcName], "", m.id]));
+        seen[w] = worker.posted.length;
+        return out;
+      };
+
+      for (const [index, [action, worker, arg, id, value, sent1, sent2]] of trace.states.entries()) {
+        if (action === "create") {
+          workers[worker] = new (window as any).Worker(arg === "injected" ? WORKER_URL : MISSING);
+          seen[worker] = 0;
+        } else if (action === "page") workers[worker].postMessage({ id, funcName: arg, args: arg === "create" ? [{}, {}] : [] });
+        else if (action === "setSettings") {
+          window.postMessage({ type: "setSettings", value: arg }, "*");
+          await settle();
+        } else if (action === "emit") workers[worker].emit(arg === "quality" ? { type: "PlayerQualityChanged", arg: { name: value } } : { type: arg });
+        else if (action === "terminate") workers[worker].terminate();
+        expect({ index, action, got: [got(1), got(2)] }).toEqual({ index, action, got: [sent1, sent2] });
+      }
+      // out of the registry before the next trace
+      for (const worker of Object.values(workers)) worker.terminate();
+    });
+  }
 });

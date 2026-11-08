@@ -17,6 +17,9 @@ sim/target/
 sim/media/
 sim/page/ivs.js
 
+# Quint (bun run model:verify): the log of the Apalache server it starts, written where it runs
+_apalache-out/
+
 # Python: the e2e drivers and the probes
 __pycache__/
 *.pyc
