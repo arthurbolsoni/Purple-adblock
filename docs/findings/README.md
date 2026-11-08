@@ -49,4 +49,6 @@ New discoveries are added here as they happen. A later finding that contradicts 
 | [2026-10-10-soak-p.md](2026-10-10-soak-p.md) | Soak p: prerolls with the backup types asked together; the first backup and the start of the video against soaks m to o (T-823, F-26, B-055) | closed |
 | [2026-10-09-reload-kinds.md](2026-10-09-reload-kinds.md) | Player reload kinds at a break's end and the new breaks after them (T-808, L3-13) | closed |
 | [2026-10-09-prewarm-at-load.md](2026-10-09-prewarm-at-load.md) | Backup tokens at the channel load, for midrolls in the first seconds of a load (T-812, F-22) | closed |
+| [2026-11-08-overlapping-polls-source.md](2026-11-08-overlapping-polls-source.md) | Two polls through one `Player` that overlap: one records the other's source, and F-24 and F-25 do not run at the next poll (T-831) | open |
+| [2026-11-08-repeat-after-blanked-playlist.md](2026-11-08-repeat-after-blanked-playlist.md) | F-28 does not run after the page's playlist blanked or merged; at the break's end the player fetches live segments again (T-832) | open |
 | [../research.md](../research.md) | Brave's Twitch scriptlet | closed |

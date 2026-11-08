@@ -17,7 +17,7 @@ Phases run in order. Inside a phase, the "Depends on" column says what must come
 | 5. Playlist assembly | T-501, T-502 | T-101, T-201 |
 | 6. Player control and settings | T-601 to T-604 | T-107, T-201 |
 | 7. Build and release | T-701 to T-706 | Phase 0 |
-| 8. Investigations | T-801 to T-830 | - |
+| 8. Investigations | T-801 to T-832 | - |
 
 ## Phase 0: test base
 
@@ -698,6 +698,20 @@ Odd behaviors seen in the runs. Each task ends with its cause in a finding (and 
 - Check: the `<script>` elements added to the page and the runs that replace `window.Worker`, with the 2.7.1 build and with the fix (`firefox_bundle_twice_probe.py`).
 - Done when: no `<script>` element and no console error naming `bundle.js` on Firefox 157; the content script still adds the bundle on Firefox before 128.
 - Tests: `platform/src/content-script.firefox.spec.ts` (the manifest as Firefox returns it), `content-script.spec.ts`, `firefox_bundle_twice_probe.py`; in the Firefox run with the fix of 2026-11-07 (`ff-fix`), no console error naming `bundle.js` (one per page with 2.7.1)
+
+### T-831 Overlapping polls record the wrong source
+- [ ] Status · F-24 · F-25 · cause known 2026-11-08, not fixed: `Player.source` is one field for every poll, set to the page's at the start of `onFetch` and read by `followSequence` after the await. When a poll starts while another waits for its backups, one of them records the other's source in `delivered`: a page playlist (blanked) recorded under the backup the other poll gave. At the next poll from that backup, F-24's restart and F-25's check see the same source and do not run ([finding](findings/2026-11-08-overlapping-polls-source.md))
+- Origin: 2026-11-08, a review of `player.ts` for model checking of the poll logic; reproduced on `main` with `overlapping_polls_probe.ts`.
+- Check: whether two media playlist requests are ever in flight in one worker (the worker log with the start and the end of each request): at a quality switch, and with the picture-by-picture players the page creates in the main player's worker (B-051, C-13).
+- Done when: a level 1 test with two overlapping polls, their backups answered in either order, fails on `main`; with the fix each poll records the source of the playlist it gave.
+- Tests: TS-831 (written with the fix), `overlapping_polls_probe.ts`
+
+### T-832 F-28 skipped after a blanked or merged playlist
+- [ ] Status · F-14 · F-28 · E5 · B-054 · cause known 2026-11-08, not fixed: `followSequence` checks for a live segment the player already has only when the playlist given before has a live number, and the page's playlist blanked (F-14) or merged (E5) inside a break has none (its ad segments, or the `twitch-stitched-ad` `DATERANGE` over the replaced ones). At the end of a break whose last playlists were the page's, its playlist comes back numbering the stream further ahead (B-054) and the player fetches again live segments it already has, with no restart: 2 in the probe after a blanked playlist, 4 after merged ones, with the page 4 further ahead ([finding](findings/2026-11-08-repeat-after-blanked-playlist.md))
+- Origin: 2026-11-08, a model of the numbering across polls checked with a model checker; reproduced on `main` with `repeat_after_blank_probe.ts`.
+- Check: soaks with `--all-playlists`: the live step of each segment the player fetched at the end of breaks whose last playlists were merged or blanked (`time_order_probe.py`).
+- Done when: a level 1 test with a backup, then the page's playlist blanked or merged, then the page's playlist further ahead after the break fails on `main`; with the fix the player fetches no live segment it already has (a restart, or a playlist that lists none); TS-826 unchanged.
+- Tests: TS-832 (written with the fix), `repeat_after_blank_probe.ts`, soak
 
 ## Open decisions
 
