@@ -1,6 +1,6 @@
 {
   "name": "purple-adblock",
-  "version": "2.7.2",
+  "version": "2.7.3",
   "description": "An adblocker for the Twitch.tv using server side signature and local m3u8 manipulation",
   "scripts": {
     "dev": "bun serviceWorker/build.ts dev && bun cli/build.ts dev",
