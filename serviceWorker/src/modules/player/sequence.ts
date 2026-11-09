@@ -51,6 +51,24 @@ export function liveNumberAt(text: string, number: number): number | null {
   return live + number - first;
 }
 
+// F-28 (T-832): the newest live number among the segments of a page playlist the player gets as content, leaving out the
+// `blank` ones (indexes the player gets as the blank segment: ad segments no backup replaced). They are numbered by
+// EXT-X-TWITCH-LIVE-SEQUENCE + index when the ad segments (`ads`) are the end of the playlist, a midroll in place of live
+// segments: a replaced ad segment is the live segment of its time. A preroll lists its ad segments first and live ones
+// after, and the page's next playlist numbers those otherwise (twitch.tv, 2026-11-08): then only the segments before
+// the first ad count. null without the tag or with no segment left.
+export function newestLiveContent(text: string, ads: number[], blank: number[]): number | null {
+  const lines = text.split("\n");
+  const live = tagNumber(lines, LIVE_SEQUENCE);
+  if (live == null) return null;
+  const count = readSegments(lines).length;
+  const first = ads.length ? Math.min(...ads) : count;
+  const endsWithAds = first + ads.length === count;
+  const skip = new Set(blank);
+  for (let index = (endsWithAds ? count : first) - 1; index >= 0; index--) if (!skip.has(index)) return live + index;
+  return null;
+}
+
 // The newest segment that is not an ad and has a date-time; with `beforeAds`, the newest before the first ad segment
 export function sequenceReference(text: string, beforeAds = false): SequenceReference | null {
   const lines = text.split("\n");

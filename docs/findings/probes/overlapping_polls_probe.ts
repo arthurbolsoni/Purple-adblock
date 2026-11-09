@@ -3,6 +3,9 @@
 // poll A's clean (A gives the backup), poll B's with ads (B gives the page's playlist, blanked). Prints what each poll
 // gave and the source Player recorded for the last one (`delivered`, read by F-24 and F-25 at the next poll).
 //
+// Since the fix (T-831) the polls take turns: B's backup request is made after A has given its playlist, so the probe
+// waits for each request to exist before it answers it, and both orders record `page` for B.
+//
 //   bun docs/findings/probes/overlapping_polls_probe.ts
 import { Player } from "../../../serviceWorker/src/modules/player/player";
 import { StreamType } from "../../../serviceWorker/src/modules/stream/interface/stream.enum";
@@ -36,6 +39,10 @@ async function run(overlap: boolean) {
   player.currentStream().setStreamAccess(master, StreamType.FRONTPAGE);
   player.currentStream().createStreamAccess = async () => {};
   const tick = () => new Promise((resolve) => setTimeout(resolve, 0));
+  const answer = async (i: number, body: string) => {
+    while (!answers[i]) await tick();
+    answers[i](body);
+  };
   const gave = (text: string) => (text === LIVE ? "the backup" : "the page's, blanked");
 
   const a = player.onFetch(ADS);
@@ -44,16 +51,15 @@ async function run(overlap: boolean) {
   if (overlap) {
     b = player.onFetch(ADS); // poll B starts while A waits for its backup
     await tick();
-    answers[0](LIVE);
+    await answer(0, LIVE);
     const outA = await a;
-    answers[1](ADS);
+    await answer(1, ADS);
     return { a: gave(outA), b: gave(await b), recordedForB: (player as any).delivered.source };
   }
-  answers[0](LIVE);
+  await answer(0, LIVE);
   const outA = await a;
   b = player.onFetch(ADS);
-  await tick();
-  answers[1](ADS);
+  await answer(1, ADS);
   return { a: gave(outA), b: gave(await b), recordedForB: (player as any).delivered.source };
 }
 

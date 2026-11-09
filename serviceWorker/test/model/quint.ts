@@ -29,13 +29,13 @@ type Model = {
 const MODELS: Record<string, Model> = {
   // Player's poll logic and its backup tokens (player.qnt; player-model.int.spec.ts). One array per state:
   //   [action, poll, answer, now, live, pageAhead, adStart, polls in flight,
-  //    delivered: [newest, recorded source (0: the page's, t: token t's), restart, newestLive] or 0,
+  //    delivered: [newest, recorded source (0: the page's, t: token t's), restart, newestLive, the newest live segment held] or 0,
   //    player: [have, haveLive, repeated, waiting, missed],
   //    the step's token: [id, lag, offset], the frontpage server's token (-1: none), a token request in flight]
   player: {
     file: "player.qnt",
-    invariants: { recordedIsDelivered: "T-831", noWait: "T-831", noRepeat: "T-832", noMiss: "", serverOrToken: "" },
-    verifyIn: { noMiss: "exhaustiveMiss", serverOrToken: "exhaustiveTokens" },
+    invariants: { recordedIsDelivered: "", noWait: "", noRepeat: "", noMiss: "", serverOrToken: "" },
+    verifyIn: { recordedIsDelivered: "exhaustivePolls", noWait: "exhaustivePolls", noRepeat: "exhaustivePolls", noMiss: "exhaustivePolls", serverOrToken: "exhaustiveTokens" },
     paths: [
       "neverSequenceBack",
       "neverRepeatRestart",
@@ -44,9 +44,6 @@ const MODELS: Record<string, Model> = {
       "neverNoServer",
       "neverMerged",
       "neverBlank",
-      "neverAnswerWhileOtherWaits",
-      "neverTokenReplacesServer",
-      "neverAnswerFromOldToken",
       "neverTokenOnPageBase",
       "neverSwitchBetweenTokens",
     ],
@@ -60,7 +57,7 @@ const MODELS: Record<string, Model> = {
       s.pageAhead,
       s.adStart,
       Object.entries(s.polls).filter(([, p]: any) => p.waiting).map(([id]) => Number(id)),
-      s.obs.delivered ? [s.obs.newest, s.obs.recorded, s.obs.restart ? 1 : 0, s.obs.newestLive] : 0,
+      s.obs.delivered ? [s.obs.newest, s.obs.recorded, s.obs.restart ? 1 : 0, s.obs.newestLive, s.deliveredLive] : 0,
       [s.have, s.haveLive, s.repeated ? 1 : 0, s.waiting ? 1 : 0, s.missed ? 1 : 0],
       [s.did.token, s.did.lag, s.did.offset],
       s.server,

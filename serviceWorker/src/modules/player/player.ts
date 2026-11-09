@@ -5,7 +5,7 @@ import { Server, StreamUrl, type VariantTarget } from "../stream/interface/strea
 import { blankAds, mergeWithBackups, stripAdDateranges } from "./m3u8";
 import { AdClass, detectAds, isCleanBackup } from "./ad-detector";
 import { AdBreak } from "./ad-break";
-import { liveNumberAt, newestNumber, sequenceReference, sequenceShift, shiftSequence, type SequenceReference } from "./sequence";
+import { liveNumberAt, newestLiveContent, newestNumber, sequenceReference, sequenceShift, shiftSequence, type SequenceReference } from "./sequence";
 import { parseVariants } from "../stream/master";
 import type { PurpleEvent, WorkerContext } from "../../scope";
 
@@ -46,8 +46,11 @@ export class Player {
   private lastPrewarm = -Infinity; // F-19: time (ms) of the last prewarm
   private pageSequence: SequenceReference | null = null; // F-23: newest live segment of the last page playlist without ads
   private sequenceShifts = new Map<string, number>(); // F-23: backup variant URL (without query) -> shift, for this break
-  private source = MAIN_SOURCE; // F-24: where the playlist being built comes from: the page's, or a backup variant URL
-  private delivered: { source: string; newest: number; newestLive: number | null } | null = null; // F-24, F-28: the last playlist given to the player
+  // F-24, F-28: the last playlist given to the player: where it came from, its newest number and the newest live segment
+  // the player has (T-832: across playlists, the page's blanked or merged ones too, until a restart)
+  private delivered: { source: string; newest: number; newestLive: number | null } | null = null;
+  // T-831: the polls take their turns, so what each gives and records follows the order the player asked
+  private polling: Promise<unknown> = Promise.resolve();
   // F-15 (T-601): pause/play at the edges of a break (E6); with reloadAfterAd, a reload at its end
   private adBreak = new AdBreak({
     pauseAndPlay: () => this.edgePauseAndPlay(),
@@ -161,11 +164,24 @@ export class Player {
   }
 
   // `url`: the media playlist's URL, to resolve relative segment URIs (T-502)
+  // T-831: a poll starts after the one before it has given its playlist (or after POLL_TURN_MS, if that one hangs), so
+  // two polls never give the player their playlists out of order or record each other's source
   async onFetch(text: string, url: string = ""): Promise<string> {
-    this.source = MAIN_SOURCE;
-    const out = await this.playlistFor(text, url);
-    this.followSequence(out);
-    return out;
+    const before = this.polling;
+    const turn = (async () => {
+      await this.waitFor(before);
+      const given = await this.playlistFor(text, url);
+      this.followSequence(given);
+      return given.text;
+    })();
+    this.polling = turn.catch(() => {});
+    return turn;
+  }
+
+  private async waitFor(poll: Promise<unknown>) {
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    await Promise.race([poll, new Promise((resolve) => (timer = setTimeout(resolve, POLL_TURN_MS)))]);
+    clearTimeout(timer);
   }
 
   // F-24 (T-818): the player asks for the number after the last segment it fetched. When the playlist it gets now comes
@@ -177,43 +193,50 @@ export class Player {
   // back untouched at the end of the break), the player would fetch it again: it writes its audio over itself and
   // appends its video again, so the picture falls behind the sound by the segments fetched again. With restartOnRepeat
   // (default on) it is restarted, E6's pause and play, so it starts over on that playlist
-  private followSequence(text: string) {
-    const newest = newestNumber(text);
+  // T-832: the newest live segment the player has is kept across the page's playlists blanked or merged (they list none
+  // at their newest number): at the end of a break whose last playlists were the page's, the page's playlist comes back
+  // numbering the stream further ahead and lists live segments the player has
+  private followSequence(given: Given) {
+    const newest = newestNumber(given.text);
     if (newest == null) return;
+    const own = given.newestLive !== undefined ? given.newestLive : liveNumberAt(given.text, newest);
     const previous = this.delivered;
-    this.delivered = { source: this.source, newest, newestLive: liveNumberAt(text, newest) };
-    if (!previous) return;
-    if (previous.source !== this.source && newest < previous.newest && this.setting?.restartOnSequenceBack !== false) {
-      this.scope.logger("sequence back", previous.newest, "->", newest);
-      this.emit({ type: "sequenceRestart", count: previous.newest - newest });
-      this.pauseAndPlay();
-      return;
-    }
-    if (this.setting?.restartOnRepeat === false || previous.newestLive == null) return;
-    const next = liveNumberAt(text, previous.newest + 1);
-    if (next == null || next > previous.newestLive) return;
-    this.scope.logger("segment again", previous.newestLive, "->", next);
-    this.emit({ type: "segmentRepeat", count: previous.newestLive - next + 1 });
+    const restart = previous ? this.restartFor(previous, given, newest) : null;
+    const carried = !previous || restart || previous.newestLive == null ? own : own == null ? previous.newestLive : Math.max(previous.newestLive, own);
+    this.delivered = { source: given.source, newest, newestLive: carried };
+    if (!restart) return;
+    this.scope.logger(restart.log, ...restart.numbers);
+    this.emit({ type: restart.event, count: restart.count });
     this.pauseAndPlay();
   }
 
-  private async playlistFor(text: string, url: string): Promise<string> {
+  private restartFor(previous: NonNullable<Player["delivered"]>, given: Given, newest: number) {
+    if (previous.source !== given.source && newest < previous.newest && this.setting?.restartOnSequenceBack !== false) {
+      return { event: "sequenceRestart" as const, count: previous.newest - newest, log: "sequence back", numbers: [previous.newest, "->", newest] };
+    }
+    if (this.setting?.restartOnRepeat === false || previous.newestLive == null) return null;
+    const next = liveNumberAt(given.text, previous.newest + 1);
+    if (next == null || next > previous.newestLive) return null;
+    return { event: "segmentRepeat" as const, count: previous.newestLive - next + 1, log: "segment again", numbers: [previous.newestLive, "->", next] };
+  }
+
+  private async playlistFor(text: string, url: string): Promise<Given> {
     // no stream stored for the channel yet (media playlist before the usher)
-    if (!this.currentStream()) return text;
+    if (!this.currentStream()) return fromPage(text);
     if (this.isWhitelist()) {
       this.emit({ type: "whitelisted" });
-      return text;
+      return fromPage(text);
     }
     // T-202: markers over live segments: the ad comes client-side (F-04); no backup, no pause/play.
     // F-14: a stitched break announced past the last segment (B-034) ends with prefetch lines to its first ad segments,
     // which the player fetched before the first poll with ad segments: they go, and their URIs are answered blank
     if (detectAds(text).class === AdClass.MARKED_LIVE) {
       this.pageSequence = sequenceReference(text) ?? this.pageSequence;
-      if (this.setting?.stripFallback === false) return text;
+      if (this.setting?.stripFallback === false) return fromPage(text);
       const announced = blankAds(text, [], url);
-      if (!announced.uris.length) return text;
+      if (!announced.uris.length) return fromPage(text);
       this.listBlank(announced.uris, announced.uris.length);
-      return this.adMarkers(announced.text);
+      return fromPage(this.adMarkers(announced.text));
     }
     // is ads and is the principal stream
     if (!this.isAds(text, true)) {
@@ -222,7 +245,7 @@ export class Player {
       // F-23: the page's numbering outside breaks; inside a break the page's own numbers move (B-054)
       this.pageSequence = sequenceReference(text) ?? this.pageSequence;
       this.sequenceShifts.clear();
-      return text;
+      return fromPage(text);
     }
     this.emit({ type: "adDetected" });
 
@@ -266,10 +289,12 @@ export class Player {
     const merged = mergeWithBackups([text, ...dump]);
     if (merged.replaced) this.emit({ type: "segmentsReplaced", count: merged.replaced });
     // F-14: the ad segments left are answered with the blank segment when the player requests them (stripFallback)
-    if (!merged.remaining.length || this.setting?.stripFallback === false) return merged.text;
+    // T-832: the live segments the player gets from it: the page's own and the ones that replaced its ads
+    const content = newestLiveContent(text, detectAds(text).adSegments, merged.remaining);
+    if (!merged.remaining.length || this.setting?.stripFallback === false) return fromPage(merged.text, content);
     const blanked = blankAds(merged.text, merged.remaining, url);
     this.listBlank(blanked.uris, blanked.segments);
-    return this.adMarkers(blanked.text);
+    return fromPage(this.adMarkers(blanked.text), content);
   }
 
   // F-20 (T-811): with stripAdMarkers (default on), a playlist Purple delivers with blanked ad segments or an announced
@@ -284,12 +309,11 @@ export class Player {
     if (backup.contaminated && !backup.data) this.contaminatedUntil.set(type, Date.now() + CONTAMINATED_MS);
   }
 
-  private useBackup(type: string, variant: StreamUrl | undefined, text: string, source: string): string {
+  private useBackup(type: string, variant: StreamUrl | undefined, text: string, source: string): Given {
     // F-10: autoplay and picture-by-picture (360p) are never pinned (T-802: the next midroll started on the 360p master)
     if (type !== StreamType.AUTOPLAY && type !== StreamType.PICTURE) this.pinnedType = type;
     this.emit({ type: "backupUsed", playerType: type, quality: variant?.quality });
-    this.source = source;
-    return text;
+    return { text, source };
   }
 
   // F-25 (T-820): with skipBackupBehind (default on), a playlist from another source than the last one given to the
@@ -427,6 +451,14 @@ export class Player {
     }
   }
 }
+
+// what a poll gives the player: the playlist, where it comes from (F-24), and, when it is not the live number under its
+// newest number (T-832), the newest live segment it holds
+type Given = { text: string; source: string; newestLive?: number | null };
+const fromPage = (text: string, newestLive?: number | null): Given => ({ text, source: MAIN_SOURCE, newestLive });
+// T-831: how long a poll waits for the one before it, when that one has not given its playlist yet (a backup that never
+// answers must not hold the polls after it); past the 2 segments a backup takes to answer
+export const POLL_TURN_MS = 5000;
 
 const withoutQuery = (url: string) => url.split(/[?#]/)[0];
 // F-24: the source of a playlist built from the page's own (as Twitch sent it, edited, merged or blanked)

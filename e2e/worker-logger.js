@@ -213,15 +213,19 @@
     });
   };
 
+  let calls = 0;
   const wrap = (fn, level) =>
     function (input, init) {
       const url = short(input);
       if (level === "player" && fake) playerUrls.add(url);
+      // T-831: the start of each playlist request the player makes, to tell polls that overlap; `call` pairs it with its end
+      const call = ++calls;
+      if (level === "player" && url.endsWith(".m3u8")) post({ kind: "fetchStart", level, url, call });
       return Promise.resolve(fn.apply(this, arguments))
         .then((r) => (level === "network" ? fakeBreak(url, r) : r))
         .then(
         (r) => {
-          post({ kind: "fetch", level, url, status: r && r.status });
+          post({ kind: "fetch", level, url, status: r && r.status, call });
           if (level === "network") describeServer(input, init, r);
           if (level === "player" && url.endsWith(".m3u8") && r && r.ok) {
             r.clone()
@@ -237,7 +241,7 @@
           return r;
         },
         (err) => {
-          post({ kind: "fetch", level, url, error: text(err) });
+          post({ kind: "fetch", level, url, error: text(err), call });
           throw err;
         },
       );

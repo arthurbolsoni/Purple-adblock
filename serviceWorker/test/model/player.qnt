@@ -1,13 +1,15 @@
 // T-010: Player's poll logic (player.ts: onFetch, playlistFor, alignSequence F-23/F-27, F-10's contamination,
 // followSequence F-24/F-28) and its backup tokens (stream.ts: createStreamAccess, one request in flight per type; the new
 // master replaces the type's server), against Twitch's numbering (B-034, B-048, B-054) and a player that asks for the
-// number after the last one it fetched. One backup type (frontpage); up to two polls of the page's playlist in flight.
+// number after the last one it fetched. One backup type (frontpage); polls of the page's playlist, one after the other:
+// each starts after the one before it gave its playlist (T-831, onFetch's turns; the backup answers within MAX_WAIT
+// segments, under POLL_TURN_MS, so no poll starts on a turn that timed out).
 //
 // Each token's master has its own variant URL: Player's source (F-24, F-25) and its alignment cache (F-23) are per
 // token. A token numbers the stream from its own base (B-054): 0 here, or the page's base when the token came.
 //
-// The model does what the code does today, T-831 and T-832 included: player-model.int.spec.ts replays its traces on the
-// real Player and Stream, and compares each step. The invariants say what should hold; `bun run model:check` and
+// The model does what the code does: player-model.int.spec.ts replays its traces on the real Player and Stream, and
+// compares each step. The invariants say what should hold; `bun run model:check` and
 // `bun run model:verify` look for steps that break them.
 //
 // -1 stands for none (no number, no offset, no live number, no token). Source 0 is the page's playlist, t token t's.
@@ -34,7 +36,8 @@ module player {
   type Token = { lag: int, offset: int }                      // offset: its MEDIA-SEQUENCE minus the live number
   // contents: the playlist's W segments by position, 0 for `first` (number first + i -> live segment, -1: blank). A map
   // over a fixed range, not one over first.to(newest): Apalache needs the size of every set before it runs
-  type Out = { newest: int, first: int, newestLive: int, contents: int -> int }
+  // newestLive: the live number under `newest` (-1: the playlist has ad segments); held: the newest live segment it holds
+  type Out = { newest: int, first: int, newestLive: int, held: int, contents: int -> int }
   type Obs = { delivered: bool, newest: int, recorded: int, restart: bool, newestLive: int }
   type Step = { name: str, poll: int, answer: str, token: int, lag: int, offset: int }
   type Delivery = {
@@ -86,13 +89,13 @@ module player {
 
   // the page's playlist without ads
   pure def pageOut(s: Snapshot): Out = {
-    newest: s.live + s.ahead, first: firstLive(s.live) + s.ahead, newestLive: s.live,
+    newest: s.live + s.ahead, first: firstLive(s.live) + s.ahead, newestLive: s.live, held: s.live,
     contents: 0.to(W - 1).mapBy(i => firstLive(s.live) + i),
   }
 
   // a clean backup ending at live number `lb`, numbered `offset` past its live numbers
   pure def backupOut(lb: int, offset: int): Out = {
-    newest: lb + offset, first: firstLive(lb) + offset, newestLive: lb,
+    newest: lb + offset, first: firstLive(lb) + offset, newestLive: lb, held: lb,
     contents: 0.to(W - 1).mapBy(i => firstLive(lb) + i),
   }
 
@@ -103,13 +106,18 @@ module player {
   // the page's playlist with ads, merged with an unclean backup ending at `lb` (E5) and blanked (F-14): a page ad
   // segment gets the backup's live segment at its date-time, else it is blank; kind "none": no backup asked
   pure def mergedOut(s: Snapshot, kind: str, lb: int): Out = {
-    newest: s.live + s.ahead, first: firstLive(s.live) + s.ahead, newestLive: NONE,
-    contents: 0.to(W - 1).mapBy(i => {
+    val contents = 0.to(W - 1).mapBy(i => {
       val l = firstLive(s.live) + i
       if (l < s.adStart) l
       else if (kind == "adsEarlier" and l > firstLive(lb) and l <= lb) l
       else NONE
-    }),
+    })
+    {
+      newest: s.live + s.ahead, first: firstLive(s.live) + s.ahead, newestLive: NONE,
+      // T-832: the page's own segments and the ones that replaced its ads, the newest one; the blank ones hold none
+      held: contents.keys().fold(NONE, (acc, i) => max(acc, contents.get(i))),
+      contents: contents,
+    }
   }
 
   // followSequence (F-24, F-28), then what the player fetches from `out`
@@ -122,9 +130,12 @@ module player {
     val restart = back or again
     val by = if (back) "back" else if (again and following == deliveredLive) "againByOne" else if (again) "again" else ""
     val top = at(out, out.newest)
+    // T-832: the newest live segment the player has, kept across playlists until a restart
+    val carried = if (deliveredNewest == NONE or restart or deliveredLive == NONE) out.held
+                  else if (out.held == NONE) deliveredLive else max(deliveredLive, out.held)
     val fetched = 0.to(W - 1).filter(i => have + 1 + i <= out.newest).map(i => have + 1 + i)
     val base = {
-      deliveredNewest: out.newest, deliveredSource: recorded, deliveredLive: out.newestLive,
+      deliveredNewest: out.newest, deliveredSource: recorded, deliveredLive: carried,
       have: out.newest, haveLive: haveLive, repeated: repeated, waiting: false, missed: missed,
       misrecorded: misrecorded or recorded != actual,
       obs: { delivered: true, newest: out.newest, recorded: recorded, restart: restart, newestLive: out.newestLive },
@@ -209,13 +220,13 @@ module player {
     did' = step0("breakEnd"), gave' = "",
   }
 
-  // onFetch: this.source = the page's; without ads its playlist as it is (F-23's reference, shifts cleared); with
+  // onFetch, once the poll before it has given its playlist: the source is the page's; without ads its playlist as it is (F-23's reference, shifts cleared); with
   // ads and the frontpage type left out (F-10) the page's playlist blanked; with no frontpage server, the page's
   // playlist blanked and a token asked (noteBackup); else the server's playlist asked, and the poll waits
   action start(p: int): bool = {
     val s = { live: live, ahead: pageAhead, adStart: adStart }
     all {
-      not(polls.get(p).waiting), pollsSinceTick < 2,
+      noneWaiting, pollsSinceTick < 2,
       now' = now, live' = live, pageAhead' = pageAhead, adStart' = adStart,
       pollsSinceTick' = pollsSinceTick + 1, since' = 0,
       source' = PAGE, contaminatedUntil' = contaminatedUntil, tokens' = tokens, nextToken' = nextToken, server' = server,
@@ -243,8 +254,8 @@ module player {
 
   // token t's playlist answers poll p: clean, it is given numbered as the page numbers the same live segment (F-23,
   // F-27), and this.source becomes token t's; unclean, its server is dropped and a token asked, the type is left out
-  // for CONTAMINATED_MS, and the page's playlist is given merged and blanked. followSequence then records this.source,
-  // whatever another poll made it meanwhile.
+  // for CONTAMINATED_MS, and the page's playlist is given merged and blanked. followSequence then records the source of the
+  // playlist this poll gave.
   action answer(p: int, kind: str): bool = {
     val poll = polls.get(p)
     val s = poll.snap
@@ -312,9 +323,6 @@ module player {
   val neverNoServer = gave != "noServer"
   val neverMerged = gave != "merged"
   val neverBlank = gave != "blank"
-  val neverAnswerWhileOtherWaits = not(did.name == "answer" and POLLS.exists(q => polls.get(q).waiting))
-  val neverTokenReplacesServer = not(did.name == "token" and did.answer == "replaces")
-  val neverAnswerFromOldToken = not(did.name == "answer" and did.token != server and server != NONE)
   val neverTokenOnPageBase = not(did.name == "token" and did.offset > 0)
   val neverSwitchBetweenTokens = not(gave == "backup" and obs.restart and deliveredSource > 1)
 }
@@ -324,17 +332,12 @@ module simulation {
   import player(MAX_LIVE = 60, MAX_TOKEN = 4, POLLS = Set(1, 2)).*
 }
 
-// every state up to a break and the polls after it (bun run model:verify, TLC)
-module exhaustive {
-  import player(MAX_LIVE = 32, MAX_TOKEN = 2, POLLS = Set(1, 2)).*
-}
-
 // serverOrToken depends on the tokens only: one poll at a time
 module exhaustiveTokens {
   import player(MAX_LIVE = 32, MAX_TOKEN = 2, POLLS = Set(1)).*
 }
 
-// noMiss with polls in flight together and the one token the load starts with
-module exhaustiveMiss {
+// every state up to a break and the polls after it, with the one token the load starts with (bun run model:verify, TLC)
+module exhaustivePolls {
   import player(MAX_LIVE = 32, MAX_TOKEN = 1, POLLS = Set(1, 2)).*
 }

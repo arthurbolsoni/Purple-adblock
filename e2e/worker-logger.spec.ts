@@ -114,3 +114,29 @@ ${H}/live-2.ts
     expect(seen[MAIN]).toBe(LIVE);
   });
 });
+
+describe("worker logger: the player's playlist requests (T-831)", () => {
+  test("each .m3u8 request of the player posts its start and its end with the same call", async () => {
+    const posted: any[] = [];
+    class Channel {
+      postMessage(message: any) {
+        posted.push(message);
+      }
+    }
+    const scope: any = { fetch: async () => new Response(""), addEventListener: () => {} };
+    const quiet = { log() {}, warn() {}, error() {} };
+    new Function("self", "BroadcastChannel", "console", SOURCE)(scope, Channel, quiet);
+    scope.fetch = async () => new Response("#EXTM3U");
+    const url = "https://video-weaver.example.hls.ttvnw.net/v1/playlist/main.m3u8";
+    await Promise.all([scope.fetch(url), scope.fetch(url)]);
+    await scope.fetch("https://edge.example.hls.ttvnw.net/v1/segment/live-1.ts");
+    const calls = posted.filter((m) => m.level === "player" && (m.kind === "fetchStart" || m.kind === "fetch"));
+    expect(calls.map((m) => [m.kind, m.call])).toEqual([
+      ["fetchStart", 1],
+      ["fetchStart", 2],
+      ["fetch", 1],
+      ["fetch", 2],
+      ["fetch", 3], // a segment: no start
+    ]);
+  });
+});

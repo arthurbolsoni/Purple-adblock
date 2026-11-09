@@ -3,8 +3,7 @@
 // serve are built from the model's state, each backup playlist answers its poll in the model's order, and each token
 // request (GQL, then usher) ends when the model says, with a master whose variant URL is that token's. After each step
 // what Player gave and recorded, its frontpage server and token request, and what a player asking for the number after
-// its last one fetched must be what the model says. The traces that break an invariant (T-831, T-832) replay too:
-// Player does today what the model says, faults included.
+// its last one fetched must be what the model says.
 import { afterEach, describe, expect, jest, spyOn, test } from "bun:test";
 import { Player } from "../../src/modules/player/player";
 import { StreamType } from "../../src/modules/stream/interface/stream.enum";
@@ -34,7 +33,7 @@ type State = [
   pageAhead: number,
   adStart: number,
   inFlight: number[],
-  delivered: [newest: number, recorded: number, restart: number, newestLive: number] | 0,
+  delivered: [newest: number, recorded: number, restart: number, newestLive: number, held: number] | 0,
   player: [have: number, haveLive: number, repeated: number, waiting: number, missed: number],
   token: [id: number, lag: number, offset: number],
   server: number,
@@ -127,7 +126,7 @@ describe("Player and Stream against the Quint model (T-010)", () => {
         const restart = posted.slice(before).includes("pause");
         fetch(out, restart);
         const source = (player as any).delivered.source;
-        return [newestNumber(out), source === "page" ? 0 : tokenOf(source), restart ? 1 : 0, liveNumberAt(out, newestNumber(out)!) ?? NONE];
+        return [newestNumber(out), source === "page" ? 0 : tokenOf(source), restart ? 1 : 0, liveNumberAt(out, newestNumber(out)!) ?? NONE, (player as any).delivered.newestLive ?? NONE];
       };
 
       for (const [index, state] of trace.states.entries()) {
@@ -138,6 +137,7 @@ describe("Player and Stream against the Quint model (T-010)", () => {
           asked = null;
           const before = posted.length;
           const out = player.onFetch(pageText(state), MAIN);
+          await new Promise((resolve) => setTimeout(resolve, 0)); // the poll takes its turn (T-831) before it asks
           if (state[7].includes(poll)) {
             // the poll waits for the backup playlist it asked for
             expect({ index, action, askedBackup: asked != null }).toEqual({ index, action, askedBackup: true });
