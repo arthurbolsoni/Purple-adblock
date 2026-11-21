@@ -27,7 +27,9 @@ module player {
   pure val TOKENS = 1.to(MAX_TOKEN)  // token 1 is the one the load starts with
   const MAX_LIVE: int              // the newest live segment a run reaches (modules simulation and exhaustive below)
   const POLLS: Set[int]            // the polls the player can have in flight (modules below)
-  pure val KINDS = Set("clean", "adsSame", "adsEarlier")
+  // "behind" (T-833): clean, from a CDN node behind: it ends STALE segments below the token's usual end (B-048)
+  pure val KINDS = Set("clean", "adsSame", "adsEarlier", "behind")
+  pure val STALE = 2
   pure val NONE = -1
   pure val PAGE = 0
 
@@ -37,12 +39,12 @@ module player {
   // contents: the playlist's W segments by position, 0 for `first` (number first + i -> live segment, -1: blank). A map
   // over a fixed range, not one over first.to(newest): Apalache needs the size of every set before it runs
   // newestLive: the live number under `newest` (-1: the playlist has ad segments); held: the newest live segment it holds
-  type Out = { newest: int, first: int, newestLive: int, held: int, contents: int -> int }
+  type Out = { newest: int, first: int, newestLive: int, held: int, contents: int -> int }   // held: heldAfter(_, NONE)
   type Obs = { delivered: bool, newest: int, recorded: int, restart: bool, newestLive: int }
   type Step = { name: str, poll: int, answer: str, token: int, lag: int, offset: int }
   type Delivery = {
     deliveredNewest: int, deliveredSource: int, deliveredLive: int,
-    have: int, haveLive: int, repeated: bool, waiting: bool, missed: bool, misrecorded: bool, obs: Obs,
+    have: int, haveLive: int, repeated: bool, waiting: bool, missed: bool, misrecorded: bool, needless: bool, obs: Obs,
     restartedBy: str,
   }
 
@@ -75,6 +77,7 @@ module player {
   var waiting: bool            // it waits for a number past the next one
   var missed: bool             // the number it asked for was behind the playlist's first
   var misrecorded: bool        // Player recorded another source than the one of the playlist it gave
+  var needless: bool           // F-28 restarted the player when it would fetch no live segment it has (T-833)
   // for the replay
   var did: Step                // what this step did
   var obs: Obs
@@ -84,6 +87,9 @@ module player {
   pure def max(a: int, b: int): int = if (a > b) a else b
   pure def firstLive(l: int): int = l - W + 1
   pure def at(o: Out, n: int): int = o.contents.get(n - o.first)   // the live segment under number n of the playlist
+  // the newest live segment `o` holds under numbers past `bound` (NONE: all of them; T-833: the player's last number)
+  pure def heldAfter(o: Out, bound: int): int =
+    o.contents.keys().filter(i => bound == NONE or o.first + i > bound).fold(NONE, (acc, i) => max(acc, o.contents.get(i)))
   pure def hasAds(s: Snapshot): bool = s.adStart != NONE and s.adStart <= s.live
   pure def step0(name: str): Step = { name: name, poll: 0, answer: "", token: NONE, lag: 0, offset: 0 }
 
@@ -120,8 +126,9 @@ module player {
     }
   }
 
-  // followSequence (F-24, F-28), then what the player fetches from `out`
-  def deliveryOf(out: Out, recorded: int, actual: int): Delivery = {
+  // followSequence (F-24, F-28), then what the player fetches from `out`. `stale`: a backup's answer from a node behind;
+  // the player waits one poll for its next number then, which Purple cannot tell beforehand (not a noWait break)
+  def deliveryOf(out: Out, recorded: int, actual: int, stale: bool): Delivery = {
     val back = deliveredNewest != NONE and deliveredSource != recorded and out.newest < deliveredNewest
     val following = if (deliveredNewest == NONE or deliveredLive == NONE or out.newestLive == NONE or
                    deliveredNewest + 1 < out.first or deliveredNewest + 1 > out.newest) NONE
@@ -130,14 +137,17 @@ module player {
     val restart = back or again
     val by = if (back) "back" else if (again and following == deliveredLive) "againByOne" else if (again) "again" else ""
     val top = at(out, out.newest)
-    // T-832: the newest live segment the player has, kept across playlists until a restart
-    val carried = if (deliveredNewest == NONE or restart or deliveredLive == NONE) out.held
-                  else if (out.held == NONE) deliveredLive else max(deliveredLive, out.held)
+    // T-832: the newest live segment the player has, kept across playlists until a restart; T-833: the newest number
+    // given is kept too (the player waits past it), and a playlist adds only the live segments numbered past it
+    val fresh = deliveredNewest == NONE or restart
+    val own = heldAfter(out, if (fresh) NONE else deliveredNewest)
+    val carried = if (fresh or deliveredLive == NONE) own else if (own == NONE) deliveredLive else max(deliveredLive, own)
     val fetched = 0.to(W - 1).filter(i => have + 1 + i <= out.newest).map(i => have + 1 + i)
+    val wouldRepeat = have != NONE and have + 1 >= out.first and fetched.exists(n => at(out, n) != NONE and at(out, n) <= haveLive)
     val base = {
-      deliveredNewest: out.newest, deliveredSource: recorded, deliveredLive: carried,
+      deliveredNewest: if (fresh) out.newest else max(deliveredNewest, out.newest), deliveredSource: recorded, deliveredLive: carried,
       have: out.newest, haveLive: haveLive, repeated: repeated, waiting: false, missed: missed,
-      misrecorded: misrecorded or recorded != actual,
+      misrecorded: misrecorded or recorded != actual, needless: needless or (again and not(wouldRepeat)),
       obs: { delivered: true, newest: out.newest, recorded: recorded, restart: restart, newestLive: out.newestLive },
       restartedBy: by,
     }
@@ -148,7 +158,7 @@ module player {
       // not measured what the player does then; taken as going to the end of `out`
       { ...base, haveLive: max(haveLive, top), missed: true }
     else if (have + 1 > out.newest)
-      { ...base, have: have, waiting: have > out.newest }
+      { ...base, have: have, waiting: have > out.newest and not(stale) }
     else {
       ...base,
       haveLive: fetched.fold(haveLive, (acc, n) => max(acc, at(out, n))),
@@ -159,13 +169,13 @@ module player {
   action applyDelivery(d: Delivery): bool = all {
     deliveredNewest' = d.deliveredNewest, deliveredSource' = d.deliveredSource, deliveredLive' = d.deliveredLive,
     have' = d.have, haveLive' = d.haveLive, repeated' = d.repeated, waiting' = d.waiting, missed' = d.missed,
-    misrecorded' = d.misrecorded, obs' = d.obs, restartedBy' = d.restartedBy,
+    misrecorded' = d.misrecorded, needless' = d.needless, obs' = d.obs, restartedBy' = d.restartedBy,
   }
 
   action noDelivery: bool = all {
     deliveredNewest' = deliveredNewest, deliveredSource' = deliveredSource, deliveredLive' = deliveredLive,
     have' = have, haveLive' = haveLive, repeated' = repeated, waiting' = waiting, missed' = missed,
-    misrecorded' = misrecorded, obs' = { ...obs, delivered: false }, restartedBy' = "",
+    misrecorded' = misrecorded, needless' = needless, obs' = { ...obs, delivered: false }, restartedBy' = "",
   }
 
   action keepStream: bool = all { server' = server, tokenPending' = tokenPending, nextToken' = nextToken, tokens' = tokens }
@@ -182,7 +192,7 @@ module player {
       pageSequence' = NONE, shifts' = TOKENS.mapBy(_ => NONE), contaminatedUntil' = 0,
       polls' = POLLS.mapBy(_ => { waiting: false, snap: { live: 0, ahead: 0, adStart: NONE }, token: NONE }),
       server' = 1, tokenPending' = false, nextToken' = 2,
-      have' = NONE, haveLive' = NONE, repeated' = false, waiting' = false, missed' = false, misrecorded' = false,
+      have' = NONE, haveLive' = NONE, repeated' = false, waiting' = false, missed' = false, misrecorded' = false, needless' = false,
       did' = { ...step0("init"), token: 1, lag: l }, gave' = "", restartedBy' = "",
       obs' = { delivered: false, newest: NONE, recorded: PAGE, restart: false, newestLive: NONE },
     }
@@ -234,15 +244,15 @@ module player {
       if (not(hasAds(s))) all {
         cleanPolls' = 1, pageSequence' = s.ahead, shifts' = TOKENS.mapBy(_ => NONE), polls' = polls, gave' = "page",
         tokenPending' = tokenPending,
-        applyDelivery(deliveryOf(pageOut(s), PAGE, PAGE)),
+        applyDelivery(deliveryOf(pageOut(s), PAGE, PAGE, false)),
       } else if (contaminatedUntil > now) all {
         cleanPolls' = cleanPolls, pageSequence' = pageSequence, shifts' = shifts, polls' = polls, gave' = "skipped",
         tokenPending' = tokenPending,
-        applyDelivery(deliveryOf(mergedOut(s, "none", 0), PAGE, PAGE)),
+        applyDelivery(deliveryOf(mergedOut(s, "none", 0), PAGE, PAGE, false)),
       } else if (server == NONE) all {
         cleanPolls' = cleanPolls, pageSequence' = pageSequence, shifts' = shifts, polls' = polls, gave' = "noServer",
         tokenPending' = true,
-        applyDelivery(deliveryOf(mergedOut(s, "none", 0), PAGE, PAGE)),
+        applyDelivery(deliveryOf(mergedOut(s, "none", 0), PAGE, PAGE, false)),
       } else all {
         cleanPolls' = cleanPolls, pageSequence' = pageSequence, shifts' = shifts,
         polls' = polls.set(p, { waiting: true, snap: s, token: server }), gave' = "",
@@ -260,7 +270,7 @@ module player {
     val poll = polls.get(p)
     val s = poll.snap
     val t = poll.token
-    val lb = live - tokens.get(t).lag
+    val lb = live - tokens.get(t).lag - (if (kind == "behind") STALE else 0)
     val own = tokens.get(t).offset
     val unclean = backupHasAds(kind, lb, adStart)
     val reference = if (pageSequence != NONE) pageSequence else if (s.adStart > firstLive(s.live)) s.ahead else NONE
@@ -277,11 +287,11 @@ module player {
         source' = source, shifts' = shifts, contaminatedUntil' = now + CONTAMINATED_MS,
         server' = if (server == t) NONE else server, tokenPending' = true,
         gave' = if (merged.contents.keys().exists(i => merged.first + i - s.ahead >= s.adStart and merged.contents.get(i) != NONE)) "merged" else "blank",
-        applyDelivery(deliveryOf(merged, source, PAGE)),
+        applyDelivery(deliveryOf(merged, source, PAGE, false)),
       } else all {
         source' = t, shifts' = if (shifts.get(t) != NONE or reference == NONE) shifts else shifts.set(t, reference - own),
         contaminatedUntil' = contaminatedUntil, server' = server, tokenPending' = tokenPending, gave' = "backup",
-        applyDelivery(deliveryOf(backupOut(lb, own + shift), t, t)),
+        applyDelivery(deliveryOf(backupOut(lb, own + shift), t, t, kind == "behind")),
       },
     }
   }
@@ -312,6 +322,7 @@ module player {
   val noWait = not(waiting)                          // F-24, F-25
   val recordedIsDelivered = not(misrecorded)         // T-831 breaks it
   val noMiss = not(missed)
+  val noNeedlessRestart = not(needless)              // F-28 (2.7.3 broke it, T-833)
   val serverOrToken = server != NONE or tokenPending or nextToken > MAX_TOKEN   // never without a server and no token asked
 
   // paths the replay must go through: each holds until a step takes that path, and model:traces keeps a trace that
@@ -325,6 +336,7 @@ module player {
   val neverBlank = gave != "blank"
   val neverTokenOnPageBase = not(did.name == "token" and did.offset > 0)
   val neverSwitchBetweenTokens = not(gave == "backup" and obs.restart and deliveredSource > 1)
+  val neverBehindAnswer = not(did.name == "answer" and did.answer == "behind" and gave == "backup")
 }
 
 // random runs (bun run model:check, model:traces)

@@ -56,8 +56,10 @@ export function liveNumberAt(text: string, number: number): number | null {
 // EXT-X-TWITCH-LIVE-SEQUENCE + index when the ad segments (`ads`) are the end of the playlist, a midroll in place of live
 // segments: a replaced ad segment is the live segment of its time. A preroll lists its ad segments first and live ones
 // after, and the page's next playlist numbers those otherwise (twitch.tv, 2026-11-08): then only the segments before
-// the first ad count. null without the tag or with no segment left.
-export function newestLiveContent(text: string, ads: number[], blank: number[]): number | null {
+// the first ad count. T-833: with `after`, only the segments numbered past it count (MEDIA-SEQUENCE + index > after): the
+// player asks for the number after the last one it had, so it gets none of the others from this playlist. null without
+// the tag or with no segment left.
+export function newestLiveContent(text: string, ads: number[], blank: number[], after: number | null = null): number | null {
   const lines = text.split("\n");
   const live = tagNumber(lines, LIVE_SEQUENCE);
   if (live == null) return null;
@@ -65,7 +67,9 @@ export function newestLiveContent(text: string, ads: number[], blank: number[]):
   const first = ads.length ? Math.min(...ads) : count;
   const endsWithAds = first + ads.length === count;
   const skip = new Set(blank);
-  for (let index = (endsWithAds ? count : first) - 1; index >= 0; index--) if (!skip.has(index)) return live + index;
+  const sequence = mediaSequence(lines);
+  const lowest = after == null || sequence == null ? 0 : after - sequence + 1;
+  for (let index = (endsWithAds ? count : first) - 1; index >= Math.max(0, lowest); index--) if (!skip.has(index)) return live + index;
   return null;
 }
 

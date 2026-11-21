@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { liveNumberAt, newestNumber, sequenceReference, sequenceShift, shiftSequence } from "../../../../src/modules/player/sequence";
+import { liveNumberAt, newestLiveContent, newestNumber, sequenceReference, sequenceShift, shiftSequence } from "../../../../src/modules/player/sequence";
 
 const T0 = Date.parse("2026-10-09T02:46:00.910Z");
 
@@ -135,5 +135,35 @@ describe("liveNumberAt", () => {
     expect(liveNumberAt(playlist(100, 3, T0, [], "\n", null), 101)).toBeNull();
     expect(liveNumberAt(playlist(100, 3, T0).replace(/#EXT-X-MEDIA-SEQUENCE:\d+\n/, ""), 101)).toBeNull();
     expect(liveNumberAt(playlist(100, 4, T0, [2, 3]), 101)).toBeNull();
+  });
+});
+
+describe("newestLiveContent", () => {
+  // 8 segments numbered 107 to 114, live numbers 103 to 110; the last three are ad segments (a midroll)
+  const text = playlist(107, 8, T0, [5, 6, 7], "\n", 103);
+
+  test("ads at the end: the newest segment that is not blank, by EXT-X-TWITCH-LIVE-SEQUENCE + index", () => {
+    expect(newestLiveContent(text, [5, 6, 7], [])).toBe(110); // every ad segment replaced
+    expect(newestLiveContent(text, [5, 6, 7], [7])).toBe(109);
+    expect(newestLiveContent(text, [5, 6, 7], [5, 6, 7])).toBe(107); // the page's own live segments
+  });
+
+  test("ads first (B-060): only the segments before the first ad", () => {
+    const preroll = playlist(0, 8, T0, [0, 1, 2], "\n", 5570);
+    expect(newestLiveContent(preroll, [0, 1, 2], [0, 1, 2])).toBeNull();
+    expect(newestLiveContent(playlist(0, 8, T0, [2, 3], "\n", 5570), [2, 3], [2, 3])).toBe(5571);
+  });
+
+  test("T-833: with `after`, only the segments numbered past it", () => {
+    // the player's last number was 112: it gets 113 and 114 from this playlist
+    expect(newestLiveContent(text, [5, 6, 7], [], 112)).toBe(110);
+    expect(newestLiveContent(text, [5, 6, 7], [7], 112)).toBe(109);
+    expect(newestLiveContent(text, [5, 6, 7], [6, 7], 112)).toBeNull(); // both blank: nothing new, 107 to 112 do not count
+    expect(newestLiveContent(text, [5, 6, 7], [], 114)).toBeNull(); // it is past the playlist
+    expect(newestLiveContent(text, [5, 6, 7], [5, 6, 7], 100)).toBe(107); // before the playlist: all of it
+  });
+
+  test("null without EXT-X-TWITCH-LIVE-SEQUENCE", () => {
+    expect(newestLiveContent(playlist(107, 8, T0, [7], "\n", null), [7], [])).toBeNull();
   });
 });

@@ -34,8 +34,8 @@ const MODELS: Record<string, Model> = {
   //    the step's token: [id, lag, offset], the frontpage server's token (-1: none), a token request in flight]
   player: {
     file: "player.qnt",
-    invariants: { recordedIsDelivered: "", noWait: "", noRepeat: "", noMiss: "", serverOrToken: "" },
-    verifyIn: { recordedIsDelivered: "exhaustivePolls", noWait: "exhaustivePolls", noRepeat: "exhaustivePolls", noMiss: "exhaustivePolls", serverOrToken: "exhaustiveTokens" },
+    invariants: { recordedIsDelivered: "", noWait: "", noRepeat: "", noMiss: "", serverOrToken: "", noNeedlessRestart: "" },
+    verifyIn: { recordedIsDelivered: "exhaustivePolls", noWait: "exhaustivePolls", noRepeat: "exhaustivePolls", noMiss: "exhaustivePolls", serverOrToken: "exhaustiveTokens", noNeedlessRestart: "exhaustivePolls" },
     paths: [
       "neverSequenceBack",
       "neverRepeatRestart",
@@ -46,6 +46,7 @@ const MODELS: Record<string, Model> = {
       "neverBlank",
       "neverTokenOnPageBase",
       "neverSwitchBetweenTokens",
+      "neverBehindAnswer",
     ],
     random: { traces: 15, steps: 60 },
     compact: (s) => [

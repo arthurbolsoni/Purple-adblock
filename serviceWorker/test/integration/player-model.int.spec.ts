@@ -60,10 +60,11 @@ const pageText = (s: State) => {
 };
 
 // a token's playlist, `lag` behind and numbered `offset` past the live numbers; "adsSame": ads where the page has
-// them; "adsEarlier": its oldest segment is an ad (its own break, F-10)
+// them; "adsEarlier": its oldest segment is an ad (its own break, F-10); "behind": clean, STALE further behind (T-833)
+const STALE = 2; // player.qnt
 const backupText = (s: State, token: { lag: number; offset: number }) => {
   const [, , answer, , live, , adStart] = s;
-  const edge = live - token.lag;
+  const edge = live - token.lag - (answer === "behind" ? STALE : 0);
   return playlist(edge, token.offset, (l) => (answer === "adsSame" && adStart !== NONE && l >= adStart) || (answer === "adsEarlier" && l === edge - W + 1));
 };
 
@@ -106,13 +107,14 @@ describe("Player and Stream against the Quint model (T-010)", () => {
       const pending = new Map<number, Promise<string>>();
       const player_ = { have: NONE, haveLive: NONE, repeated: false, waiting: false, missed: false };
       // what a player asking for the number after its last one does with `out` (player.qnt, deliveryOf)
-      const fetch = (out: string, restart: boolean) => {
+      // `stale`: a backup's answer from a node behind; the player waits one poll then (not a noWait break, player.qnt)
+      const fetch = (out: string, restart: boolean, stale = false) => {
         const newest = newestNumber(out)!;
         const first = Number(/#EXT-X-MEDIA-SEQUENCE:(\d+)/.exec(out)![1]);
         const top = contentAt(out, newest);
         if (player_.have === NONE || restart) Object.assign(player_, { have: newest, haveLive: top, waiting: false });
         else if (player_.have + 1 < first) Object.assign(player_, { have: newest, haveLive: Math.max(player_.haveLive, top), missed: true, waiting: false });
-        else if (player_.have + 1 > newest) player_.waiting = player_.have > newest;
+        else if (player_.have + 1 > newest) player_.waiting = player_.have > newest && !stale;
         else {
           for (let n = player_.have + 1; n <= newest; n++) {
             const live = contentAt(out, n);
@@ -122,9 +124,9 @@ describe("Player and Stream against the Quint model (T-010)", () => {
           Object.assign(player_, { have: newest, waiting: false });
         }
       };
-      const deliver = (out: string, before: number) => {
+      const deliver = (out: string, before: number, stale = false) => {
         const restart = posted.slice(before).includes("pause");
-        fetch(out, restart);
+        fetch(out, restart, stale);
         const source = (player as any).delivered.source;
         return [newestNumber(out), source === "page" ? 0 : tokenOf(source), restart ? 1 : 0, liveNumberAt(out, newestNumber(out)!) ?? NONE, (player as any).delivered.newestLive ?? NONE];
       };
@@ -149,7 +151,7 @@ describe("Player and Stream against the Quint model (T-010)", () => {
           const { token, answer } = answers.get(poll)!;
           answer(backupText(state, tokens.get(token)!));
           answers.delete(poll);
-          delivered = deliver(await pending.get(poll)!, before);
+          delivered = deliver(await pending.get(poll)!, before, state[2] === "behind");
           pending.delete(poll);
         } else if (action === "token") {
           // the token request ends: GQL gives the token, usher the master with that token's variant

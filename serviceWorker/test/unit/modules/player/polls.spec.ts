@@ -163,7 +163,9 @@ const play = async (polls: Poll[]) => {
       if (live <= haveLive) again.push(live);
       else haveLive = live;
     }
-    have = newest;
+    // T-833: a playlist that ends below the last number fetched (a backup behind, B-048): the player waits for the
+    // number after it, it does not go back
+    have = Math.max(have, newest);
   }
   return { again, restarts };
 };
@@ -229,6 +231,39 @@ describe("T-832: the end of a preroll", () => {
       // the break is over: the same numbers, a live number 22 lower
       { page: preroll(2, 5550, 0, 14), backup: "", ms: 2000 },
       { page: preroll(3, 5551, 0, 14), backup: "", ms: 2000 },
+    ]);
+    expect(again).toEqual([]);
+    expect(restarts).toBe(0);
+  });
+});
+
+describe("T-833: F-28 after a playlist that ends below the player's last number", () => {
+  // 2.7.3 (T-832) keeps the newest live segment across playlists, and F-28 still reads the player's last number as the
+  // newest number of the playlist given before. After a backup's playlist 2 segments behind (B-048), the next one up to
+  // date looks like a repeat: the player has 105 and asks for 106, nothing it has comes again
+  test("a backup behind, then up to date: no restart, no live segment fetched again", async () => {
+    const { again, restarts } = await play([
+      { page: playlist(103), backup: "", ms: 2000 },
+      { page: playlist(105, 0, [104, 105]), backup: playlist(105), ms: 2000 },
+      { page: playlist(106, 0, [104, 105, 106]), backup: playlist(104), ms: 2000 },
+      { page: playlist(107, 0, [104, 105, 106, 107]), backup: playlist(107), ms: 2000 },
+      { page: playlist(108, 0, [104, 105, 106, 107, 108]), backup: playlist(108), ms: 2000 },
+    ]);
+    expect(again).toEqual([]);
+    expect(restarts).toBe(0);
+  });
+
+  // the player got 104 and 105 as the blank segment (the page's ad segments, F-14); a backup lists them as live later,
+  // when the player is past them: it never had those live segments, and the page's playlist after the break that lists
+  // them under new numbers (B-054) is no repeat
+  test("live segments listed after the player got their numbers blank: no restart at the end of the break", async () => {
+    const { again, restarts } = await play([
+      { page: playlist(103), backup: "", ms: 2000 },
+      { page: playlist(105, 0, [104, 105]), backup: playlist(105, 0, [104, 105]), ms: 2000 },
+      // past F-10's 5 s without the backup that had ads
+      { page: playlist(106, 0, [104, 105, 106]), backup: playlist(105), ms: 6000 },
+      { page: playlist(107, 0, [104, 105, 106, 107]), backup: playlist(107, 0, [106, 107]), ms: 2000 },
+      { page: playlist(110, 3), backup: "", ms: 2000 },
     ]);
     expect(again).toEqual([]);
     expect(restarts).toBe(0);

@@ -46,8 +46,9 @@ export class Player {
   private lastPrewarm = -Infinity; // F-19: time (ms) of the last prewarm
   private pageSequence: SequenceReference | null = null; // F-23: newest live segment of the last page playlist without ads
   private sequenceShifts = new Map<string, number>(); // F-23: backup variant URL (without query) -> shift, for this break
-  // F-24, F-28: the last playlist given to the player: where it came from, its newest number and the newest live segment
-  // the player has (T-832: across playlists, the page's blanked or merged ones too, until a restart)
+  // F-24, F-28: the last playlist given to the player: where it came from, the newest number given since the last
+  // restart (T-833: the player waits past the last number it had, so a playlist that ends below it does not move it
+  // back) and the newest live segment the player has (T-832: across playlists, the page's blanked or merged ones too)
   private delivered: { source: string; newest: number; newestLive: number | null } | null = null;
   // T-831: the polls take their turns, so what each gives and records follows the order the player asked
   private polling: Promise<unknown> = Promise.resolve();
@@ -196,14 +197,18 @@ export class Player {
   // T-832: the newest live segment the player has is kept across the page's playlists blanked or merged (they list none
   // at their newest number): at the end of a break whose last playlists were the page's, the page's playlist comes back
   // numbering the stream further ahead and lists live segments the player has
+  // T-833: the player asks for the number after the last one it had, also when a playlist ends below it (a backup's
+  // playlist from a node behind, B-048): the newest number given is kept until a restart, and a playlist adds to the
+  // live segments the player has only with the numbers past it
   private followSequence(given: Given) {
     const newest = newestNumber(given.text);
     if (newest == null) return;
-    const own = given.newestLive !== undefined ? given.newestLive : liveNumberAt(given.text, newest);
     const previous = this.delivered;
     const restart = previous ? this.restartFor(previous, given, newest) : null;
+    const after = !previous || restart ? null : previous.newest;
+    const own = given.newestLive ? given.newestLive(after) : after == null || newest > after ? liveNumberAt(given.text, newest) : null;
     const carried = !previous || restart || previous.newestLive == null ? own : own == null ? previous.newestLive : Math.max(previous.newestLive, own);
-    this.delivered = { source: given.source, newest, newestLive: carried };
+    this.delivered = { source: given.source, newest: after == null ? newest : Math.max(after, newest), newestLive: carried };
     if (!restart) return;
     this.scope.logger(restart.log, ...restart.numbers);
     this.emit({ type: restart.event, count: restart.count });
@@ -290,7 +295,7 @@ export class Player {
     if (merged.replaced) this.emit({ type: "segmentsReplaced", count: merged.replaced });
     // F-14: the ad segments left are answered with the blank segment when the player requests them (stripFallback)
     // T-832: the live segments the player gets from it: the page's own and the ones that replaced its ads
-    const content = newestLiveContent(text, detectAds(text).adSegments, merged.remaining);
+    const content = (after: number | null) => newestLiveContent(text, detectAds(text).adSegments, merged.remaining, after);
     if (!merged.remaining.length || this.setting?.stripFallback === false) return fromPage(merged.text, content);
     const blanked = blankAds(merged.text, merged.remaining, url);
     this.listBlank(blanked.uris, blanked.segments);
@@ -317,7 +322,8 @@ export class Player {
   }
 
   // F-25 (T-820): with skipBackupBehind (default on), a playlist from another source than the last one given to the
-  // player whose newest number is not past that one's: the player would wait for it to move (a backup token asked a
+  // player whose newest number is not past the newest given (T-833: kept across a playlist that ended below it): the
+  // player would wait for it to move (a backup token asked a
   // moment before was behind in time, soak j: 2 s still)
   private listsNothingNew(text: string, source: string): boolean {
     if (this.setting?.skipBackupBehind === false || !this.delivered || this.delivered.source === source) return false;
@@ -453,9 +459,9 @@ export class Player {
 }
 
 // what a poll gives the player: the playlist, where it comes from (F-24), and, when it is not the live number under its
-// newest number (T-832), the newest live segment it holds
-type Given = { text: string; source: string; newestLive?: number | null };
-const fromPage = (text: string, newestLive?: number | null): Given => ({ text, source: MAIN_SOURCE, newestLive });
+// newest number (T-832), the newest live segment it holds past a number (T-833: the player's last one; null: all)
+type Given = { text: string; source: string; newestLive?: (after: number | null) => number | null };
+const fromPage = (text: string, newestLive?: (after: number | null) => number | null): Given => ({ text, source: MAIN_SOURCE, newestLive });
 // T-831: how long a poll waits for the one before it, when that one has not given its playlist yet (a backup that never
 // answers must not hold the polls after it); past the 2 segments a backup takes to answer
 export const POLL_TURN_MS = 5000;
