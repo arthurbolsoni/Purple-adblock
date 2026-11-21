@@ -8,8 +8,9 @@
 | Page | `serviceWorker/src/index.ts` (built into `bundle.js`) | twitch.tv main world, `document_start`: a `MAIN` world content script on Chromium and on Firefox 128 and later (MV2 too), a `<script>` added by the content script on earlier Firefox, `@run-at document-start` in the userscript |
 | Worker | `serviceWorker/src/app.worker.ts` → `bootstrap.ts` + modules (built into `app.worker.js`) | inside the Twitch player worker, ahead of the original script |
 | Popup | `platform/src/common/js/popup.js` | extension popup |
+| Background | `platform/src/app/background.js` | the MV3 service worker on Chromium, an MV2 event page on Firefox: draws the icon's badge (F-30) |
 
-The userscript has no content script or popup: `bundle.js` is the whole script and settings use their defaults.
+The userscript has no content script, popup or background script: `bundle.js` is the whole script and settings use their defaults.
 
 ## Current flow
 
@@ -48,6 +49,8 @@ The userscript has no content script or popup: `bundle.js` is the whole script a
 | player worker → page | `PlayerQualityChanged`, `arg.key === "quality"` | page sends `{ funcName: "setQuality", value }` to every registered worker |
 | player worker → page | `arg.key === "state"` | page sends `{ funcName: <state> }` to the worker that sent it |
 | worker → page | `{ type: "purpleEvent", event }`, only with `debug` on | page keeps the last 500 in `window.__purple.events`, created only with `debug` on (F-17) |
+| worker → page | `{ type: "adState", blocking }`, when its main playlist enters or leaves a break Purple blocks (F-30), with any setting | the page keeps which workers are blocking (`page/ad-state.ts`) and, when the page's state changes, sends `window.postMessage({ type: "adState", value })` |
+| page → content script → background | `{ type: "adState", value }`, then `runtime.sendMessage({ type: "adState", blocking })` | the background script sets or clears the badge on that tab's icon, unless the stored `adBadge` is false |
 
 The last `setSettings`, `setIntegrity` and `setQuality` are replayed to a worker created later.
 

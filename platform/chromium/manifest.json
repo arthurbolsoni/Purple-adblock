@@ -6,6 +6,9 @@
         },
         "default_popup": "common/html/popup.html"
     },
+    "background": {
+        "service_worker": "app/background.js"
+    },
     "author": "kingarthur",
     "icons": {
         "128": "images/logov2-128.png"

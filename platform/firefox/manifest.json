@@ -4,6 +4,12 @@
         "default_icon": "images/logov2-128.png",
         "default_popup": "common/html/popup.html"
     },
+    "background": {
+        "scripts": [
+            "app/background.js"
+        ],
+        "persistent": false
+    },
     "icons": {
         "128": "images/logov2-128.png"
     },

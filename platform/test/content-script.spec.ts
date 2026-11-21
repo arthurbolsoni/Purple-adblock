@@ -67,4 +67,29 @@ describe("content script on Firefox 115 (MV2)", () => {
     await Bun.sleep(10);
     expect(replies).toEqual([{ type: "setSettings", value: STORED }, { type: "setSettings", value: STORED }, { type: "setSettings", value: STORED }]);
   });
+
+  // F-30 (T-605): the page's ad state goes to the background script, which draws the icon's badge
+  test("adState from the page is sent to the extension, as a boolean", async () => {
+    window.postMessage({ type: "adState", value: true }, "*");
+    window.postMessage({ type: "adState", value: "yes" }, "*");
+    window.postMessage({ type: "adState", value: false }, "*");
+    await Bun.sleep(10);
+    expect(env.chrome.sent).toEqual([
+      { type: "adState", blocking: true },
+      { type: "adState", blocking: false },
+      { type: "adState", blocking: false },
+    ]);
+  });
+
+  test("an extension that cannot be reached (reloaded under the page) changes nothing in the page", async () => {
+    const send = env.chrome.runtime.sendMessage;
+    env.chrome.runtime.sendMessage = () => {
+      throw new Error("Extension context invalidated.");
+    };
+    window.postMessage({ type: "adState", value: true }, "*");
+    getSettings();
+    await Bun.sleep(10);
+    env.chrome.runtime.sendMessage = send;
+    expect(replies.at(-1)).toEqual({ type: "setSettings", value: STORED });
+  });
 });

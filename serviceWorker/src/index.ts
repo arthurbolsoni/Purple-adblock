@@ -7,6 +7,7 @@ import { installXhrHook } from "./page/xhr-hook";
 import { installBufferRemovalWidening } from "./page/buffer-removal";
 import { reloadTwitchPlayer } from "./page/player-reload";
 import { WorkerRegistry } from "./page/worker-registry";
+import { AdState } from "./page/ad-state";
 
 declare global {
   var request: any;
@@ -30,6 +31,8 @@ const csaiBlocked: Record<string, number> = {};
 (function () {
   // every worker created through the injector; on a direct channel load the player creates two
   const registry = new WorkerRegistry();
+  // F-30 (T-605): the content script hears when the page starts and stops blocking an ad (the icon's badge)
+  const adState = new AdState<object>((blocking) => window.postMessage({ type: "adState", value: blocking }, "*"));
 
   // the original worker script, or null when it cannot be downloaded
   const readScript = (url: string): string | null => {
@@ -97,6 +100,7 @@ const csaiBlocked: Record<string, number> = {};
 
     terminate() {
       registry.remove(this.purple);
+      adState.remove(this);
       super.terminate();
     }
   }
@@ -132,6 +136,11 @@ const csaiBlocked: Record<string, number> = {};
     switch (event?.data?.type) {
       case "purpleEvent": {
         recordEvent(event.data.event);
+        break;
+      }
+      // F-30 (T-605): this worker's main playlist entered or left a break Purple blocks
+      case "adState": {
+        adState.set(worker, event.data.blocking === true);
         break;
       }
       case "getSettings": {

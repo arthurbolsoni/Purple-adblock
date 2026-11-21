@@ -93,6 +93,7 @@ export function createChrome(initial: Record<string, any> = {}, { manifest = {},
   const changeListeners: ((changes: Record<string, { oldValue?: any; newValue?: any }>, area: string) => void)[] = [];
   const getCalls: any[] = [];
   const pendingGets: (() => void)[] = [];
+  const sent: any[] = [];
 
   return {
     data,
@@ -124,9 +125,16 @@ export function createChrome(initial: Record<string, any> = {}, { manifest = {},
         },
       },
     },
+    // messages the content script sent to the extension's background script (F-30)
+    sent,
     runtime: {
       getURL: (path: string) => `chrome-extension://purple-test/${path}`,
       getManifest: () => manifest,
+      lastError: undefined as { message: string } | undefined,
+      sendMessage(message: any, callback?: () => void) {
+        sent.push(message);
+        callback?.();
+      },
     },
   };
 }

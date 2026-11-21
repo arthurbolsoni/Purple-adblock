@@ -44,3 +44,28 @@ describe("popup channel (T-603)", () => {
     expect(document.getElementById("adblockbutton")!.onclick).toBeNull();
   });
 });
+
+// F-30 (T-605): the switch of the badge on the icon; on unless stored as false
+describe("popup badge switch (F-30)", () => {
+  const badge = () => document.getElementById("adBadge") as HTMLInputElement;
+
+  test("on by default, and off when stored as false", () => {
+    delete (env.chrome.data as any).adBadge;
+    openPopup("https://www.twitch.tv/somechannel");
+    expect(badge().checked).toBe(true);
+    env.chrome.data.adBadge = false;
+    openPopup("https://www.twitch.tv/somechannel");
+    expect(badge().checked).toBe(false);
+  });
+
+  test("a click stores the new value, also on a page that is not a channel", () => {
+    env.chrome.data.adBadge = true;
+    openPopup("https://example.com/");
+    badge().checked = false;
+    badge().onclick!(new MouseEvent("click"));
+    expect(env.chrome.data.adBadge).toBe(false);
+    badge().checked = true;
+    badge().onclick!(new MouseEvent("click"));
+    expect(env.chrome.data.adBadge).toBe(true);
+  });
+});

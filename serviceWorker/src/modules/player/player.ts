@@ -52,6 +52,8 @@ export class Player {
   private delivered: { source: string; newest: number; newestLive: number | null } | null = null;
   // T-831: the polls take their turns, so what each gives and records follows the order the player asked
   private polling: Promise<unknown> = Promise.resolve();
+  // F-30 (T-605): whether the main playlist is in a break Purple blocks right now; the page is told when it changes
+  private blocking = false;
   // F-15 (T-601): pause/play at the edges of a break (E6); with reloadAfterAd, a reload at its end
   private adBreak = new AdBreak({
     pauseAndPlay: () => this.edgePauseAndPlay(),
@@ -230,12 +232,15 @@ export class Player {
     if (!this.currentStream()) return fromPage(text);
     if (this.isWhitelist()) {
       this.emit({ type: "whitelisted" });
+      this.setBlocking(false);
       return fromPage(text);
     }
     // T-202: markers over live segments: the ad comes client-side (F-04); no backup, no pause/play.
     // F-14: a stitched break announced past the last segment (B-034) ends with prefetch lines to its first ad segments,
     // which the player fetched before the first poll with ad segments: they go, and their URIs are answered blank
     if (detectAds(text).class === AdClass.MARKED_LIVE) {
+      // F-30: the marker's ad comes client-side and the page blocks its request (F-04), unless blockCsai is off
+      this.setBlocking(this.setting?.blockCsai !== false);
       this.pageSequence = sequenceReference(text) ?? this.pageSequence;
       if (this.setting?.stripFallback === false) return fromPage(text);
       const announced = blankAds(text, [], url);
@@ -245,6 +250,7 @@ export class Player {
     }
     // is ads and is the principal stream
     if (!this.isAds(text, true)) {
+      this.setBlocking(false);
       this.scope.logger("Stream is free");
       this.freeStream = false;
       // F-23: the page's numbering outside breaks; inside a break the page's own numbers move (B-054)
@@ -252,6 +258,7 @@ export class Player {
       this.sequenceShifts.clear();
       return fromPage(text);
     }
+    this.setBlocking(true);
     this.emit({ type: "adDetected" });
 
     const dump: string[] = [];
@@ -441,6 +448,13 @@ export class Player {
     return at != null && Date.now() - at <= BLANK_TTL_MS;
   };
 
+  // F-30 (T-605): the icon's badge follows this. Posted with any setting (not a debug event), only when it changes
+  private setBlocking(blocking: boolean) {
+    if (blocking === this.blocking) return;
+    this.blocking = blocking;
+    this.scope.postMessage({ type: "adState", blocking });
+  }
+
   // debug event (F-17) for the current channel
   private emit(event: Omit<PurpleEvent, "channel">) {
     this.scope.emit?.({ ...event, channel: this.actualChannel });
@@ -448,6 +462,8 @@ export class Player {
 
   setChannel(channelName: string) {
     this.scope.logger(`Loading channel ${channelName}`);
+    // F-30: another channel starts with no break
+    if (channelName !== this.actualChannel) this.setBlocking(false);
     this.actualChannel = channelName;
 
     let currentStream = this.streamList.find((stream) => stream.channelName === channelName);

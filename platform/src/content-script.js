@@ -32,6 +32,13 @@ const sendSettings = () => settings.then((items) => window.postMessage({ type: "
 sendSettings();
 window.addEventListener("message", (event) => {
   if (event.data && event.data.type == "getSettings") sendSettings();
+  // F-30 (T-605): the page says when Purple starts and stops blocking an ad; the background script shows it on the
+  // toolbar icon of this tab. A failure here (the extension reloaded under the page) changes nothing in the page
+  if (event.data && event.data.type == "adState") {
+    try {
+      chrome.runtime.sendMessage({ type: "adState", blocking: event.data.value === true }, () => void chrome.runtime.lastError);
+    } catch (e) {}
+  }
 });
 
 // T-602: a change to a stored setting (the popup's whitelist) goes to the page, which sends it to every live worker

@@ -22,6 +22,8 @@ export type Setting = {
   restartOnRepeat?: boolean;
   skipBackupBehind?: boolean;
   parallelBackupFetch?: boolean;
+  // read in the page (F-04); the worker counts a client-side break as blocked with it (F-30)
+  blockCsai?: boolean;
   // F-29: read by the page (index.ts), not by the worker
   widenBufferRemovals?: boolean;
 };

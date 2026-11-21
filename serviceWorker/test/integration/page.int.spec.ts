@@ -453,3 +453,37 @@ describe("the page and its workers against the Quint model (T-010)", () => {
     });
   }
 });
+
+// F-30 (T-605): what each worker says about its break ("adState") reaches the window once per change of the page's
+// state, for the content script; a worker that ends takes its break with it
+describe("ad state for the icon's badge", () => {
+  const heard: boolean[] = [];
+  let third: FakeWorker;
+
+  beforeAll(() => {
+    window.addEventListener("message", (event: any) => {
+      if (event.data?.type === "adState") heard.push(event.data.value);
+    });
+    third = new (window as any).Worker(WORKER_URL);
+    third.postMessage(PLAYER_INIT);
+  });
+
+  test("a break in one worker, then in two, until the last one is over", async () => {
+    main.emit({ type: "adState", blocking: true });
+    third.emit({ type: "adState", blocking: true });
+    main.emit({ type: "adState", blocking: false });
+    await Bun.sleep(5);
+    expect(heard).toEqual([true]);
+    third.emit({ type: "adState", blocking: false });
+    await Bun.sleep(5);
+    expect(heard).toEqual([true, false]);
+  });
+
+  test("a worker terminated in its break ends it", async () => {
+    third.emit({ type: "adState", blocking: true });
+    await Bun.sleep(5);
+    third.terminate();
+    await Bun.sleep(5);
+    expect(heard).toEqual([true, false, true, false]);
+  });
+});

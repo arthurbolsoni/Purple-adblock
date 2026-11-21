@@ -15,7 +15,7 @@ Phases run in order. Inside a phase, the "Depends on" column says what must come
 | 3. CSAI blocking | T-301, T-302 | T-106 |
 | 4. Backup streams | T-401 to T-410 | T-104, T-105, T-106, T-107 |
 | 5. Playlist assembly | T-501, T-502 | T-101, T-201 |
-| 6. Player control and settings | T-601 to T-604 | T-107, T-201 |
+| 6. Player control and settings | T-601 to T-605 | T-107, T-201 |
 | 7. Build and release | T-701 to T-706 | Phase 0 |
 | 8. Investigations | T-801 to T-832 | - |
 
@@ -435,6 +435,16 @@ Runs in parallel with phases 1 to 7. Phase 1 to 6 tasks list L2/L3 scenarios tha
   - a finding compares 0 and 1500 on live breaks; the default changes only on that evidence, recorded in `docs/feat.md`.
 - Tests: TS-604, L3-12
 
+### T-605 A badge on the icon while an ad is blocked
+- [x] Status · F-30 · done 2026-11-21: the worker's player posts `adState` when its main playlist enters or leaves a break Purple blocks, the page tells the content script when any of its workers is blocking, and a background script (`app/background.js`: the MV3 service worker on Chromium, an MV2 event page on Firefox) shows `AD` on that tab's icon. The popup has the switch (`adBadge`, default on). Brave 156, logged out, the unpacked build, one channel load with a preroll: the badge `AD` from 2.1 s to 62.3 s after the load, 60 s, and none on a load without a break (`ad_badge_probe.py`). On Firefox the badge was not read by a test: BiDi does not open `moz-extension://` pages.
+- Origin: the maintainer, 2026-11-21: a notification on the icon when an ad is being blocked.
+- Files: `serviceWorker/src/modules/player/player.ts`, `serviceWorker/src/page/ad-state.ts` (new), `serviceWorker/src/index.ts`, `platform/src/content-script.js`, `platform/src/app/background.js`, `platform/chromium/manifest.json`, `platform/firefox/manifest.json`, `platform/src/common/html/popup.html`, `platform/src/common/js/popup.js`
+- Done when:
+  - the icon of a tab shows a badge while Purple blocks an ad there and none after the break, with any setting but `adBadge` false;
+  - no permission is added to either manifest;
+  - a failure on the way (the extension reloaded under the page) changes nothing in the page.
+- Tests: TS-605, `ad_badge_probe.py`
+
 ## Phase 7: build and release
 
 ### T-701 Single Bun build
@@ -764,4 +774,3 @@ Odd behaviors seen in the runs. Each task ends with its cause in a finding (and 
 - E12 (proxy): the servers went offline in 2023 (#79) and the worker does not read `toggleProxy` or `proxyUrl`. Either bring back the proxy path with a user-provided URL or keep only the UI.
 - `purpleadblockserver` submodule: declared in `.gitmodules`, no gitlink in the repo.
 - README: recommends `pixeltris/TwitchAdSolutions`, which is archived; replace with Brave's setup (Shields Aggressive + Brave Twitch/Experimental lists) or drop the recommendation.
-- `background.js`: not referenced by any manifest.

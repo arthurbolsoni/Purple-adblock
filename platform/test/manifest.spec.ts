@@ -60,3 +60,23 @@ describe("Chromium client-side ads rule", () => {
     expect(rules).toEqual([{ id: 1, priority: 1, action: { type: "block" }, condition: { urlFilter: "||edge.ads.twitch.tv^" } }]);
   });
 });
+
+// F-30 (T-605): the background script that draws the badge: the MV3 service worker on Chromium, an MV2 event page on
+// Firefox; no permission is added for it
+describe("background script (F-30)", () => {
+  test("Chromium runs app/background.js as the service worker", () => {
+    const manifest = read("chromium/manifest.json");
+    expect(manifest.background).toEqual({ service_worker: "app/background.js" });
+    expect(manifest.permissions).toEqual(["activeTab", "storage", "declarativeNetRequestWithHostAccess"]);
+  });
+
+  test("Firefox runs it as an event page", () => {
+    const manifest = read("firefox/manifest.json");
+    expect(manifest.background).toEqual({ scripts: ["app/background.js"], persistent: false });
+    expect(manifest.permissions).toEqual(["https://*.twitch.tv/*", "activeTab", "storage"]);
+  });
+
+  test("the file is among the platform sources", async () => {
+    expect(await Bun.file(join(import.meta.dir, "..", "src", "app", "background.js")).exists()).toBe(true);
+  });
+});

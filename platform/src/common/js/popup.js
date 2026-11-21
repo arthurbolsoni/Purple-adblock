@@ -56,6 +56,13 @@ function buttonStatusChange() {
   }
 }
 
+// F-30 (T-605): the badge on the icon while an ad is blocked, on unless stored as false
+const adBadge = document.getElementById("adBadge");
+storage().get(["adBadge"], (items) => {
+  adBadge.checked = (items || {}).adBadge !== false;
+});
+adBadge.onclick = () => storage().set({ ["adBadge"]: adBadge.checked });
+
 tabs().query({ active: true, lastFocusedWindow: true }, function (tabs) {
   if (!tabs.length) return;
 
