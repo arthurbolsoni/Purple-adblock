@@ -15,17 +15,18 @@ ${FRONTPAGE}
 `;
 
 // 8 segments ending at live number `edge`; MEDIA-SEQUENCE = live number + `ahead`; `ads`: live numbers that are ad
-// segments, under a twitch-stitched-ad DATERANGE as in the page's playlist during a break (B-034)
-const playlist = (edge: number, ahead = 0, ads: number[] = []) => {
+// segments, under a twitch-stitched-ad DATERANGE as in the page's playlist during a break (B-034); `shift`: ms added to
+// every PROGRAM-DATE-TIME (B-057)
+const playlist = (edge: number, ahead = 0, ads: number[] = [], shift = 0) => {
   const first = edge - 7;
   const lines = ["#EXTM3U", "#EXT-X-VERSION:3", "#EXT-X-TARGETDURATION:6", `#EXT-X-MEDIA-SEQUENCE:${first + ahead}`, `#EXT-X-TWITCH-LIVE-SEQUENCE:${first}`];
   if (ads.length) {
-    const start = new Date(T0 + Math.min(...ads) * 2000).toISOString();
+    const start = new Date(T0 + Math.min(...ads) * 2000 + shift).toISOString();
     lines.push(`#EXT-X-DATERANGE:ID="stitched-ad-1",CLASS="twitch-stitched-ad",START-DATE="${start}",DURATION=${(ads.length * 2).toFixed(3)}`);
   }
   for (let n = first; n <= edge; n++) {
     const ad = ads.includes(n);
-    lines.push(`#EXT-X-PROGRAM-DATE-TIME:${new Date(T0 + n * 2000).toISOString()}`, `#EXTINF:2.000,${ad ? "Amazon|AD" : "live"}`, `https://seg.example/${ad ? "ad" : "live"}-${n}.ts`);
+    lines.push(`#EXT-X-PROGRAM-DATE-TIME:${new Date(T0 + n * 2000 + shift).toISOString()}`, `#EXTINF:2.000,${ad ? "Amazon|AD" : "live"}`, `https://seg.example/${ad ? "ad" : "live"}-${n}.ts`);
   }
   return lines.join("\n");
 };
@@ -264,6 +265,22 @@ describe("T-833: F-28 after a playlist that ends below the player's last number"
       { page: playlist(106, 0, [104, 105, 106]), backup: playlist(105), ms: 6000 },
       { page: playlist(107, 0, [104, 105, 106, 107]), backup: playlist(107, 0, [106, 107]), ms: 2000 },
       { page: playlist(110, 3), backup: "", ms: 2000 },
+    ]);
+    expect(again).toEqual([]);
+    expect(restarts).toBe(0);
+  });
+});
+
+describe("T-836: the page's playlist dated apart from the backups' (B-057)", () => {
+  // the page dates its segments 1.5 s before the backups do; the backup has an ad segment of its own, so Purple gives
+  // the page's playlist with its ad segments replaced (E5). By date-time the backup's 103 went under 104, after the
+  // page's own 103: the player fetched 103 twice
+  test("merged: no live segment fetched again, no restart", async () => {
+    const { again, restarts } = await play([
+      { page: playlist(103, 0, [], -1500), backup: "", ms: 2000 },
+      { page: playlist(105, 0, [104, 105], -1500), backup: playlist(105, 0, [105]), ms: 2000 },
+      { page: playlist(106, 0, [104, 105, 106], -1500), backup: "", ms: 2000 },
+      { page: playlist(108, 0, [], -1500), backup: "", ms: 6000 },
     ]);
     expect(again).toEqual([]);
     expect(restarts).toBe(0);

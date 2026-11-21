@@ -353,3 +353,58 @@ describe("merge with time tolerance and EXT-X-MAP (T-501)", () => {
     expect(mergeWithBackups([fmp4, tsBackup]).replaced).toBe(0);
   });
 });
+
+// T-836 (F-27 in the merge): after stitched breaks the page's playlist dates a segment up to 1.6 s apart from the
+// backups' (B-057). By date-time the nearest backup segment to an ad segment is then the one before it: the segment the
+// page lists as its own last live one comes again, and every replacement is one segment late. With
+// EXT-X-TWITCH-LIVE-SEQUENCE in both, an ad segment gets the backup's segment of its live number.
+describe("merge by live number (T-836)", () => {
+  const T = Date.parse("2026-11-21T00:00:00.000Z");
+  // `count` segments from live number `first` (segment n at T + n x 2 s + `shift`), MEDIA-SEQUENCE `sequence`;
+  // `ads`: live numbers given as ad segments; `live`: EXT-X-TWITCH-LIVE-SEQUENCE (null: no tag)
+  const numbered = (name: string, first: number, count: number, o: { ads?: number[]; shift?: number; sequence?: number; live?: number | null } = {}) => {
+    const live = o.live === undefined ? first : o.live;
+    const lines = ["#EXTM3U", "#EXT-X-TARGETDURATION:6", `#EXT-X-MEDIA-SEQUENCE:${o.sequence ?? first}`, ...(live == null ? [] : [`#EXT-X-TWITCH-LIVE-SEQUENCE:${live}`])];
+    for (let n = first; n < first + count; n++) {
+      const ad = (o.ads ?? []).includes(n);
+      lines.push(`#EXT-X-PROGRAM-DATE-TIME:${new Date(T + n * 2000 + (o.shift ?? 0)).toISOString()}`, `#EXTINF:2.000,${ad ? "Amazon|AD_ID" : "live"}`, `https://edge.example/${ad ? "ad" : name}-${n}.ts`);
+    }
+    return lines.join("\n");
+  };
+  const uris = (text: string) => readSegments(text.split("\n")).map((s) => text.split("\n")[s.uri].split("/").pop());
+  // the page: live 100 to 105, then a midroll's ad segments at 106 and 107, numbered 103 ahead, dated 1.5 s early
+  const page = numbered("page", 100, 8, { ads: [106, 107], shift: -1500, sequence: 203 });
+  // a backup with its own ad at 107 (why Purple merges instead of giving the backup)
+  const backup = numbered("backup", 100, 8, { ads: [107] });
+
+  test("an ad segment gets the backup's segment of its live number, and no live segment comes twice", () => {
+    const merged = mergeWithBackups([page, backup]);
+    expect(uris(merged.text)).toEqual(["page-100.ts", "page-101.ts", "page-102.ts", "page-103.ts", "page-104.ts", "page-105.ts", "backup-106.ts", "ad-107.ts"]);
+    expect(merged).toMatchObject({ replaced: 1, remaining: [7] });
+    expect(merged.text).toContain("#EXT-X-MEDIA-SEQUENCE:203"); // the page's own numbers and tags stay
+  });
+
+  test("a backup that ends before the ad segments replaces none, however near its dates are", () => {
+    expect(mergeWithBackups([page, numbered("backup", 98, 8)])).toMatchObject({ replaced: 0, remaining: [6, 7] });
+  });
+
+  test("by date-time without the tag in the page or in the backup, and with byLiveSequence off", () => {
+    const aligned = numbered("page", 100, 8, { ads: [106, 107], sequence: 203 });
+    for (const [main, other] of [[numbered("page", 100, 8, { ads: [106, 107], sequence: 203, live: null }), backup], [aligned, numbered("backup", 100, 8, { ads: [107], live: null })]]) {
+      expect(uris(mergeWithBackups([main, other]).text).slice(6)).toEqual(["backup-106.ts", "ad-107.ts"]);
+    }
+    // the tags are there and say otherwise (the backup's numbers 50 off): by date-time when told so
+    const off = numbered("backup", 100, 8, { ads: [107], live: 150 });
+    expect(uris(mergeWithBackups([aligned, off], false).text).slice(6)).toEqual(["backup-106.ts", "ad-107.ts"]);
+    expect(mergeWithBackups([aligned, off])).toMatchObject({ replaced: 0, remaining: [6, 7] });
+  });
+
+  test("ad segments first (B-060): their positions have no live number, by date-time", () => {
+    // a preroll's playlist: ad segments at 100 and 101, live ones after; the tag counts the ads too
+    const preroll = numbered("page", 100, 8, { ads: [100, 101], sequence: 0, live: 5570 });
+    expect(uris(mergeWithBackups([preroll, numbered("backup", 100, 8)]).text).slice(0, 3)).toEqual(["backup-100.ts", "backup-101.ts", "page-102.ts"]);
+    // a backup with its ad segments first is matched by date-time too
+    const late = numbered("backup", 100, 8, { ads: [100], live: 9000 });
+    expect(uris(mergeWithBackups([numbered("page", 100, 8, { ads: [106, 107], sequence: 203 }), late]).text).slice(6)).toEqual(["backup-106.ts", "backup-107.ts"]);
+  });
+});

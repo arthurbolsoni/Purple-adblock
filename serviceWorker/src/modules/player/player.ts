@@ -291,7 +291,7 @@ export class Player {
       this.freeStreamChanged(false);
     }
     
-    const merged = mergeWithBackups([text, ...dump]);
+    const merged = mergeWithBackups([text, ...dump], this.setting?.alignByLiveSequence !== false);
     if (merged.replaced) this.emit({ type: "segmentsReplaced", count: merged.replaced });
     // F-14: the ad segments left are answered with the blank segment when the player requests them (stripFallback)
     // T-832: the live segments the player gets from it: the page's own and the ones that replaced its ads

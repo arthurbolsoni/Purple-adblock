@@ -130,7 +130,7 @@ With `forcePopoutToken`, the page `fetch` hook rewrites the `playerType` of the 
 
 ### F-13: merge by time
 
-Each ad segment the backups did not replace whole (E4) gets the nearest live segment of a backup whose `PROGRAM-DATE-TIME` is less than half the ad segment's duration away; backups are tried in order. Only the `#EXTINF` and URI lines change. A backup segment with another `EXT-X-MAP` brings that `EXT-X-MAP` line before its `#EXTINF`, and the main one comes back before the next main segment or the prefetch lines after the last one; a backup that uses `EXT-X-MAP` is not used in a playlist without one, nor the other way round. `MEDIA-SEQUENCE` and the segment count do not change.
+Each ad segment the backups did not replace whole (E4) gets the nearest live segment of a backup whose `PROGRAM-DATE-TIME` is less than half the ad segment's duration away; backups are tried in order. Only the `#EXTINF` and URI lines change. A backup segment with another `EXT-X-MAP` brings that `EXT-X-MAP` line before its `#EXTINF`, and the main one comes back before the next main segment or the prefetch lines after the last one; a backup that uses `EXT-X-MAP` is not used in a playlist without one, nor the other way round. `MEDIA-SEQUENCE` and the segment count do not change. With `alignByLiveSequence` (default on, F-27), when the page's playlist and a backup both number their segments by `EXT-X-TWITCH-LIVE-SEQUENCE` (`liveBase` in `sequence.ts`: the tag is there, and the playlist has no ad segments or has them at its end, a midroll in place of live segments; with ad segments before live ones the tag counts the ads too, B-060), an ad segment gets that backup's segment of its live number instead, whatever their dates, and none when the backup does not list it (T-836).
 
 ### F-14: blank segment
 
@@ -152,7 +152,7 @@ The wait between `pause` and `play` at each break edge (F-15) comes from `pauseP
 
 ### F-27: backup numbers by live sequence
 
-`sequence.ts`. The reference also keeps its segment's live number (`EXT-X-TWITCH-LIVE-SEQUENCE` + index) when the page's playlist has the tag. With `alignByLiveSequence` (default on) and the tag in the backup, F-23's shift is the page's sequence number minus its live number, less the same difference on the backup: every backup segment gets the number the page's playlist gives the same live segment, whatever their date-times. Without the tag in either, the shift is F-23's by date-time ([finding](findings/2026-10-31-same-segment-twice.md)).
+`sequence.ts`. The reference also keeps its segment's live number (`EXT-X-TWITCH-LIVE-SEQUENCE` + index) when the page's playlist has the tag. With `alignByLiveSequence` (default on) and the tag in the backup, F-23's shift is the page's sequence number minus its live number, less the same difference on the backup: every backup segment gets the number the page's playlist gives the same live segment, whatever their date-times. Without the tag in either, the shift is F-23's by date-time ([finding](findings/2026-10-31-same-segment-twice.md)). The merge (F-13) matches by live number under the same setting (T-836): with the page's playlist dated 1.4 to 1.6 s apart from the backups' (B-057), the nearest date-time to an ad segment was the backup's segment before it, the one the page listed as its own last live segment, so the player fetched that segment twice and every replacement came one segment late ([finding](findings/2026-11-21-merge-by-live-number.md)).
 
 ### F-24: restart when the numbers go back
 

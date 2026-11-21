@@ -5,11 +5,13 @@
 
 import { detectAds, isAdUri, isStitchedMarker } from "./ad-detector";
 import { readSegments, type SegmentLines } from "./segments";
+import { liveBase } from "./sequence";
 
 export { readSegments } from "./segments";
 export type { SegmentLines } from "./segments";
 
-type Candidate = SegmentLines & { uriLine: string; map: string | null };
+// `live`: the segment's live number (EXT-X-TWITCH-LIVE-SEQUENCE + index), null when the playlist does not give one
+type Candidate = SegmentLines & { uriLine: string; map: string | null; live: number | null };
 
 // EXT-X-MAP line in effect for each segment, in segment order; null in a playlist without one
 function mapsOf(lines: string[], segments: SegmentLines[]): (string | null)[] {
@@ -48,12 +50,17 @@ const isAheadLine = (line: string) => line.startsWith("#EXT-X-TWITCH-PREFETCH:")
 // tags. A backup segment with another EXT-X-MAP brings that MAP line before it, and the main one comes back before the
 // next main segment or the prefetch lines after the last one (T-501); a backup that uses EXT-X-MAP is not used in a
 // playlist without one, nor the other way round. Without a replacement the main text comes back unchanged.
+// F-27 in the merge (T-836): with `byLiveSequence` (alignByLiveSequence, default on), when the main playlist and a
+// backup both number their segments by EXT-X-TWITCH-LIVE-SEQUENCE (liveBase), an ad segment gets that backup's segment
+// of its live number, whatever their dates: after stitched breaks the page's playlist dates a segment up to 1.6 s
+// apart from the backups' (B-057), and the nearest date-time was then the segment before, the one the page lists as
+// its own last live one: the player fetched it twice.
 export function mergeM3u8Contents(contents: string[]): string {
   return mergeWithBackups(contents).text;
 }
 
 // mergeM3u8Contents, with the number of ad segments replaced and the indexes of those left (T-502).
-export function mergeWithBackups(contents: string[]): { text: string; replaced: number; remaining: number[] } {
+export function mergeWithBackups(contents: string[], byLiveSequence = true): { text: string; replaced: number; remaining: number[] } {
   if (!contents.length) return { text: "", replaced: 0, remaining: [] };
   const [main, ...backups] = contents;
 
@@ -62,19 +69,31 @@ export function mergeWithBackups(contents: string[]): { text: string; replaced: 
     const backupLines = text.split("\n");
     const segments = readSegments(backupLines);
     const maps = mapsOf(backupLines, segments);
-    const ads = new Set(detectAds(text).adSegments);
-    return segments.flatMap((segment, index): Candidate[] => (ads.has(index) ? [] : [{ ...segment, uriLine: backupLines[segment.uri].trim(), map: maps[index] }]));
+    const adIndexes = detectAds(text).adSegments;
+    const ads = new Set(adIndexes);
+    const base = byLiveSequence ? liveBase(backupLines, segments.length, adIndexes) : null;
+    return segments.flatMap((segment, index): Candidate[] =>
+      ads.has(index) ? [] : [{ ...segment, uriLine: backupLines[segment.uri].trim(), map: maps[index], live: base == null ? null : base + index }],
+    );
   });
 
   const segments = readSegments(lines);
   const mainMaps = mapsOf(lines, segments);
-  const ads = new Set(detectAds(main).adSegments);
+  const mainAds = detectAds(main).adSegments;
+  const ads = new Set(mainAds);
+  const mainBase = byLiveSequence ? liveBase(lines, segments.length, mainAds) : null;
   const replacements = new Map<number, Candidate>();
   const remaining: number[] = [];
   for (const [index, segment] of segments.entries()) {
     if (!ads.has(index)) continue;
     const usable = (candidate: Candidate) => (candidate.map == null) === (mainMaps[index] == null);
-    const replacement = backupSegments.map((candidates) => nearest(candidates.filter(usable), segment)).find(Boolean);
+    const pick = (candidates: Candidate[]) => {
+      const fitting = candidates.filter(usable);
+      // by live number when both playlists give one, else by date-time
+      if (mainBase != null && candidates.length && candidates[0].live != null) return fitting.find((candidate) => candidate.live === mainBase + index);
+      return nearest(fitting, segment);
+    };
+    const replacement = backupSegments.map(pick).find(Boolean);
     if (replacement) replacements.set(index, replacement);
     else remaining.push(index);
   }

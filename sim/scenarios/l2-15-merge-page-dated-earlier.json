@@ -1,0 +1,41 @@
+{
+  "id": "L2-15",
+  "description": "A midroll of 12 segments on every token. The page's token (popout, F-12) gets it 15 segments after its first poll; every backup token gets it at its own first poll (`breaksSooner` 15), so each backup Purple asks during the page's break lists live segments up to the moment it was asked and ad segments from there: no backup is clean and Purple gives the page's playlist merged with the backups' (E5, B-012). The page's token dates each segment 1.5 s earlier than the backup tokens (B-057), as after stitched breaks on twitch.tv. Run with the backup types `site` and `embed` (a `popout` backup would be numbered and dated as the page's)",
+  "channel": "simchannel",
+  "variants": [
+    {
+      "name": "720p30",
+      "resolution": "1280x720",
+      "bandwidth": 3000000,
+      "codecs": "avc1.4D401F,mp4a.40.2",
+      "live": "live-720p",
+      "ad": "ad-720p"
+    },
+    {
+      "name": "360p30",
+      "resolution": "640x360",
+      "bandwidth": 800000,
+      "codecs": "avc1.4D401E,mp4a.40.2",
+      "live": "live-360p",
+      "ad": "ad-360p"
+    }
+  ],
+  "breaks": [
+    {
+      "at": 15,
+      "segments": 12,
+      "roll": "MIDROLL",
+      "title": "3935266624"
+    }
+  ],
+  "playerTypes": {
+    "default": {
+      "breaks": true,
+      "breaksSooner": 15
+    },
+    "popout": {
+      "breaks": true,
+      "earlierMs": 1500
+    }
+  }
+}

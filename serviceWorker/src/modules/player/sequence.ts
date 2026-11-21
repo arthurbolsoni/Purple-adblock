@@ -51,6 +51,16 @@ export function liveNumberAt(text: string, number: number): number | null {
   return live + number - first;
 }
 
+// F-27 (T-836): the live number of a playlist's first segment when EXT-X-TWITCH-LIVE-SEQUENCE + index numbers its
+// segments: without ad segments (`ads`: their indexes), or with the ad segments at its end, a midroll in place of live
+// segments. With ad segments before live ones the tag counts the ads too and the live ones after them are off (B-060):
+// null then, and without the tag.
+export function liveBase(lines: string[], count: number, ads: number[]): number | null {
+  const live = tagNumber(lines, LIVE_SEQUENCE);
+  if (live == null) return null;
+  return !ads.length || Math.min(...ads) + ads.length === count ? live : null;
+}
+
 // F-28 (T-832): the newest live number among the segments of a page playlist the player gets as content, leaving out the
 // `blank` ones (indexes the player gets as the blank segment: ad segments no backup replaced). They are numbered by
 // EXT-X-TWITCH-LIVE-SEQUENCE + index when the ad segments (`ads`) are the end of the playlist, a midroll in place of live
