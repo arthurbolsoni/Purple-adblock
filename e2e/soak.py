@@ -5,6 +5,7 @@ does during them (docs/server/) and what Purple delivers to the player.
                        [--channel /name] [--avoid /a,/b] [--rotate MINUTES] [--out DIR] [--visible]
                        [--setting KEY=JSON ...] [--stop-after-breaks N] [--leave-after-breaks N] [--hop SECONDS]
                        [--all-playlists] [--browser chromium|firefox] [--moz-log MODULES]
+                       [--fake-breaks EVERY:LENGTH [--pauses] [--fake-behind SHARE]] [--audio] [--build DIR] [--profile DIR]
 
 One browser (Edge, or PURPLE_BROWSER) on a fresh temporary profile (deleted at the end). Every DRAIN seconds the recorder's arrays in the page
 (window.__e2e, and window.__purple.events with --debug) are emptied into JSONL files under
@@ -30,7 +31,10 @@ page's console warnings and errors and its uncaught errors (BiDi log.entryAdded)
 the sound on. --fake-breaks EVERY:LENGTH makes breaks on any live channel: the player's own media playlists reach
 Purple with their segments titled as ads for LENGTH s every EVERY s (FAKE_BREAKS_JS, e2e/worker-logger.js), so Purple
 switches to a backup and back; --pauses also clicks the player's pause and play button inside them (PAUSES). Each
-window and click is a note (fake.jsonl).
+window and click is a note (fake.jsonl). --fake-behind SHARE (T-833) answers that share of Purple's backup playlists
+inside the windows with the text the URL got two answers before (a backup behind, B-048; "fakeBehind" in
+workerLog.jsonl). --build installs another unpacked Firefox build (e.g. an earlier version, to compare); --profile runs
+on a kept profile, e.g. firefox.LOGIN_PROFILE (logged in to Twitch).
 
 Errors go to the session log as notes as they come (T-829): the page player's error events (playerEvents.jsonl also
 keeps its warnings, rebuffering and seeks), the <video>'s `error` event with its code and message, a SourceBuffer
@@ -119,11 +123,24 @@ MONITOR = """(() => {
       // ones (getVideoPlaybackQuality), and its picture size
       const v = document.querySelector('video');
       const q = v && v.getVideoPlaybackQuality ? v.getVideoPlaybackQuality() : null;
+      // --quality (T-837): the player kept on one quality, the tallest one or the one named, set again when the page
+      // or the player leaves it (at most every 5 s); each sample has the quality's name and codecs
+      const current = typeof instance.getQuality === 'function' ? instance.getQuality() : null;
+      if (S.quality && typeof instance.getQualities === 'function' && t !== null && Date.now() - (soak.qualityAt || 0) > 5000) {
+        const all = instance.getQualities() || [];
+        const target = S.quality === 'best' ? all.slice().sort((a, b) => b.height - a.height || b.bitrate - a.bitrate)[0] : all.find((x) => x.name === S.quality);
+        if (target && (!current || current.name !== target.name)) {
+          soak.qualityAt = Date.now();
+          if (typeof instance.setAutoQualityMode === 'function') instance.setAutoQualityMode(false);
+          instance.setQuality(target, false);
+          soak.playerEvents.push({ wall: Date.now(), type: 'soakSetQuality', detail: JSON.stringify({ from: current && current.name, to: target.name, codecs: target.codecs }) });
+        }
+      }
       soak.player.push({ wall: Date.now(), currentTime: t === null ? null : Math.round(t * 10) / 10, buffer: round(instance.getBufferDuration()),
         latency: round(instance.getLiveLatency()), lowLatency: instance.isLiveLowLatency(), rate: instance.getPlaybackRate(),
         dropped: instance.getDroppedFrames(), decoded: instance.getDecodedFrames(),
         videoDropped: q ? q.droppedVideoFrames : null, videoTotal: q ? q.totalVideoFrames : null, videoCorrupted: q ? q.corruptedVideoFrames : null,
-        size: v ? v.videoWidth + 'x' + v.videoHeight : null });
+        size: v ? v.videoWidth + 'x' + v.videoHeight : null, quality: current ? current.name : null, codecs: current ? current.codecs : null });
     } catch (e) {
       instance = null;
     }
@@ -207,7 +224,7 @@ PAUSES = [[8, 3], [0.5, 3], ['end', 3], None]  # the middle; the change to the b
 FAKE_BREAKS_JS = """() => {
   const config = __CONFIG__;
   const start = Date.now() + config.warmUp * 1000;
-  window.__e2eFakeBreaks = { start, every: config.every, length: config.length };
+  window.__e2eFakeBreaks = { start, every: config.every, length: config.length, behind: config.behind };
   const fake = (window.__e2eFake = { events: [] });
   const push = (type, extra) => fake.events.length < 2000 && fake.events.push(Object.assign({ wall: Date.now(), type }, extra));
   const done = new Set();
@@ -435,7 +452,7 @@ async def directory(session):
     return list(dict.fromkeys(await lib.read(session.tab, common.CARDS)))[:DIRECTORY_CARDS]
 
 
-async def open_next(session, recorder, tried, slot, load, fixed=None, shuffle=False):
+async def open_next(session, recorder, tried, slot, load, fixed=None, shuffle=False, quality=None):
     """Opens the first directory channel not tried yet, not gated and not watched by another session (with `shuffle`,
     the directory's cards in random order)."""
     cards = [fixed] if fixed else await directory(session)
@@ -453,7 +470,7 @@ async def open_next(session, recorder, tried, slot, load, fixed=None, shuffle=Fa
         return None
     tried.add(channel)
     recorder.claim(channel)
-    await lib.read(session.tab, MONITOR % json.dumps(sel.as_dict()))
+    await lib.read(session.tab, MONITOR % json.dumps({**sel.as_dict(), 'quality': quality}))
     recorder.note('watching', channel=channel, outcome=outcome, gated=gated, load=load)
     return Watch(channel, load)
 
@@ -471,10 +488,12 @@ async def soak(args, recorder, end):
             preloads = []
             if args.fake_breaks:
                 every, length = (float(x) for x in args.fake_breaks.split(':'))
-                config = {'warmUp': FAKE_WARM_UP, 'every': every, 'length': length, 'pauses': PAUSES if args.pauses else []}
+                config = {'warmUp': FAKE_WARM_UP, 'every': every, 'length': length, 'pauses': PAUSES if args.pauses else [],
+                          'behind': args.fake_behind}
                 preloads.append(FAKE_BREAKS_JS.replace("__CONFIG__", json.dumps(config)))
-            session = await firefox.Firefox.launch(None if args.mode == 'record' else firefox.BUILD, visible=args.visible,
-                                                   settings=forced or None, env=env, audio=args.audio, preloads=preloads)
+            session = await firefox.Firefox.launch(None if args.mode == 'record' else (args.build or firefox.BUILD), visible=args.visible,
+                                                   settings=forced or None, env=env, audio=args.audio, preloads=preloads,
+                                                   profile=args.profile)
             media_log = None
         else:
             session = await lib.launch(args.mode, profile=profile, visible=args.visible, debug=args.debug)
@@ -489,7 +508,7 @@ async def soak(args, recorder, end):
                 load += 1
                 # --channel: the first load; with --rotate 0 every load (the channel is reopened after a failure)
                 fixed = args.channel if (load == 1 or not args.rotate) and args.channel not in offline else None
-                watch = await open_next(session, recorder, tried, args.slot, load, fixed, shuffle=bool(args.hop))
+                watch = await open_next(session, recorder, tried, args.slot, load, fixed, shuffle=bool(args.hop), quality=args.quality)
                 if watch is None:
                     tried = set(args.avoid.split(',')) if args.avoid else set()
                     await asyncio.sleep(60)
@@ -595,7 +614,12 @@ def main():
     ap.add_argument('--fake-breaks', metavar='EVERY:LENGTH',
                     help='Firefox: the player\'s own playlists titled as ads for LENGTH s every EVERY s (Purple switches to a backup)')
     ap.add_argument('--pauses', action='store_true', help='with --fake-breaks: click pause and play inside the windows (PAUSES)')
+    ap.add_argument('--fake-behind', type=float, default=0, metavar='SHARE',
+                    help='with --fake-breaks: that share of the backup playlists inside the windows answered with the text before (T-833)')
     ap.add_argument('--audio', action='store_true', help='Firefox: sound on (the runs are muted otherwise)')
+    ap.add_argument('--quality', metavar='NAME', help="keeps the page's player on one quality: 'best' (the tallest) or a name such as 1440p60 (T-837)")
+    ap.add_argument('--build', help='Firefox: the unpacked extension build to install (default firefox.BUILD), e.g. another version (T-833)')
+    ap.add_argument('--profile', help='Firefox: a profile directory kept after the run, e.g. firefox.LOGIN_PROFILE (logged in, T-833)')
     args = ap.parse_args()
     if args.browser == 'firefox' and args.mode not in ('extension', 'record'):
         ap.error('--browser firefox runs in extension or record mode')

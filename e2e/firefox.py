@@ -27,6 +27,9 @@ import lib
 FIREFOX = os.environ.get('PURPLE_FIREFOX') or (r'C:\Program Files\Mozilla Firefox\firefox.exe' if os.name == 'nt' else
                                                 os.path.expanduser('~/firefox/157.0.1/firefox/firefox'))
 BUILD = os.path.join(lib.REPO, 'dist', 'purple-adblock-firefox')
+# a profile kept between runs, logged in to Twitch once by hand (T-833: the 1440p HEVC source is listed only to a
+# logged-in viewer, B-058); launch(profile=LOGIN_PROFILE)
+LOGIN_PROFILE = os.path.expanduser('~/nodriver/profile-firefox-purple-login')
 PROCESS_NAMES = ('firefox.exe', 'firefox', 'firefox-bin')
 # Settings for a run: BiDi does not open moz-extension:// pages, so the build's popup cannot store them. The content
 # script sends the stored settings to the page as window.postMessage({type: "setSettings", value}); this preload adds
@@ -50,6 +53,9 @@ PREFS = {
     'browser.tabs.warnOnClose': False,
     'media.volume_scale': '0.0',  # muted, as the Edge runs
     'media.autoplay.default': 0,
+    # T-833: off the desktop's media controls (MPRIS on Linux), as T-828 did for Chromium: media keys, earbuds and an
+    # audio output going away paused every test Firefox at once (2026-11-20, 5 sessions, with and without Purple)
+    'media.hardwaremediakeys.enabled': False,
 }
 
 
@@ -72,8 +78,9 @@ class Tab:
 
 
 class Firefox:
-    def __init__(self, process_id, profile, desktop, connection):
+    def __init__(self, process_id, profile, desktop, connection, keep_profile=False):
         self.pid, self.profile, self.desktop, self.ws = process_id, profile, desktop, connection
+        self.keep_profile = keep_profile
         self.ids = itertools.count(1)
         self.context = None
         self.extension = None
@@ -85,11 +92,17 @@ class Firefox:
         self.reader = asyncio.ensure_future(self._read())
 
     @classmethod
-    async def launch(cls, build=BUILD, visible=False, settings=None, env=None, audio=False, preloads=()):
+    async def launch(cls, build=BUILD, visible=False, settings=None, env=None, audio=False, preloads=(), profile=None):
         """`settings`: values the page gets as if they were stored (SETTINGS_PRELOAD), e.g. {'debug': True}. `env`:
         extra environment variables for the browser, e.g. MOZ_LOG and MOZ_LOG_FILE (outside Windows). `audio`: sound on
-        (muted otherwise). `preloads`: more function declarations run before any page script, ahead of the recorder."""
-        profile = tempfile.mkdtemp(prefix='purple-e2e-firefox-')
+        (muted otherwise). `preloads`: more function declarations run before any page script, ahead of the recorder.
+        `profile`: a directory kept after the run (LOGIN_PROFILE); a new temporary one by default, deleted at close."""
+        keep = profile is not None
+        if keep:
+            profile = os.path.abspath(profile)
+            os.makedirs(profile, exist_ok=True)
+        else:
+            profile = tempfile.mkdtemp(prefix='purple-e2e-firefox-')
         with open(os.path.join(profile, 'user.js'), 'w', encoding='utf-8') as f:
             for key, value in PREFS.items():
                 if audio and key == 'media.volume_scale':
@@ -108,7 +121,7 @@ class Firefox:
             pid = desktop.spawn(subprocess.list2cmdline(command))
         lib._wait_port(port, lambda: psutil.pid_exists(pid))
         connection = await websockets.connect(f'ws://127.0.0.1:{port}/session', max_size=None)
-        self = cls(pid, profile, desktop, connection)
+        self = cls(pid, profile, desktop, connection, keep)
         await self.send('session.new', {'capabilities': {}})
         if build:
             self.extension = (await self.send('webExtension.install', {'extensionData': {'type': 'path', 'path': os.path.abspath(build)}}))['extension']
@@ -199,4 +212,5 @@ class Firefox:
                 pass
         if self.desktop:
             self.desktop.close()
-        shutil.rmtree(self.profile, ignore_errors=True)
+        if not self.keep_profile:
+            shutil.rmtree(self.profile, ignore_errors=True)

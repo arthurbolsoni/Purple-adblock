@@ -14,7 +14,11 @@
 // epoch, s, s; recorder.js puts the page's window.__e2eFakeBreaks in front of this script), while a window is on (each
 // `every` s from `start`, for `length` s) every media playlist the player asked for (its own URL, which Purple fetches
 // on its behalf) reaches Purple with each segment titled `Amazon|e2e-fake-break`, an ad title Purple knows. Purple
-// gives the player a backup and goes back to the page's playlist when the window ends. Backups are left alone.
+// gives the player a backup and goes back to the page's playlist when the window ends. Backups are left alone, unless
+// `behind` (0 to 1, soak.py --fake-behind, T-833) is set: inside a window, that share of the answers to a media
+// playlist the player did not ask for (Purple's backups) is the text that URL got two answers before, which ends below
+// the newest segment the player got from it, as a CDN node behind (B-048); never twice in a row for one URL; each is a
+// "fakeBehind" entry.
 (() => {
   const channel = new BroadcastChannel("purple-e2e");
   const id = Math.random().toString(36).slice(2, 8);
@@ -204,7 +208,23 @@
   const playerUrls = new Set();
   const inFakeBreak = () => !!fake && Date.now() >= fake.start && (Date.now() - fake.start) % (fake.every * 1000) < fake.length * 1000;
   const asAds = (body) => body.replace(/^(#EXTINF:[^,\n]*,).*$/gm, (line, head) => head + "Amazon|e2e-fake-break");
+  // T-833: the last texts each backup playlist URL got (the newest last), and the URLs whose last answer was an older one
+  const texts = new Map();
+  const staleLast = new Set();
+  const fakeBehind = (url, r) =>
+    r.text().then((body) => {
+      const kept = texts.get(url) || [];
+      const before = kept.length >= 2 ? kept[kept.length - 2] : null;
+      texts.set(url, kept.concat(body === kept[kept.length - 1] ? [] : [body]).slice(-3));
+      const stale = before != null && before !== body && !staleLast.has(url) && Math.random() < fake.behind;
+      if (stale) {
+        staleLast.add(url);
+        post({ kind: "fakeBehind", url });
+      } else staleLast.delete(url);
+      return new Response(stale ? before : body, { status: r.status, statusText: r.statusText, headers: r.headers });
+    });
   const fakeBreak = (url, r) => {
+    if (fake && fake.behind && r && r.ok && url.includes("/v1/playlist/") && !playerUrls.has(url) && inFakeBreak()) return fakeBehind(url, r);
     if (!fake || !r || !r.ok || !url.endsWith(".m3u8") || !playerUrls.has(url) || !inFakeBreak()) return Promise.resolve(r);
     return r.text().then((body) => {
       const marked = body.includes("#EXTINF") ? asAds(body) : body;
