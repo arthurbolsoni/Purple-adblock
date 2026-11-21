@@ -1,0 +1,458 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-11-21T00:00:00Z",
+  "title": "Design System: Purple Adblock",
+  "extensions": {
+    "colorMeta": {
+      "night-ground": {
+        "role": "neutral",
+        "displayName": "Night Ground",
+        "canonical": "#17161c",
+        "tonalRamp": [
+          "#0b0b0e",
+          "#252429",
+          "#424147",
+          "#616067",
+          "#828189",
+          "#a5a4ab",
+          "#c9c8ce",
+          "#eeeef3"
+        ]
+      },
+      "raised-slate": {
+        "role": "neutral",
+        "displayName": "Raised Slate",
+        "canonical": "#201e27",
+        "tonalRamp": [
+          "#0b0a0f",
+          "#25242a",
+          "#424149",
+          "#62606a",
+          "#83818b",
+          "#a5a3ad",
+          "#c9c8d0",
+          "#efedf4"
+        ]
+      },
+      "raised-slate-hover": {
+        "role": "neutral",
+        "displayName": "Raised Slate Hover",
+        "canonical": "#2a2832",
+        "tonalRamp": [
+          "#0b0a0f",
+          "#25242b",
+          "#424149",
+          "#625f6a",
+          "#83818c",
+          "#a5a3ae",
+          "#c9c8d1",
+          "#efedf5"
+        ]
+      },
+      "hairline": {
+        "role": "neutral",
+        "displayName": "Hairline",
+        "canonical": "#2e2c37",
+        "tonalRamp": [
+          "#0b0a10",
+          "#25242b",
+          "#42404a",
+          "#615f6b",
+          "#82808d",
+          "#a5a3ae",
+          "#c9c8d1",
+          "#eeedf5"
+        ]
+      },
+      "hairline-strong": {
+        "role": "neutral",
+        "displayName": "Hairline Strong",
+        "canonical": "#45424f",
+        "tonalRamp": [
+          "#0c0a10",
+          "#26242c",
+          "#43404b",
+          "#625f6c",
+          "#83808e",
+          "#a6a3af",
+          "#cac7d2",
+          "#efedf6"
+        ]
+      },
+      "idle-ring": {
+        "role": "neutral",
+        "displayName": "Idle Ring",
+        "canonical": "#6a6776",
+        "tonalRamp": [
+          "#0b0a10",
+          "#25242c",
+          "#42404b",
+          "#625f6d",
+          "#83808f",
+          "#a5a3b0",
+          "#c9c7d3",
+          "#efedf7"
+        ]
+      },
+      "moon-text": {
+        "role": "neutral",
+        "displayName": "Moon Text",
+        "canonical": "#ecebf1",
+        "tonalRamp": [
+          "#0b0b0d",
+          "#252528",
+          "#424145",
+          "#616065",
+          "#828186",
+          "#a5a4a9",
+          "#c9c8cc",
+          "#eeeef1"
+        ]
+      },
+      "dusk-muted": {
+        "role": "neutral",
+        "displayName": "Dusk Muted",
+        "canonical": "#a7a4b3",
+        "tonalRamp": [
+          "#0b0a10",
+          "#25242c",
+          "#42404b",
+          "#625f6c",
+          "#83808e",
+          "#a5a3af",
+          "#c9c7d2",
+          "#efedf6"
+        ]
+      },
+      "purple-violet": {
+        "role": "primary",
+        "displayName": "Purple Violet",
+        "canonical": "#6441a5",
+        "tonalRamp": [
+          "#11002a",
+          "#2b1351",
+          "#4a2f7c",
+          "#6a4ba9",
+          "#8b6dce",
+          "#ac94eb",
+          "#cfbbff",
+          "#f3e3ff"
+        ]
+      },
+      "purple-violet-hover": {
+        "role": "primary",
+        "displayName": "Purple Violet Hover",
+        "canonical": "#7351b5",
+        "tonalRamp": [
+          "#11002a",
+          "#2c1451",
+          "#4a2f7b",
+          "#6a4ba8",
+          "#8b6dcd",
+          "#ad94ea",
+          "#cfbbff",
+          "#f3e3ff"
+        ]
+      },
+      "lavender-text": {
+        "role": "primary",
+        "displayName": "Lavender Text",
+        "canonical": "#bba5ec",
+        "tonalRamp": [
+          "#0f0420",
+          "#2a1c42",
+          "#483768",
+          "#685490",
+          "#8975b4",
+          "#ab9ad3",
+          "#cec0f2",
+          "#f3e7ff"
+        ]
+      },
+      "passed-coral": {
+        "role": "tertiary",
+        "displayName": "Passed Coral",
+        "canonical": "#f27878",
+        "tonalRamp": [
+          "#250000",
+          "#4c020c",
+          "#761d23",
+          "#a2373c",
+          "#c95b5c",
+          "#e88483",
+          "#ffaeab",
+          "#ffd9d5"
+        ]
+      },
+      "stall-amber": {
+        "role": "tertiary",
+        "displayName": "Stall Amber",
+        "canonical": "#e7b450",
+        "tonalRamp": [
+          "#1a0500",
+          "#3a1e00",
+          "#5e3a00",
+          "#835800",
+          "#a77a0d",
+          "#c69e52",
+          "#e7c485",
+          "#ffeab7"
+        ]
+      },
+      "on-violet-white": {
+        "role": "neutral",
+        "displayName": "On-violet White",
+        "canonical": "#ffffff",
+        "tonalRamp": [
+          "#262626",
+          "#3d3d3d",
+          "#575757",
+          "#737373",
+          "#919191",
+          "#b1b1b1",
+          "#d4d4d4",
+          "#ffffff"
+        ]
+      }
+    },
+    "typographyMeta": {
+      "page-title": {
+        "displayName": "Page title",
+        "purpose": "Export page heading only."
+      },
+      "title": {
+        "displayName": "Title",
+        "purpose": "Channel name under the power button; one line, ellipsis."
+      },
+      "title-small": {
+        "displayName": "Title small",
+        "purpose": "Export view heading in the popup; the top bar name sits at 14px."
+      },
+      "figure": {
+        "displayName": "Figure",
+        "purpose": "Today's four numbers, tabular."
+      },
+      "body": {
+        "displayName": "Body",
+        "purpose": "Status lines, setting names, export text, button labels at 500."
+      },
+      "label": {
+        "displayName": "Label",
+        "purpose": "Muted secondary text: version, hints, section title, Report without a log."
+      },
+      "caption": {
+        "displayName": "Caption",
+        "purpose": "Figure labels, no wrap."
+      },
+      "mono": {
+        "displayName": "Mono",
+        "purpose": "The log sheet on the export page."
+      }
+    },
+    "cssCustomProperties": ":root{--bg:#17161c;--surface:#201e27;--surface-hover:#2a2832;--line:#2e2c37;--line-strong:#45424f;--ring-off:#6a6776;--text:#ecebf1;--muted:#a7a4b3;--brand:#6441a5;--brand-hover:#7351b5;--brand-text:#bba5ec;--passed:#f27878;--stall:#e7b450;--radius:8px;--ease:cubic-bezier(0.16,1,0.3,1);}",
+    "shadows": [
+      {
+        "name": "power-lift",
+        "value": "inset 0 0 0 44px #6441a5, 0 4px 12px -4px rgba(0, 0, 0, 0.55)",
+        "purpose": "Power button on: the inset spread is the violet fill (animates to 0 when off), the outer shadow lifts it. The only shadow in the system."
+      }
+    ],
+    "focus": [
+      {
+        "name": "focus-ring",
+        "value": "outline: 2px solid #bba5ec; outline-offset: 2px",
+        "purpose": "Every focusable element; the power button uses a 4px offset."
+      }
+    ],
+    "motion": [
+      {
+        "name": "ease",
+        "value": "cubic-bezier(0.16, 1, 0.3, 1)",
+        "purpose": "The one easing curve for every transition."
+      },
+      {
+        "name": "duration-hover",
+        "value": "160ms",
+        "purpose": "Button background and border on hover."
+      },
+      {
+        "name": "duration-state",
+        "value": "180ms",
+        "purpose": "Power fill, ring and glyph; switch track and thumb; status and figure colour."
+      },
+      {
+        "name": "duration-press",
+        "value": "120ms",
+        "purpose": "Power button scale to 0.96 on press."
+      },
+      {
+        "name": "delay-status",
+        "value": "40ms",
+        "purpose": "Status line colour follows the power button."
+      },
+      {
+        "name": "delay-figures",
+        "value": "80ms",
+        "purpose": "Figures colour follows the status line."
+      },
+      {
+        "name": "reduced-motion",
+        "value": "transition: none",
+        "purpose": "All transitions removed under prefers-reduced-motion: reduce."
+      }
+    ],
+    "breakpoints": [],
+    "containers": [
+      {
+        "name": "popup",
+        "value": "320px",
+        "purpose": "Fixed popup body width."
+      },
+      {
+        "name": "sheet",
+        "value": "960px",
+        "purpose": "Export page content max-width."
+      }
+    ]
+  },
+  "components": [
+    {
+      "name": "Secondary Button",
+      "kind": "button",
+      "refersTo": "button",
+      "description": "Default action button (Rate Purple, Report a bug, the export page's GitHub link).",
+      "html": "<button class=\"ds-btn\"><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M12 3.8l2.5 5.1 5.6.8-4 3.9.9 5.6-5-2.6-5 2.6.9-5.6-4-3.9 5.6-.8z\"/></svg><span>Rate Purple</span></button>",
+      "css": ".ds-btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;height:36px;padding:0 14px;border:1px solid #45424f;border-radius:8px;background:#201e27;color:#ecebf1;font:13px/1.45 system-ui,-apple-system,'Segoe UI',Roboto,Ubuntu,Cantarell,'Helvetica Neue',Arial,sans-serif;font-weight:500;cursor:pointer;transition:background-color 160ms cubic-bezier(0.16,1,0.3,1),border-color 160ms cubic-bezier(0.16,1,0.3,1);} .ds-btn:hover{background:#2a2832;} .ds-btn:focus-visible{outline:2px solid #bba5ec;outline-offset:2px;} .ds-btn svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;}"
+    },
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "The one main action of a view (Go to Twitch, Download .txt).",
+      "html": "<button class=\"ds-btn ds-btn-primary\"><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M12 4v10\"/><path d=\"M7.5 9.5L12 14l4.5-4.5\"/><path d=\"M5 19h14\"/></svg><span>Download .txt</span></button>",
+      "css": ".ds-btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;height:36px;padding:0 14px;border:1px solid #45424f;border-radius:8px;background:#201e27;color:#ecebf1;font:13px/1.45 system-ui,-apple-system,'Segoe UI',Roboto,Ubuntu,Cantarell,'Helvetica Neue',Arial,sans-serif;font-weight:500;cursor:pointer;transition:background-color 160ms cubic-bezier(0.16,1,0.3,1),border-color 160ms cubic-bezier(0.16,1,0.3,1);} .ds-btn:hover{background:#2a2832;} .ds-btn:focus-visible{outline:2px solid #bba5ec;outline-offset:2px;} .ds-btn svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;} .ds-btn-primary{border-color:#6441a5;background:#6441a5;color:#fff;} .ds-btn-primary:hover{border-color:#7351b5;background:#7351b5;}"
+    },
+    {
+      "name": "Link Button",
+      "kind": "button",
+      "refersTo": "link-button",
+      "description": "Text-only secondary action (Report without a log).",
+      "html": "<button class=\"ds-link\"><span>Report without a log</span></button>",
+      "css": ".ds-link{display:inline-flex;align-items:center;gap:6px;padding:4px 0;border:0;background:none;color:#a7a4b3;font:13px/1.45 system-ui,-apple-system,'Segoe UI',Roboto,Ubuntu,Cantarell,'Helvetica Neue',Arial,sans-serif;font-size:12px;cursor:pointer;} .ds-link:hover{color:#ecebf1;text-decoration:underline;text-underline-offset:3px;} .ds-link:focus-visible{outline:2px solid #bba5ec;outline-offset:2px;} .ds-link svg{width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;}"
+    },
+    {
+      "name": "Power Button",
+      "kind": "custom",
+      "refersTo": "power-on",
+      "description": "Signature per-channel switch: violet fills the disc when on, a grey ring when off.",
+      "html": "<div class=\"ds-power-pair\"><button class=\"ds-power\" aria-pressed=\"true\" aria-label=\"Purple on\"><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M12 3.5v8\"/><path d=\"M6.6 6.8a7.5 7.5 0 1 0 10.8 0\"/></svg></button><button class=\"ds-power\" aria-pressed=\"false\" aria-label=\"Purple off\"><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M12 3.5v8\"/><path d=\"M6.6 6.8a7.5 7.5 0 1 0 10.8 0\"/></svg></button></div>",
+      "css": ".ds-power-pair{display:flex;gap:24px;padding:16px;background:#17161c;} .ds-power{display:grid;place-items:center;width:88px;height:88px;border:2px solid #6441a5;border-radius:50%;background:transparent;color:#fff;cursor:pointer;box-shadow:inset 0 0 0 44px #6441a5,0 4px 12px -4px rgba(0,0,0,0.55);transition:box-shadow 180ms cubic-bezier(0.16,1,0.3,1),border-color 180ms cubic-bezier(0.16,1,0.3,1),color 180ms cubic-bezier(0.16,1,0.3,1),transform 120ms cubic-bezier(0.16,1,0.3,1);} .ds-power:hover{border-color:#7351b5;box-shadow:inset 0 0 0 44px #7351b5,0 4px 12px -4px rgba(0,0,0,0.55);} .ds-power:active{transform:scale(0.96);} .ds-power[aria-pressed=\"false\"]{border-color:#6a6776;color:#a7a4b3;box-shadow:inset 0 0 0 0 #6441a5,0 0 0 0 rgba(0,0,0,0);} .ds-power[aria-pressed=\"false\"]:hover{border-color:#a7a4b3;color:#ecebf1;} .ds-power:focus-visible{outline:2px solid #bba5ec;outline-offset:4px;} .ds-power svg{width:36px;height:36px;fill:none;stroke:currentColor;stroke-width:2.4;stroke-linecap:round;}"
+    },
+    {
+      "name": "Switch Row",
+      "kind": "input",
+      "refersTo": "switch-on",
+      "description": "A setting: name, muted hint, and a violet switch; the whole row is the label.",
+      "html": "<label class=\"ds-setting\"><span class=\"ds-setting-text\"><span>AD badge on the icon</span><span class=\"ds-hint\">While Purple blocks an ad on a tab</span></span><input type=\"checkbox\" class=\"ds-switch\" role=\"switch\" checked></label>",
+      "css": ".ds-setting{display:flex;align-items:center;gap:12px;width:320px;padding:12px 16px;background:#17161c;color:#ecebf1;font:13px/1.45 system-ui,-apple-system,'Segoe UI',Roboto,Ubuntu,Cantarell,'Helvetica Neue',Arial,sans-serif;border-top:1px solid #2e2c37;border-bottom:1px solid #2e2c37;cursor:pointer;} .ds-setting-text{display:grid;flex:1;} .ds-hint{color:#a7a4b3;font-size:12px;} .ds-switch{appearance:none;position:relative;flex:none;width:36px;height:20px;margin:0;border-radius:10px;background:#6a6776;cursor:pointer;transition:background-color 180ms cubic-bezier(0.16,1,0.3,1);} .ds-switch::after{content:\"\";position:absolute;top:2px;left:2px;width:16px;height:16px;border-radius:50%;background:#ecebf1;transition:transform 180ms cubic-bezier(0.16,1,0.3,1);} .ds-switch:checked{background:#6441a5;} .ds-switch:checked::after{transform:translateX(16px);} .ds-switch:focus-visible{outline:2px solid #bba5ec;outline-offset:2px;}"
+    },
+    {
+      "name": "Figures Row",
+      "kind": "custom",
+      "refersTo": "figure",
+      "description": "Today's four tabular figures; coral and amber only above zero.",
+      "html": "<section class=\"ds-today\"><h2>Today on this channel</h2><dl><div><dt>breaks</dt><dd>4</dd></div><div><dt>blocked</dt><dd>3</dd></div><div><dt>got through</dt><dd class=\"ds-passed\">1</dd></div><div><dt>stalls</dt><dd class=\"ds-stall\">2</dd></div></dl></section>",
+      "css": ".ds-today{width:320px;padding:10px 16px 12px;background:#17161c;color:#ecebf1;font:13px/1.45 system-ui,-apple-system,'Segoe UI',Roboto,Ubuntu,Cantarell,'Helvetica Neue',Arial,sans-serif;border-top:1px solid #2e2c37;} .ds-today h2{margin:0 0 8px;color:#a7a4b3;font-size:12px;font-weight:500;} .ds-today dl{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:0;} .ds-today dl div{display:flex;flex-direction:column-reverse;gap:1px;} .ds-today dd{margin:0;font-size:18px;font-weight:600;line-height:1.2;font-variant-numeric:tabular-nums;} .ds-today dt{color:#a7a4b3;font-size:11px;white-space:nowrap;} .ds-today .ds-passed{color:#f27878;} .ds-today .ds-stall{color:#e7b450;}"
+    },
+    {
+      "name": "Select",
+      "kind": "input",
+      "refersTo": "select",
+      "description": "Channel picker in the export view, label above.",
+      "html": "<div class=\"ds-pick\"><label class=\"ds-pick-label\" for=\"ds-ch\">Channel</label><select class=\"ds-select\" id=\"ds-ch\"><option>Choose a channel</option></select></div>",
+      "css": ".ds-pick{display:grid;gap:4px;width:288px;font:13px/1.45 system-ui,-apple-system,'Segoe UI',Roboto,Ubuntu,Cantarell,'Helvetica Neue',Arial,sans-serif;} .ds-pick-label{color:#a7a4b3;font-size:12px;} .ds-select{width:100%;height:36px;padding:0 10px;border:1px solid #45424f;border-radius:8px;background:#201e27;color:#ecebf1;font:inherit;color-scheme:dark;} .ds-select:focus-visible{outline:2px solid #bba5ec;outline-offset:2px;} .ds-select:disabled{opacity:0.55;}"
+    },
+    {
+      "name": "Top Bar",
+      "kind": "nav",
+      "refersTo": "top-bar",
+      "description": "Logo, product name and version; the only navigation.",
+      "html": "<header class=\"ds-bar\"><span class=\"ds-logo\" aria-hidden=\"true\"></span><span class=\"ds-name\">Purple</span><span class=\"ds-version\">2.8.0</span></header>",
+      "css": ".ds-bar{display:flex;align-items:center;gap:8px;width:320px;height:44px;padding:0 16px;background:#17161c;color:#ecebf1;font:13px/1.45 system-ui,-apple-system,'Segoe UI',Roboto,Ubuntu,Cantarell,'Helvetica Neue',Arial,sans-serif;border-bottom:1px solid #2e2c37;} .ds-logo{width:20px;height:20px;border-radius:4px;background:#6441a5;} .ds-name{font-weight:600;font-size:14px;} .ds-version{margin-left:auto;color:#a7a4b3;font-size:12px;font-variant-numeric:tabular-nums;}"
+    },
+    {
+      "name": "Log Sheet",
+      "kind": "card",
+      "refersTo": "log-sheet",
+      "description": "Monospace log text on the export page.",
+      "html": "<pre class=\"ds-sheet\" tabindex=\"0\"># Purple Adblock diagnostic log\n2026-11-21T13:37:00 INFO  breakStart kind=stitched\n2026-11-21T13:42:40 WARN  stall      track=video seconds=2.3</pre>",
+      "css": ".ds-sheet{margin:0;padding:14px 16px;max-height:60vh;overflow:auto;border:1px solid #2e2c37;border-radius:8px;background:#201e27;color:#ecebf1;font:12px/1.6 ui-monospace,'SFMono-Regular',Menlo,Consolas,'Liberation Mono',monospace;font-variant-numeric:tabular-nums;white-space:pre;scrollbar-color:#45424f #201e27;} .ds-sheet:focus-visible{outline:2px solid #bba5ec;outline-offset:2px;}"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Night Switch",
+    "overview": "Purple's surfaces are a small dark instrument opened over a playing stream, mostly at night. The popup answers one question, whether Purple is on for this channel, with one large round power button, and puts today's figures for that channel directly under it. Everything else (one switch row, the rate and report actions) sits below in quieter type. The system follows the ad-blocker popup standard set by uBlock Origin and by 7TV and BetterTTV, executed straight, at their level of craft.\n\nThe ground is a near-black with a slight violet cast. The logo's violet is the only brand colour and carries state: it fills the power button when Purple is on, and leaves a grey ring when off. Coral and amber appear only as signals inside the figures row. Type is the platform's own UI sans, because the popup loads nothing from the network; figures are tabular. Sections are divided by hairlines rather than boxed into cards. The export page reuses the same tokens at tab width, with a monospace log sheet.\n\nThe surfaces reject two looks, both confirmed by the maintainer: Twitch's own site chrome, and a settings form with no main state.",
+    "keyCharacteristics": [
+      "Dark only, a 320 px fixed-width popup; the export page caps content at 960 px.",
+      "One violet, used for state and the primary action, never for decoration.",
+      "One main control (the 88 px power button), one figures row, short switch list, actions at the foot.",
+      "System UI sans at 13 px body; tabular numerals for every number.",
+      "Hairline separators, an 8 px radius family, authored 2 px stroke icons.",
+      "One shared easing curve; state changes in 180 ms, hover in 160 ms; no motion under reduced-motion."
+    ],
+    "rules": [
+      {
+        "name": "The One Violet Rule",
+        "body": "Violet means \"Purple is acting\" or \"the main action\". It is the only hue besides the two signals; no gradients, no second accent, no violet borders or backgrounds for decoration.",
+        "section": "colors"
+      },
+      {
+        "name": "The Signals Only Above Zero Rule",
+        "body": "Coral and amber colour a figure only when that figure is above zero. A zero stays in the neutral text colour; the signal colours never appear on labels, borders or backgrounds.",
+        "section": "colors"
+      },
+      {
+        "name": "The Dark Only Rule",
+        "body": "There is no light theme. The surfaces declare `color-scheme: dark` and open over Twitch at night.",
+        "section": "colors"
+      },
+      {
+        "name": "The Local Type Rule",
+        "body": "Only the platform's system stacks. The popup loads nothing from the network, so no web fonts, bundled or remote, are added to these surfaces.",
+        "section": "typography"
+      },
+      {
+        "name": "The Tabular Figures Rule",
+        "body": "Every number (version, today's figures, the log) uses tabular numerals so values do not shift as they change.",
+        "section": "typography"
+      },
+      {
+        "name": "The Sentence Case Rule",
+        "body": "Titles, labels and buttons are sentence case at normal tracking. No uppercase labels and no letter-spaced small caps.",
+        "section": "typography"
+      },
+      {
+        "name": "The One Lifted Object Rule",
+        "body": "Only the power button casts a shadow. Buttons, inputs, the consent box and the log sheet stay flat.",
+        "section": "elevation"
+      }
+    ],
+    "dos": [
+      "**Do** keep one main state per view and make it the largest object: the 88px power button on a channel, the single primary button elsewhere.",
+      "**Do** take colours only from the tokens; violet for state and the primary action, coral and amber only for a non-zero \"got through\" or \"stalls\" figure.",
+      "**Do** separate popup sections with 1px hairlines and full-width bands, insetting content 16px.",
+      "**Do** set every number in tabular figures and every label in sentence case.",
+      "**Do** draw new icons as inline SVG on the 24-unit grid with a 2px round stroke, 16px by default.",
+      "**Do** use the shared easing `cubic-bezier(0.16, 1, 0.3, 1)` with 160ms for hover and 180ms for state, and drop transitions under `prefers-reduced-motion`.",
+      "**Do** keep the 2px lavender focus outline on every focusable element."
+    ],
+    "donts": [
+      "**Don't** borrow Twitch's site chrome or make the popup read as part of twitch.tv.",
+      "**Don't** build a view as a settings form without a main state at the top.",
+      "**Don't** add a second accent hue, gradients, or violet used as decoration.",
+      "**Don't** load web fonts or remote images; the surfaces stay network-free.",
+      "**Don't** add shadows to anything but the power button, or box popup sections into cards.",
+      "**Don't** add uppercase or letter-spaced labels above titles."
+    ]
+  }
+}

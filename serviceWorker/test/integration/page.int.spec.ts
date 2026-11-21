@@ -487,3 +487,109 @@ describe("ad state for the icon's badge", () => {
     expect(heard).toEqual([true, false, true, false]);
   });
 });
+
+// F-31 (T-606): the diagnostic log's entries reach the window ("purpleDiag") from the worker's events and break state,
+// on by default; window.__purple.events stays debug only (F-17); with diagnostics false nothing is posted
+describe("diagnostic log", () => {
+  const IVS = "https://assets.twitch.tv/assets/player-worker-diag.js";
+  const IVS_SCRIPT = "importScripts('https://assets.twitch.tv/assets/amazon-ivs-wasmworker.min-3c5ad1e0.js')";
+  const posted: any[] = [];
+  // this block's entries: the badge tests above left breaks of the page's channel ("channel") waiting for their batch
+  const diag = () => posted.flatMap((message) => message.entries).filter((entry: any) => entry.channel === "channel_a");
+  const settle = () => Bun.sleep(5);
+  let worker: FakeWorker;
+
+  beforeAll(async () => {
+    window.addEventListener("message", (event: any) => {
+      if (event.data?.type === "purpleDiag") posted.push(event.data);
+    });
+    window.postMessage({ type: "setSettings", value: { whitelist: [], debug: false } }, "*");
+    await settle();
+    FakeXMLHttpRequest.scripts.set(IVS, IVS_SCRIPT);
+    worker = new (window as any).Worker(IVS);
+    worker.postMessage(PLAYER_INIT);
+  });
+
+  // the test page's Worker, fetch and XHR are fakes, not native code: another script's, as far as Purple can tell
+  test("a channel's load with the player's build and the conflicts found before Purple; an error at once (its name only)", async () => {
+    worker.emit({ type: "purpleEvent", event: { type: "channelLoaded", channel: "channel_a", at: 1 } });
+    worker.emit({ type: "purpleEvent", event: { type: "error", name: "TypeError", where: "playlist", channel: "channel_a", at: 2 } });
+    await settle();
+    expect(diag().map((e: any) => [e.type, e.channel, e.level, e.data])).toEqual([
+      ["load", "channel_a", "info", { player: "3c5ad1e0", worker: "injected" }],
+      ["conflict", "channel_a", "warn", { what: "worker", when: "before" }],
+      ["conflict", "channel_a", "warn", { what: "fetch", when: "before" }],
+      ["conflict", "channel_a", "warn", { what: "xhr", when: "before" }],
+      ["error", "channel_a", "error", { name: "TypeError", where: "playlist" }],
+    ]);
+  });
+
+  test("a script that replaces fetch after Purple: a conflict after, at the next load", async () => {
+    const hooked = window.fetch;
+    window.fetch = (async () => new Response("")) as any;
+    try {
+      worker.emit({ type: "purpleEvent", event: { type: "channelLoaded", channel: "channel_b", at: 1 } });
+    } finally {
+      window.fetch = hooked;
+    }
+    worker.emit({ type: "purpleEvent", event: { type: "error", name: "TypeError", where: "playlist", channel: "channel_b", at: 2 } });
+    await settle();
+    const conflicts = posted.flatMap((m) => m.entries).filter((e: any) => e.channel === "channel_b" && e.type === "conflict");
+    expect(conflicts.map((e: any) => e.data)).toContainEqual({ what: "fetch", when: "after" });
+    expect(conflicts.map((e: any) => e.data)).not.toContainEqual({ what: "worker", when: "after" });
+    worker.emit({ type: "purpleEvent", event: { type: "channelLoaded", channel: "channel_a", at: 3 } });
+  });
+
+  test("window.__purple.events is not fed with debug off", () => {
+    const before = (window as any).__purple?.events.length;
+    worker.emit({ type: "purpleEvent", event: { type: "adDetected", channel: "channel_a", at: 3 } });
+    expect((window as any).__purple?.events.length).toBe(before);
+  });
+
+  test("a client-side break: its start from the worker's adState, its roll from the ad request the page blocked; the badge's message is unchanged", async () => {
+    const badge: any[] = [];
+    const listener = (event: any) => event.data?.type === "adState" && badge.push(event.data);
+    window.addEventListener("message", listener);
+    worker.emit({ type: "adState", blocking: true, kind: "csai", declared: 60 });
+    expect((await fetch("https://edge.ads.twitch.tv/ads?bp=midroll&u=x")).status).toBe(200);
+    worker.emit({ type: "purpleEvent", event: { type: "error", name: "RangeError", where: "playlist", channel: "channel_a", at: 4 } });
+    worker.emit({ type: "adState", blocking: false });
+    await settle();
+    window.removeEventListener("message", listener);
+    expect(badge).toEqual([{ type: "adState", value: true }, { type: "adState", value: false }]);
+    expect(diag().find((e: any) => e.type === "breakStart")).toMatchObject({ channel: "channel_a", data: { kind: "csai", roll: "midroll", declared: 60 } });
+  });
+
+  // earlier tests changed the quality within the last 10 s; turning diagnostics off and on starts it over
+  test("the player's quality, as the worker reports it", async () => {
+    window.postMessage({ type: "setSettings", value: { whitelist: [], diagnostics: false } }, "*");
+    await settle();
+    window.postMessage({ type: "setSettings", value: { whitelist: [] } }, "*");
+    await settle();
+    worker.emit({ type: "PlayerQualityChanged", arg: { name: "480p30" } });
+    worker.emit({ type: "purpleEvent", event: { type: "error", name: "TypeError", where: "playlist", channel: "channel_a", at: 5 } });
+    await settle();
+    expect(diag().filter((e: any) => e.type === "quality").map((e: any) => e.data)).toEqual([{ name: "480p30" }]);
+  });
+
+  test("a worker Purple could not get into is a warning", async () => {
+    const before = posted.length;
+    new (window as any).Worker("https://assets.twitch.tv/missing-diag.js");
+    worker.emit({ type: "purpleEvent", event: { type: "error", name: "Error", where: "usher", channel: "channel_a", at: 5 } });
+    await settle();
+    expect(posted.slice(before).flatMap((m) => m.entries).find((e: any) => e.type === "load")).toMatchObject({ level: "warn", data: { player: "unknown", worker: "fallback" } });
+  });
+
+  test("with diagnostics false, nothing is posted", async () => {
+    window.postMessage({ type: "setSettings", value: { whitelist: [], diagnostics: false } }, "*");
+    await settle();
+    const before = posted.length;
+    worker.emit({ type: "purpleEvent", event: { type: "error", name: "TypeError", where: "playlist", channel: "channel_a", at: 6 } });
+    worker.emit({ type: "adState", blocking: true, kind: "stitched" });
+    await Bun.sleep(1100);
+    expect(posted.length).toBe(before);
+    worker.emit({ type: "adState", blocking: false });
+    window.postMessage({ type: "setSettings", value: { whitelist: [] } }, "*");
+    await settle();
+  });
+});

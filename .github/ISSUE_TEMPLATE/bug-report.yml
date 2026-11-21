@@ -5,7 +5,7 @@ labels: ["bug"]
 body:
   - type: markdown
     attributes:
-      value: An ad that got through goes in the pinned issue, [#111](https://github.com/arthurbolsoni/Purple-adblock/issues/111), as a comment.
+      value: An ad that got through goes in the pinned issue, [#111](https://github.com/arthurbolsoni/Purple-adblock/issues/111), as a comment; the Purple log can be attached there too.
   - type: textarea
     id: what
     attributes:
@@ -66,6 +66,12 @@ body:
       label: Account
       options:
         - label: Logged in to Twitch
+  - type: textarea
+    id: log
+    attributes:
+      label: Purple log
+      description: In the Purple popup, click "Report a bug", accept the warning, choose the channel and download the .txt, then drag the file here. Open it first and check what it holds. The userscript has no log.
+      placeholder: Drag purple-log-<channel>-<date>.txt here
   - type: textarea
     id: steps
     attributes:

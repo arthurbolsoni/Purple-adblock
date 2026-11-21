@@ -1,0 +1,52 @@
+/* The export page: a tab, so it takes the window's width */
+body.page {
+  width: auto;
+  min-height: 100vh;
+}
+
+.page .bar {
+  padding: 0 max(16px, calc((100vw - 960px) / 2 + 16px));
+}
+
+.sheet {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 28px 16px 48px;
+}
+
+.sheet-title {
+  font-size: 20px;
+  font-weight: 600;
+  margin-bottom: 6px;
+}
+
+.sheet-summary {
+  color: var(--muted);
+}
+
+.sheet-note {
+  margin-top: 14px;
+  max-width: 70ch;
+}
+
+.sheet-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 18px 0 20px;
+}
+
+.sheet-text {
+  margin: 0;
+  padding: 14px 16px;
+  max-height: 60vh;
+  overflow: auto;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--text);
+  font: 12px/1.6 ui-monospace, "SFMono-Regular", Menlo, Consolas, "Liberation Mono", monospace;
+  font-variant-numeric: tabular-nums;
+  white-space: pre;
+  scrollbar-color: var(--line-strong) var(--surface);
+}

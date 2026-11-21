@@ -1,5 +1,6 @@
-// T-109 and T-110: with `debug` off the worker prints nothing and posts no event; with it on, it logs and posts
-// events (adDetected, backupUsed, segmentsReplaced) for the page's window.__purple.events.
+// T-109 and T-110: with `debug` off the worker prints nothing; with it on, it logs and posts events (adDetected,
+// backupUsed, segmentsReplaced) for the page's window.__purple.events. F-31 (T-606): the events are also posted with
+// `debug` off for the page's diagnostic log, unless `diagnostics` is false.
 import { afterEach, describe, expect, spyOn, test } from "bun:test";
 import { fixture } from "../harness/fixtures";
 import { createWorkerScope } from "../harness/worker-scope";
@@ -33,20 +34,50 @@ const twoPolls = async (worker: ReturnType<typeof adBreak>) => {
 };
 
 const events = (worker: ReturnType<typeof adBreak>) => worker.posted.filter((m) => m.type === "purpleEvent").map((m) => m.event);
+// F-31's events for the diagnostic log only (backup outcomes, failed requests, ...); the F-17 ones are the others
+const F31_ONLY = new Set(["backupTried", "requestFailed", "playlistClean", "tokenFlags"]);
+const f17 = (worker: ReturnType<typeof adBreak>) => events(worker).filter((e) => !F31_ONLY.has(e.type));
 
 afterEach(() => {
   (console.log as any).mockRestore?.();
 });
 
 describe("debug off (default)", () => {
-  test("a full ad break prints nothing and posts no event", async () => {
+  test("with diagnostics off, a full ad break prints nothing and posts no event", async () => {
     const log = spyOn(console, "log").mockImplementation(() => {});
     const worker = adBreak();
-    worker.send("setSettings", { whitelist: [], debug: false });
+    worker.send("setSettings", { whitelist: [], debug: false, diagnostics: false });
 
     await twoPolls(worker);
 
     expect(log).not.toHaveBeenCalled();
+    expect(events(worker)).toEqual([]);
+  });
+
+  // F-31: diagnostics is on by default (no key, and before any setSettings: the userscript gets none)
+  test.each([
+    ["diagnostics not set", { whitelist: [], debug: false }],
+    ["no setSettings", null],
+  ])("with %s, a full ad break prints nothing and posts its events for the diagnostic log", async (_, settings) => {
+    const log = spyOn(console, "log").mockImplementation(() => {});
+    const worker = adBreak();
+    if (settings) worker.send("setSettings", settings);
+
+    await twoPolls(worker);
+
+    expect(log).not.toHaveBeenCalled();
+    expect(f17(worker).map((e) => e.type)).toEqual(["channelLoaded", "adDetected", "blankInserted", "adDetected", "backupUsed"]);
+    expect(events(worker).map((e) => e.type)).toContain("backupTried");
+  });
+
+  test("diagnostics false after true stops the events", async () => {
+    spyOn(console, "log").mockImplementation(() => {});
+    const worker = adBreak();
+    worker.send("setSettings", { whitelist: [], diagnostics: true });
+    worker.send("setSettings", { whitelist: [], diagnostics: false });
+
+    await twoPolls(worker);
+
     expect(events(worker)).toEqual([]);
   });
 });
@@ -62,10 +93,11 @@ describe("debug on", () => {
     await twoPolls(worker);
 
     expect(log).toHaveBeenCalled();
-    const posted = events(worker);
-    expect(posted.map((e) => e.type)).toEqual(["adDetected", "blankInserted", "adDetected", "backupUsed"]);
-    expect(posted[1]).toMatchObject({ type: "blankInserted", channel: "channel", count: 3 });
-    expect(posted[3]).toMatchObject({ type: "backupUsed", channel: "channel", playerType: StreamType.FRONTPAGE });
+    const posted = f17(worker);
+    // F-31: channelLoaded at the usher request
+    expect(posted.map((e) => e.type)).toEqual(["channelLoaded", "adDetected", "blankInserted", "adDetected", "backupUsed"]);
+    expect(posted[2]).toMatchObject({ type: "blankInserted", channel: "channel", count: 3 });
+    expect(posted[4]).toMatchObject({ type: "backupUsed", channel: "channel", playerType: StreamType.FRONTPAGE });
     expect(posted.every((e) => e.channel === "channel" && e.at >= before)).toBe(true);
   });
 
@@ -87,17 +119,18 @@ describe("debug on", () => {
 
     await worker.text(MAIN);
 
-    expect(events(worker).map((e) => [e.type, e.count])).toEqual([
+    expect(f17(worker).map((e) => [e.type, e.count])).toEqual([
+      ["channelLoaded", undefined],
       ["adDetected", undefined],
       ["segmentsReplaced", 3],
     ]);
   });
 
-  test("turning debug off again stops the logs and the events", async () => {
+  test("turning debug off again (diagnostics off) stops the logs and the events", async () => {
     const log = spyOn(console, "log").mockImplementation(() => {});
     const worker = adBreak();
     worker.send("setSettings", { whitelist: [], debug: true });
-    worker.send("setSettings", { whitelist: [], debug: false });
+    worker.send("setSettings", { whitelist: [], debug: false, diagnostics: false });
     log.mockClear();
 
     await twoPolls(worker);

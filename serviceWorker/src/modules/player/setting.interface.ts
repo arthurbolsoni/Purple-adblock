@@ -26,4 +26,6 @@ export type Setting = {
   blockCsai?: boolean;
   // F-29: read by the page (index.ts), not by the worker
   widenBufferRemovals?: boolean;
+  // F-31: the diagnostic log (default on); the worker posts its events for it, the page writes the entries
+  diagnostics?: boolean;
 };

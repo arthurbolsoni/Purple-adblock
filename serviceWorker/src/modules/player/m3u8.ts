@@ -140,6 +140,16 @@ const aheadUri = (line: string) => {
   return null;
 };
 
+// A playlist's URI as the player requests it: absolute as written, else resolved against the playlist's URL
+export function resolveUri(uri: string, playlistUrl: string): string {
+  if (/^[a-z][a-z0-9+.-]*:/i.test(uri)) return uri;
+  try {
+    return new URL(uri, playlistUrl).href;
+  } catch {
+    return uri;
+  }
+}
+
 // T-502 (F-14): the last resort for the ad segments no backup replaced (`adSegments`, indexes in segment order), as
 // in Brave's script. Their lines stay and their URIs are listed, with the EXT-X-MAP only ad segments use, for the
 // worker to answer with a blank segment (blank-segment.ts). Lines that make the player fetch ad media ahead go, and
@@ -151,14 +161,7 @@ export function blankAds(text: string, adSegments: number[], playlistUrl: string
   const lines = text.split("\n");
   const segments = readSegments(lines);
   const ads = new Set(adSegments.filter((index) => index >= 0 && index < segments.length));
-  const resolve = (uri: string) => {
-    if (/^[a-z][a-z0-9+.-]*:/i.test(uri)) return uri;
-    try {
-      return new URL(uri, playlistUrl).href;
-    } catch {
-      return uri;
-    }
-  };
+  const resolve = (uri: string) => resolveUri(uri, playlistUrl);
 
   const segmentUris = [...ads].sort((a, b) => a - b).map((index) => resolve(lines[segments[index].uri].trim()));
   const known = new Set(segmentUris);

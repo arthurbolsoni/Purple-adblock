@@ -7,8 +7,9 @@
 | Content script | `platform/src/content-script.js` | extension isolated world; reads `storage` and answers `getSettings`; on Firefox before 128 also adds `app/bundle.js` to the page |
 | Page | `serviceWorker/src/index.ts` (built into `bundle.js`) | twitch.tv main world, `document_start`: a `MAIN` world content script on Chromium and on Firefox 128 and later (MV2 too), a `<script>` added by the content script on earlier Firefox, `@run-at document-start` in the userscript |
 | Worker | `serviceWorker/src/app.worker.ts` → `bootstrap.ts` + modules (built into `app.worker.js`) | inside the Twitch player worker, ahead of the original script |
-| Popup | `platform/src/common/js/popup.js` | extension popup |
-| Background | `platform/src/app/background.js` | the MV3 service worker on Chromium, an MV2 event page on Firefox: draws the icon's badge (F-30) |
+| Popup | `platform/src/common/js/popup.js` (+ `i18n.js`) | extension popup |
+| Export page | `platform/src/common/js/export.js` (+ `diag-format.js`, `i18n.js`) | an extension page in a tab, opened by the popup for one channel's log (F-31) |
+| Background | `platform/src/app/background.js` (+ `diagnostics.js`) | the MV3 service worker on Chromium, an MV2 event page on Firefox: draws the icon's badge (F-30) and stores the diagnostic log (F-31) |
 
 The userscript has no content script, popup or background script: `bundle.js` is the whole script and settings use their defaults.
 
@@ -34,6 +35,8 @@ The userscript has no content script, popup or background script: `bundle.js` is
    - ad segments left → with `stripFallback`, their lines stay and their URIs, with any `EXT-X-MAP` only they use, are answered with the blank segment; part, preload and prefetch lines that point at ad media go (F-14, T-502). This also covers the first poll of a break, before any backup token is ready.
 8. `Player` keeps the source (the page's playlist or a backup variant) and the newest number of the last playlist it gave the player. When a change of source brings that number down (after a preroll played on backups the page's playlist numbers from 0, B-029), the player gets pause and play once (F-24, T-818). At the edges of a break (`ad-break.ts`) the player gets pause and play only with `pausePlayOnBreaks` (E6, F-21, off since T-809); with `reloadAfterAd`, a reload by the page at the end of a break instead (F-15, T-601).
 
+9. While `diagnostics` holds (F-31), `page/diagnostics.ts` writes a log of the channel: it receives the worker's `purpleEvent` and `adState` (with the break's `kind`) from `index.ts`, and Purple's own pause, play and reload; it watches the largest `<video>` once a second while one exists, maps it to its SourceBuffers through `addSourceBuffer` and `URL.createObjectURL`, and reads Twitch's ad UI and error overlay from the DOM. It posts `{ type: "purpleDiag", entries }` to the window at most once a second (errors at once), from the first `setSettings` on or after 5 s without one. The content script checks their shape and sends them to the background script every 30 s, at once for an error and on `pagehide`; the background script checks each entry, scrubs its strings and stores it in IndexedDB (`purple-diagnostics`: `entries` with indexes `[channel, at]` and `at`, and `channels`), none from incognito tabs, 7 days and 4000 entries per channel. The popup and the export page read the same database from the extension's origin; the export page builds the `.txt` there. Nothing leaves the browser.
+
 ## Current messages
 
 | From → to | Message | Effect |
@@ -48,9 +51,10 @@ The userscript has no content script, popup or background script: `bundle.js` is
 | worker → page | `{ type: "reload" }`, at the end of a break with `reloadAfterAd` | page runs a soft `setSrc` on Twitch's player state and answers `{ funcName: "reloadResult", value: { ok } }` to the worker that asked; with `ok: false` (no player state found) the worker pauses and plays (F-15, T-601) |
 | player worker → page | `PlayerQualityChanged`, `arg.key === "quality"` | page sends `{ funcName: "setQuality", value }` to every registered worker |
 | player worker → page | `arg.key === "state"` | page sends `{ funcName: <state> }` to the worker that sent it |
-| worker → page | `{ type: "purpleEvent", event }`, only with `debug` on | page keeps the last 500 in `window.__purple.events`, created only with `debug` on (F-17) |
+| worker → page | `{ type: "purpleEvent", event }`, with `debug` on or `diagnostics` not false | with `debug` on, page keeps the last 500 in `window.__purple.events` (F-17); with `diagnostics`, `page/diagnostics.ts` turns them into log entries (F-31) |
 | worker → page | `{ type: "adState", blocking }`, when its main playlist enters or leaves a break Purple blocks (F-30), with any setting | the page keeps which workers are blocking (`page/ad-state.ts`) and, when the page's state changes, sends `window.postMessage({ type: "adState", value })` |
 | page → content script → background | `{ type: "adState", value }`, then `runtime.sendMessage({ type: "adState", blocking })` | the background script sets or clears the badge on that tab's icon, unless the stored `adBadge` is false |
+| page → content script → background | `{ type: "purpleDiag", entries }`, then `runtime.sendMessage({ type: "diag", entries })` (F-31) | the background script stores the entries that pass its check, per channel, for 7 days |
 
 The last `setSettings`, `setIntegrity` and `setQuality` are replayed to a worker created later.
 

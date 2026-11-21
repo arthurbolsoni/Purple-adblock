@@ -2,12 +2,13 @@ import { Stream } from "../stream/stream";
 import { Setting } from "./setting.interface";
 import { StreamType } from "../stream/interface/stream.enum";
 import { Server, StreamUrl, type VariantTarget } from "../stream/interface/stream.types";
-import { blankAds, mergeWithBackups, stripAdDateranges } from "./m3u8";
-import { AdClass, detectAds, isCleanBackup } from "./ad-detector";
+import { blankAds, mergeWithBackups, readSegments, resolveUri, stripAdDateranges } from "./m3u8";
+import { AdClass, detectAds, isCleanBackup, isStitchedMarker } from "./ad-detector";
 import { AdBreak } from "./ad-break";
+import { breakDetails } from "./break-info";
 import { liveNumberAt, newestLiveContent, newestNumber, sequenceReference, sequenceShift, shiftSequence, type SequenceReference } from "./sequence";
 import { parseVariants } from "../stream/master";
-import type { PurpleEvent, WorkerContext } from "../../scope";
+import { eventsOn, type BackupOutcome, type PurpleEvent, type WorkerContext } from "../../scope";
 
 // F-09 (docs/feat.md). T-819: the types that give 720p first; picture-by-picture (360p only) after them, so a break
 // that rotates through backups stays at 720p when one of them is clean
@@ -43,6 +44,7 @@ export class Player {
   private pinnedType: string | null = null; // F-10: type of the last clean backup delivered
   private contaminatedUntil = new Map<string, number>(); // F-10: type -> time (ms) until which it is skipped
   private blankUris = new Map<string, number>(); // F-14: ad URI -> time (ms) of the last poll that listed it
+  private passedUris = new Map<string, number>(); // F-31: ad URI the player got as an ad -> time (ms) of the last poll that listed it
   private lastPrewarm = -Infinity; // F-19: time (ms) of the last prewarm
   private pageSequence: SequenceReference | null = null; // F-23: newest live segment of the last page playlist without ads
   private sequenceShifts = new Map<string, number>(); // F-23: backup variant URL (without query) -> shift, for this break
@@ -54,6 +56,8 @@ export class Player {
   private polling: Promise<unknown> = Promise.resolve();
   // F-30 (T-605): whether the main playlist is in a break Purple blocks right now; the page is told when it changes
   private blocking = false;
+  // F-31: the break's first playlist with no ad segment left was told to the page (playlistClean)
+  private cleanTold = false;
   // F-15 (T-601): pause/play at the edges of a break (E6); with reloadAfterAd, a reload at its end
   private adBreak = new AdBreak({
     pauseAndPlay: () => this.edgePauseAndPlay(),
@@ -175,6 +179,8 @@ export class Player {
       await this.waitFor(before);
       const given = await this.playlistFor(text, url);
       this.followSequence(given);
+      if (given.adsLeft) this.notePassedAds(given.adsLeft.text, url, given.adsLeft.indexes);
+      this.noteClean(given);
       return given.text;
     })();
     this.polling = turn.catch(() => {});
@@ -229,7 +235,7 @@ export class Player {
 
   private async playlistFor(text: string, url: string): Promise<Given> {
     // no stream stored for the channel yet (media playlist before the usher)
-    if (!this.currentStream()) return fromPage(text);
+    if (!this.currentStream()) return { ...fromPage(text), adsLeft: { text } };
     if (this.isWhitelist()) {
       this.emit({ type: "whitelisted" });
       this.setBlocking(false);
@@ -239,8 +245,9 @@ export class Player {
     // F-14: a stitched break announced past the last segment (B-034) ends with prefetch lines to its first ad segments,
     // which the player fetched before the first poll with ad segments: they go, and their URIs are answered blank
     if (detectAds(text).class === AdClass.MARKED_LIVE) {
-      // F-30: the marker's ad comes client-side and the page blocks its request (F-04), unless blockCsai is off
-      this.setBlocking(this.setting?.blockCsai !== false);
+      // F-30: the marker's ad comes client-side and the page blocks its request (F-04), unless blockCsai is off.
+      // F-31: a stitched-ad marker is a stitched break announced ahead (B-034), any other one a client-side break
+      this.setBlocking(this.setting?.blockCsai !== false, () => this.breakInfo(text, url, text.split("\n").some((line) => isStitchedMarker(line.trim())) ? "stitched" : "csai"));
       this.pageSequence = sequenceReference(text) ?? this.pageSequence;
       if (this.setting?.stripFallback === false) return fromPage(text);
       const announced = blankAds(text, [], url);
@@ -258,7 +265,7 @@ export class Player {
       this.sequenceShifts.clear();
       return fromPage(text);
     }
-    this.setBlocking(true);
+    this.setBlocking(true, () => this.breakInfo(text, url, "stitched"));
     this.emit({ type: "adDetected" });
 
     const dump: string[] = [];
@@ -279,14 +286,20 @@ export class Player {
       round.forEach((type, i) => this.noteBackup(type, backups[i], dump));
       for (const [i, type] of round.entries()) {
         const backup = backups[i];
-        if (!backup.data) continue;
+        if (!backup.data) {
+          // F-31: why this type gave no backup
+          this.tried(type, backup.contaminated ? "ads" : backup.status != null ? "status" : "noMaster", backup.status);
+          continue;
+        }
         const source = withoutQuery(backup.variant?.url ?? type);
         const aligned = this.alignSequence(backup.data, backup.variant, text);
         if (this.listsNothingNew(aligned, source)) {
           this.emit({ type: "backupBehind", playerType: type });
+          this.tried(type, "behind");
           behind ??= { type, variant: backup.variant, text: aligned, source };
           continue;
         }
+        this.tried(type, "clean");
         return this.useBackup(type, backup.variant, aligned, source);
       }
     }
@@ -303,10 +316,13 @@ export class Player {
     // F-14: the ad segments left are answered with the blank segment when the player requests them (stripFallback)
     // T-832: the live segments the player gets from it: the page's own and the ones that replaced its ads
     const content = (after: number | null) => newestLiveContent(text, detectAds(text).adSegments, merged.remaining, after);
-    if (!merged.remaining.length || this.setting?.stripFallback === false) return fromPage(merged.text, content);
+    // F-31: the ad segments the merge left reach the player as ads when they are not answered blank (stripFallback off).
+    // Counted from the merge, not detected again: the ad's DATERANGE still covers the segments it replaced
+    const adsLeft = { text: merged.text, indexes: merged.remaining };
+    if (!merged.remaining.length || this.setting?.stripFallback === false) return { ...fromPage(merged.text, content), adsLeft };
     const blanked = blankAds(merged.text, merged.remaining, url);
     this.listBlank(blanked.uris, blanked.segments);
-    return fromPage(this.adMarkers(blanked.text), content);
+    return { ...fromPage(this.adMarkers(blanked.text), content), adsLeft };
   }
 
   // F-20 (T-811): with stripAdMarkers (default on), a playlist Purple delivers with blanked ad segments or an announced
@@ -367,11 +383,13 @@ export class Player {
     return this.setting?.lowQualityFallback === false ? ordered : [...ordered, StreamType.AUTOPLAY];
   }
 
-  async fetchm3u8ByStreamType(accessType: StreamType | string, target: VariantTarget = { quality: this.quality }): Promise<{ data: string | null; dump: string[]; contaminated: boolean; variant?: StreamUrl }> {
+  // `status` (F-31): the HTTP status of the last playlist request that failed, 0 for a network error
+  async fetchm3u8ByStreamType(accessType: StreamType | string, target: VariantTarget = { quality: this.quality }): Promise<{ data: string | null; dump: string[]; contaminated: boolean; variant?: StreamUrl; status?: number }> {
     let dump: string[] = [];
     let data: string = "";
     let contaminated = false;
     let variant: StreamUrl | undefined;
+    let status: number | undefined;
 
     let servers: Server[] = this.currentStream().getStreamByStreamType(accessType);
 
@@ -386,8 +404,19 @@ export class Player {
       let text: string;
       try {
         if (!streamUrl) throw new Error("Stream Type: " + accessType + " - no variant");
-        const response: Response = await this.scope.request(streamUrl.url);
-        if (!response.ok) throw new Error("Stream Type: " + accessType + " - status " + response.status);
+        let response: Response;
+        try {
+          response = await this.scope.request(streamUrl.url);
+        } catch (e) {
+          status = 0;
+          this.emit({ type: "requestFailed", what: "playlist", status: 0, playerType: accessType });
+          throw e;
+        }
+        if (!response.ok) {
+          status = response.status;
+          this.emit({ type: "requestFailed", what: "playlist", status: response.status, playerType: accessType });
+          throw new Error("Stream Type: " + accessType + " - status " + response.status);
+        }
         text = await response.text();
       } catch (e) {
         this.scope.logger(e);
@@ -410,7 +439,7 @@ export class Player {
 
     }
 
-    return { data: data, dump: dump, contaminated, variant };
+    return { data: data, dump: dump, contaminated, variant, status };
   }
 
   // F-08 (T-404): the page's usher request for the current channel, reused by its backups
@@ -448,11 +477,103 @@ export class Player {
     return at != null && Date.now() - at <= BLANK_TTL_MS;
   };
 
-  // F-30 (T-605): the icon's badge follows this. Posted with any setting (not a debug event), only when it changes
-  private setBlocking(blocking: boolean) {
+  // F-30 (T-605): the icon's badge follows this. Posted with any setting (not a debug event), only when it changes.
+  // F-31 (T-606): a break's start says what is known of it (`info`: its kind, roll, announced length and quality), for
+  // the diagnostic log's breakStart
+  private setBlocking(blocking: boolean, info?: () => BreakInfo) {
     if (blocking === this.blocking) return;
     this.blocking = blocking;
-    this.scope.postMessage({ type: "adState", blocking });
+    this.cleanTold = false;
+    let details: BreakInfo | {} = {};
+    try {
+      if (blocking && info) details = info();
+    } catch {
+      details = {};
+    }
+    this.scope.postMessage({ type: "adState", blocking, ...details });
+  }
+
+  // F-31: the break's kind; roll and announced length from its DATERANGE (break-info.ts); the quality of the variant
+  // the player is on (its media playlist's, else the one it reported)
+  private breakInfo(text: string, url: string, kind: "stitched" | "csai"): BreakInfo {
+    const info: BreakInfo = { kind, ...breakDetails(text) };
+    const quality = this.variantTarget(url).quality || this.quality;
+    if (quality) info.quality = quality;
+    return info;
+  }
+
+  // F-31: what one backup type gave in this poll, or its token request (stream.ts)
+  private tried(type: string, outcome: BackupOutcome, status?: number) {
+    this.emit(outcome === "status" ? { type: "backupTried", playerType: type, outcome, status: status ?? 0 } : { type: "backupTried", playerType: type, outcome });
+  }
+
+  // F-31: the first playlist of a break with no ad segment left for the player (a clean backup, every ad replaced, a
+  // client-side break's live segments); blanked ad segments are still ad segments
+  private noteClean(given: Given) {
+    try {
+      if (!this.blocking || this.cleanTold || !eventsOn(this.scope)) return;
+      const left = given.adsLeft ? (given.adsLeft.indexes ?? detectAds(given.adsLeft.text).adSegments).length : 0;
+      if (left) return;
+      this.cleanTold = true;
+      this.emit({ type: "playlistClean" });
+    } catch {
+      // the diagnostic log is not worth a playlist
+    }
+  }
+
+  // F-31 (T-606): the ad flags of the page's own access token, the `token` parameter of its usher request (JSON);
+  // nothing else of the token (user, turbo, subscriber, ids) is read
+  noteToken(usherUrl: string) {
+    try {
+      if (!eventsOn(this.scope)) return;
+      const token = JSON.parse(new URL(usherUrl).searchParams.get("token") ?? "");
+      if (!token || typeof token !== "object") return;
+      const flags: NonNullable<PurpleEvent["flags"]> = {};
+      for (const [key, name] of [["hide_ads", "hideAds"], ["show_ads", "showAds"], ["server_ads", "serverAds"], ["adblock", "adblock"]] as const) {
+        if (typeof token[key] === "boolean") flags[name] = token[key];
+      }
+      if (Object.keys(flags).length) this.emit({ type: "tokenFlags", flags });
+    } catch {
+      // no token, or not JSON: nothing to say
+    }
+  }
+
+  // F-31 (T-606): ad segments of a playlist the player gets that are neither replaced nor answered blank reach the
+  // viewer; each URI is counted once while polls keep listing it (BLANK_TTL_MS). `indexes`: the ad segments (in segment
+  // order), detected in `text` when not given. Only while the page records events, and never in the way of the playlist.
+  notePassedAds(text: string, url: string, indexes?: number[]) {
+    try {
+      if (!eventsOn(this.scope)) return;
+      const adSegments = indexes ?? detectAds(text).adSegments;
+      if (!adSegments.length) return;
+      const lines = text.split("\n");
+      const segments = readSegments(lines);
+      const now = Date.now();
+      for (const [uri, at] of this.passedUris) if (now - at > BLANK_TTL_MS) this.passedUris.delete(uri);
+      let count = 0;
+      for (const index of adSegments) {
+        if (!segments[index]) continue;
+        const uri = resolveUri(lines[segments[index].uri].trim(), url);
+        if (this.isBlankSegment(uri)) continue;
+        if (!this.passedUris.has(uri)) count++;
+        this.passedUris.set(uri, now);
+      }
+      if (count) this.emit({ type: "adPassed", count });
+    } catch {
+      // the diagnostic log is not worth a playlist
+    }
+  }
+
+  // F-31 (T-606): an exception in Purple's logic, caught by the controller, which gave the player Twitch's own
+  // response: its name only (never its message, which can hold a URL), and the ad segments that response hands over
+  noteFailure(error: unknown, where: "playlist" | "usher", text?: string, url = "") {
+    try {
+      const name = typeof (error as any)?.name === "string" ? (error as any).name : typeof error;
+      this.emit({ type: "error", name, where });
+      if (text != null) this.notePassedAds(text, url);
+    } catch {
+      // nothing more to do: the player already has Twitch's response
+    }
   }
 
   // debug event (F-17) for the current channel
@@ -465,6 +586,8 @@ export class Player {
     // F-30: another channel starts with no break
     if (channelName !== this.actualChannel) this.setBlocking(false);
     this.actualChannel = channelName;
+    // F-31: the diagnostic log's load line
+    this.emit({ type: "channelLoaded" });
 
     let currentStream = this.streamList.find((stream) => stream.channelName === channelName);
     if (!currentStream) {
@@ -476,7 +599,11 @@ export class Player {
 
 // what a poll gives the player: the playlist, where it comes from (F-24), and, when it is not the live number under its
 // newest number (T-832), the newest live segment it holds past a number (T-833: the player's last one; null: all)
-type Given = { text: string; source: string; newestLive?: (after: number | null) => number | null };
+// F-31: what a break's start tells the page with adState
+type BreakInfo = { kind: "stitched" | "csai"; roll?: string; declared?: number; quality?: string };
+// F-31: `adsLeft`: the playlist can still list ad segments (one merged from the page's own with ads: the indexes the
+// merge left, in its text; the page's own before the usher: detected); they are counted as passed when not answered blank
+type Given = { text: string; source: string; newestLive?: (after: number | null) => number | null; adsLeft?: { text: string; indexes?: number[] } };
 const fromPage = (text: string, newestLive?: (after: number | null) => number | null): Given => ({ text, source: MAIN_SOURCE, newestLive });
 // T-831: how long a poll waits for the one before it, when that one has not given its playlist yet (a backup that never
 // answers must not hold the polls after it); past the 2 segments a backup takes to answer

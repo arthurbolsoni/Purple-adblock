@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Purple log</title>
+    <link rel="stylesheet" href="../css/popup.css" />
+    <link rel="stylesheet" href="../css/export.css" />
+  </head>
+
+  <body class="page">
+    <header class="bar">
+      <img class="bar-logo" src="../../images/logov2-128.png" alt="" width="20" height="20" />
+      <span class="bar-name">Purple</span>
+      <span class="bar-version" id="version"></span>
+    </header>
+
+    <main class="sheet">
+      <h1 class="sheet-title" id="title" data-i18n="exportPageTitle">Purple log</h1>
+
+      <div id="ready" hidden>
+        <p class="sheet-summary" id="summary"></p>
+        <p class="sheet-note" id="saved" data-i18n="exportSaved">The file is in your downloads. Open it and check it before you attach it to a bug report.</p>
+        <div class="sheet-actions">
+          <button type="button" class="button button-primary" id="save">
+            <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v10" /><path d="M7.5 9.5L12 14l4.5-4.5" /><path d="M5 19h14" /></svg>
+            <span data-i18n="saveAgain">Download again</span>
+          </button>
+          <a class="button" id="report" href="https://github.com/arthurbolsoni/Purple-adblock/issues/new?template=bug-report.yml" target="_blank" rel="noopener">
+            <span data-i18n="report">Open a bug report on GitHub</span>
+          </a>
+        </div>
+        <pre class="sheet-text" id="text" tabindex="0"></pre>
+      </div>
+
+      <p class="sheet-summary" id="missing" hidden data-i18n="exportMissing">No channel was chosen. Open the export from the Purple popup.</p>
+    </main>
+
+    <script src="../../app/diagnostics.js"></script>
+    <script src="../js/diag-format.js"></script>
+    <script src="../js/i18n.js"></script>
+    <script src="../js/env.js"></script>
+    <script src="../js/export.js"></script>
+  </body>
+</html>

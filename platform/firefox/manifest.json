@@ -6,6 +6,7 @@
     },
     "background": {
         "scripts": [
+            "app/diagnostics.js",
             "app/background.js"
         ],
         "persistent": false
@@ -13,6 +14,7 @@
     "icons": {
         "128": "images/logov2-128.png"
     },
+    "default_locale": "en",
     "manifest_version": 2,
     "browser_specific_settings": {
         "gecko": {

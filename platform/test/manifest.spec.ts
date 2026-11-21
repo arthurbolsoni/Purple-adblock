@@ -70,13 +70,34 @@ describe("background script (F-30)", () => {
     expect(manifest.permissions).toEqual(["activeTab", "storage", "declarativeNetRequestWithHostAccess"]);
   });
 
+  // F-31 (T-607): with the diagnostic log's store, app/diagnostics.js, loaded first
   test("Firefox runs it as an event page", () => {
     const manifest = read("firefox/manifest.json");
-    expect(manifest.background).toEqual({ scripts: ["app/background.js"], persistent: false });
+    expect(manifest.background).toEqual({ scripts: ["app/diagnostics.js", "app/background.js"], persistent: false });
     expect(manifest.permissions).toEqual(["https://*.twitch.tv/*", "activeTab", "storage"]);
+  });
+
+  // F-31 (T-607): the service worker imports the store next to itself; importScripts resolves the path against the
+  // worker's own URL
+  test("Chromium's service worker imports app/diagnostics.js", async () => {
+    const source = await Bun.file(join(import.meta.dir, "..", "src", "app", "background.js")).text();
+    const [, path] = /importScripts\("([^"]+)"\)/.exec(source) ?? [];
+    expect(new URL(path, "chrome-extension://purple/app/background.js").href).toBe("chrome-extension://purple/app/diagnostics.js");
+    expect(await Bun.file(join(import.meta.dir, "..", "src", "app", "diagnostics.js")).exists()).toBe(true);
   });
 
   test("the file is among the platform sources", async () => {
     expect(await Bun.file(join(import.meta.dir, "..", "src", "app", "background.js")).exists()).toBe(true);
+  });
+});
+
+// TS-610: the popup's and the export page's text comes from _locales, which a browser reads only with default_locale
+describe("locales (TS-610)", () => {
+  test.each(["chromium", "firefox"])("%s: default_locale en, with its messages file", async (platform) => {
+    const manifest = read(`${platform}/manifest.json`);
+    expect(manifest.default_locale).toBe("en");
+    expect(await Bun.file(join(import.meta.dir, "..", "src", "_locales", "en", "messages.json")).exists()).toBe(true);
+    // the names stay literal: the stores list them as they are
+    expect(manifest.name).toBe("Purple Ads Blocker");
   });
 });

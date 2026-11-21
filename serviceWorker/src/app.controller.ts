@@ -76,10 +76,18 @@ export class AppController {
 
     const text = await response.text();
 
-    await this.appService.setChannel(channelFromUsher(url));
-    this.appService.setUsherUrl(url);
-    this.appService.setPlayerMaster(text);
-    this.appService.prewarmAtLoad();
+    try {
+      await this.appService.setChannel(channelFromUsher(url));
+      // F-31: the ad flags of the page's own token, after the load it belongs to
+      this.appService.noteToken(url);
+      this.appService.setUsherUrl(url);
+      this.appService.setPlayerMaster(text);
+      this.appService.prewarmAtLoad();
+    } catch (e) {
+      // a failure in Purple's logic must not stop the player: it gets Twitch's master (F-31: the error's name is logged)
+      this.scope.logger(e);
+      this.appService.noteFailure(e, "usher");
+    }
     return new Response(text);
   }
 
@@ -92,8 +100,10 @@ export class AppController {
     try {
       return new Response(await this.appService.onFetch(body, urlOf(input)));
     } catch (e) {
-      // a failure in the blocking logic must not stop the player: it gets Twitch's playlist
+      // a failure in the blocking logic must not stop the player: it gets Twitch's playlist. F-31: the error's name, and
+      // the ad segments that playlist hands the player
       this.scope.logger(e);
+      this.appService.noteFailure(e, "playlist", body, urlOf(input));
       return new Response(body);
     }
   }
@@ -119,6 +129,8 @@ export class AppController {
   @Message("setSettings")
   async setSettings(data: any) {
     this.scope.debug = data?.value?.debug === true;
+    // F-31: on unless the setting is false
+    this.scope.diagnostics = data?.value?.diagnostics !== false;
     this.appService.setSettings(data?.value ?? {});
   }
 

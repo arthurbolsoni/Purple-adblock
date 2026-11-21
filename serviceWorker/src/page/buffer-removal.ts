@@ -12,8 +12,8 @@ type Ranges = { length: number; start(index: number): number; end(index: number)
 
 // how close to the buffered start or end a removal counts as starting or ending there, in seconds
 const EDGE_S = 0.1;
-const AUDIO = /mp4a|opus|ac-3|ec-3|flac|mp3/i;
-const VIDEO = /avc1|avc3|hvc1|hev1|av01|vp09|vp8/i;
+export const AUDIO = /mp4a|opus|ac-3|ec-3|flac|mp3/i;
+export const VIDEO = /avc1|avc3|hvc1|hev1|av01|vp09|vp8/i;
 
 // The range to remove instead of [start, end), or null to remove it as asked.
 export function widenRemoval(buffered: Ranges, start: number, end: number): [number, number] | null {

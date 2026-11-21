@@ -2,7 +2,7 @@ import { AppController } from "./app.controller";
 import { bindMessages, createRouter } from "./decorator/handler.decorator";
 import { Player } from "./modules/player/player";
 import { PageGql } from "./modules/twitch/page-gql";
-import type { WorkerContext, WorkerScope } from "./scope";
+import { eventsOn, type WorkerContext, type WorkerScope } from "./scope";
 import { urlOf } from "./url";
 
 // Installs Purple on a worker scope: keeps the original fetch as `request`, creates the controller,
@@ -13,8 +13,9 @@ export function bootstrapWorker(scope: WorkerScope) {
   context.debug = false;
   context.logger = (...args: any[]) => context.debug && console.log("[Purple]:", ...args);
   context.pageGql = new PageGql(context);
+  // F-17: window.__purple.events (debug); F-31 (T-606): the diagnostic log, on unless `diagnostics` is false
   context.emit = (event) => {
-    if (context.debug) scope.postMessage({ type: "purpleEvent", event: { ...event, at: Date.now() } });
+    if (eventsOn(context)) scope.postMessage({ type: "purpleEvent", event: { ...event, at: Date.now() } });
   };
 
   const controller = new AppController(new Player(context), context);

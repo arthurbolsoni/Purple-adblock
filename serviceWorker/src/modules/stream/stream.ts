@@ -43,19 +43,33 @@ export class Stream {
     return request;
   }
 
+  // F-31: a type whose token request gives no token is "noToken", one whose usher request gives no master "noMaster"
   private async requestStreamAccess(playerType: StreamType | string, integrityToken: string, platform: string): Promise<void> {
+    let streamDataAccess: { token: string; signature: string };
     try {
-      const streamDataAccess = await this.twitchService.playbackAccessToken(this.channelName, playerType, integrityToken, platform);
+      streamDataAccess = await this.twitchService.playbackAccessToken(this.channelName, playerType, integrityToken, platform);
+    } catch (e) {
+      this.scope.logger(e);
+      this.tried(playerType, "noToken");
+      return;
+    }
+    try {
       this.scope.logger("New Connection: ", playerType, streamDataAccess.token.includes('"hide_ads":true'));
-      const m3u8Text = await this.twitchService.getM3U8(this.channelName, streamDataAccess, this.usherUrl);
+      const m3u8Text = await this.twitchService.getM3U8(this.channelName, streamDataAccess, this.usherUrl, playerType);
       // the new master replaces the playerType's previous server
       const previous = this.getStreamByStreamType(playerType);
       const before = this.serverList.length;
       this.setStreamAccess(m3u8Text, playerType);
       if (this.serverList.length > before) previous.forEach((server) => this.removeServer(server));
+      else this.tried(playerType, "noMaster");
     } catch (e) {
       this.scope.logger(e);
+      this.tried(playerType, "noMaster");
     }
+  }
+
+  private tried(playerType: string, outcome: "noToken" | "noMaster") {
+    this.scope.emit?.({ type: "backupTried", channel: this.channelName, playerType, outcome });
   }
 
   getStreamByStreamType(accessType: StreamType | string): Server[] {

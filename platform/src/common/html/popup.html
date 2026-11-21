@@ -1,62 +1,117 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <link rel="stylesheet" href="../css/basic.css" />
-    <link rel="stylesheet" href="../css/toggle.css" />
+    <title>Purple</title>
+    <link rel="stylesheet" href="../css/popup.css" />
   </head>
 
   <body>
-    <div class="container" id="adblockbutton" aria-label tabindex="0">
-      <div class="center">
-        <div class="icon" id="adblocktext" width="100"></div>
-      </div>
-    </div>
-    <hr />
-    <p id="watching" style="margin-left: 12px"></p>
-    <div class="toggle hover" title="Shows AD on the Purple icon of a tab while an ad is blocked there">
-      <div style="margin: 10px">
-        <label class="switch">
-          <input type="checkbox" id="adBadge" checked />
-          <span class="slider round"></span>
+    <header class="bar">
+      <img class="bar-logo" src="../../images/logov2-128.png" alt="" width="20" height="20" />
+      <span class="bar-name">Purple</span>
+      <span class="bar-version" id="version"></span>
+    </header>
+
+    <!-- outside twitch.tv: this page only -->
+    <main class="away" id="away" hidden>
+      <p class="away-text" data-i18n="awayText">Purple blocks ads on Twitch live streams.</p>
+      <button type="button" class="button button-primary" id="goTwitch">
+        <span data-i18n="goTwitch">Go to Twitch</span>
+        <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M14 5h5v5" /><path d="M19 5l-8 8" /><path d="M18 14v5H5V6h5" /></svg>
+      </button>
+    </main>
+
+    <!-- a twitch.tv page -->
+    <main class="home" id="home" hidden>
+      <section class="channel" id="channelBlock" hidden>
+        <button type="button" class="power" id="power" aria-pressed="true">
+          <svg class="power-glyph" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.5v8" /><path d="M6.6 6.8a7.5 7.5 0 1 0 10.8 0" /></svg>
+        </button>
+        <p class="channel-name" id="channelName"></p>
+        <p class="channel-status" id="channelStatus"></p>
+      </section>
+
+      <section class="twitch-state" id="noChannel" hidden>
+        <p class="twitch-on" data-i18n="twitchOn">Purple is on for Twitch</p>
+        <p class="no-channel" data-i18n="noChannel">Open a channel to turn Purple off or on there.</p>
+      </section>
+
+      <section class="today" id="today" hidden aria-labelledby="todayTitle">
+        <h2 class="today-title" id="todayTitle" data-i18n="todayTitle">Today on this channel</h2>
+        <dl class="today-figures">
+          <div class="figure" data-i18n-title="figureBreaksHint" title="Ad breaks Twitch started on this channel today: ads stitched into the stream and ads the page asks for"><dt data-i18n="figureBreaks">breaks</dt><dd id="figBreaks">0</dd></div>
+          <div class="figure" data-i18n-title="figureBlockedHint" title="Breaks Purple held back: no ad reached the player"><dt data-i18n="figureBlocked">blocked</dt><dd id="figBlocked">0</dd></div>
+          <div class="figure" data-i18n-title="figurePassedHint" title="Ads that reached the player and were shown"><dt data-i18n="figurePassed">got through</dt><dd id="figPassed">0</dd></div>
+          <div class="figure" data-i18n-title="figureStallsHint" title="Times the video stopped by itself while playing: loading for half a second or more, or a frozen picture with sound"><dt data-i18n="figureStalls">stalls</dt><dd id="figStalls">0</dd></div>
+        </dl>
+      </section>
+
+      <section class="settings">
+        <label class="setting" for="adBadge">
+          <span class="setting-text">
+            <span class="setting-name" data-i18n="badgeName">AD badge on the icon</span>
+            <span class="setting-hint" data-i18n="badgeHint">While Purple blocks an ad on a tab</span>
+          </span>
+          <input type="checkbox" class="switch" id="adBadge" role="switch" checked />
         </label>
-      </div>
-      <div class="text">Badge on the icon while an ad is blocked</div>
-    </div>
-    <hr />
-    <a href="https://github.com/arthurbolsoni/Purple-adblock" target="_blank">
-      <h2>"Per aspera ad astra."</h2>
-    </a>
-    <a href="https://donate.stripe.com/aEU5kwaLFeY89gI7ss" target="_blank">
-      <p>Help us do the adblock best :) DONATE :D</p>
-    </a>
+      </section>
 
-    <!-- <div class="buttonSettings hover" id="buttonSettings">
-      <div class="text">Settings</div>
-    </div> -->
-
-    <div class="settings" style="display: none">
-      <div class="toggle hover">
-        <div style="margin: 10px">
-          <label class="switch">
-            <input type="checkbox" id="toggleProxy" disabled />
-            <span class="slider round"></span>
-          </label>
+      <footer class="foot">
+        <div class="foot-actions">
+          <a class="button" id="rate" href="https://chromewebstore.google.com/detail/purple-ads-blocker/lkgcfobnmghhbhgekffaadadhmeoindg/reviews" target="_blank" rel="noopener">
+            <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.8l2.5 5.1 5.6.8-4 3.9.9 5.6-5-2.6-5 2.6.9-5.6-4-3.9 5.6-.8z" /></svg>
+            <span data-i18n="rate">Rate Purple</span>
+          </a>
+          <button type="button" class="button" id="report">
+            <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M5.5 20.5v-16" /><path d="M5.5 4.5h11.5l-2.5 4 2.5 4H5.5" /></svg>
+            <span data-i18n="reportIssue">Report a bug</span>
+          </button>
         </div>
-        <div class="text">Proxy Authentication</div>
+      </footer>
+    </main>
+
+    <!-- Report a bug: the warning, then a channel, then the log's download and the bug-report form -->
+    <main class="export" id="export" hidden>
+      <div class="export-head">
+        <button type="button" class="back" id="closeExport" data-i18n-aria="back" aria-label="Back">
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7" /></svg>
+        </button>
+        <h1 class="export-title" data-i18n="reportTitle">Report a bug</h1>
       </div>
 
-      <div>
-        <div style="margin-top: 10px; margin-left: 10px">
-          <div class="text">Custom auth - <a class="buttonApply" id="inputApply">Apply</a></div>
+      <div class="export-body">
+        <p class="export-warn" data-i18n="exportPublic">The log stays on this computer: Purple never sends it. Anyone can read a file attached to a public GitHub issue, so check it before you attach it.</p>
+        <p data-i18n="exportHolds">The .txt holds the channel's last 7 days: ad breaks and how Purple handled them, stalls, audio and video sync, player errors and quality, the player version, whether Twitch marked your session ad-free, extensions touching the player, your browser and changed settings.</p>
+        <p data-i18n="exportNot">It holds no Twitch account, password, token, cookie, IP address or video address.</p>
+
+        <label class="consent" for="consent">
+          <input type="checkbox" id="consent" />
+          <span data-i18n="consent">I understand what the file holds</span>
+        </label>
+
+        <div class="pick" id="pick">
+          <label class="pick-label" for="channelPick" data-i18n="pickLabel">Channel</label>
+          <select class="pick-select" id="channelPick">
+            <option value="" data-i18n="pickNone">Choose a channel</option>
+          </select>
         </div>
-        <div style="margin-bottom: 10px; margin-top: 10px">
-          <input type="text" placeholder="https://myproxy.io/channel/{channelname}" class="input" id="inputUrl" />
-        </div>
-        <div type="button" style="size: 10px"></div>
+        <p class="pick-empty" id="pickEmpty" hidden data-i18n="pickEmpty">No log yet. Purple keeps one for each channel you watch.</p>
+
+        <button type="button" class="button button-primary button-wide" id="download" hidden>
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v10" /><path d="M7.5 9.5L12 14l4.5-4.5" /><path d="M5 19h14" /></svg>
+          <span data-i18n="reportDownload">Download the log and open the report</span>
+        </button>
+        <button type="button" class="link-button export-skip" id="reportWithoutLog">
+          <span data-i18n="reportWithoutLog">Report without a log</span>
+        </button>
       </div>
-    </div>
-    <script type="text/javascript" src="../js/popup.js"></script>
+    </main>
+
+    <script src="../../app/diagnostics.js"></script>
+    <script src="../js/i18n.js"></script>
+    <script src="../js/env.js"></script>
+    <script src="../js/popup.js"></script>
   </body>
 </html>

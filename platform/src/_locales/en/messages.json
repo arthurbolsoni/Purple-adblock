@@ -1,0 +1,140 @@
+{
+  "awayText": {
+    "message": "Purple blocks ads on Twitch live streams."
+  },
+  "goTwitch": {
+    "message": "Go to Twitch"
+  },
+  "noChannel": {
+    "message": "Open a channel to turn Purple off or on there."
+  },
+  "twitchOn": {
+    "message": "Purple is on for Twitch"
+  },
+  "statusOn": {
+    "message": "Blocking ads on this channel"
+  },
+  "statusOff": {
+    "message": "Off on this channel: ads play"
+  },
+  "powerTurnOff": {
+    "message": "Turn Purple off on $CHANNEL$",
+    "placeholders": {
+      "channel": {
+        "content": "$1",
+        "example": "somechannel"
+      }
+    }
+  },
+  "powerTurnOn": {
+    "message": "Turn Purple on for $CHANNEL$",
+    "placeholders": {
+      "channel": {
+        "content": "$1",
+        "example": "somechannel"
+      }
+    }
+  },
+  "todayTitle": {
+    "message": "Today on this channel"
+  },
+  "figureBreaks": {
+    "message": "breaks"
+  },
+  "figureBlocked": {
+    "message": "blocked"
+  },
+  "figurePassed": {
+    "message": "got through"
+  },
+  "figureStalls": {
+    "message": "stalls"
+  },
+  "figureBreaksHint": {
+    "message": "Ad breaks Twitch started on this channel today: ads stitched into the stream and ads the page asks for"
+  },
+  "figureBlockedHint": {
+    "message": "Breaks Purple held back: no ad reached the player"
+  },
+  "figurePassedHint": {
+    "message": "Ads that reached the player and were shown"
+  },
+  "figureStallsHint": {
+    "message": "Times the video stopped by itself while playing: loading for half a second or more, or a frozen picture with sound"
+  },
+  "badgeName": {
+    "message": "AD badge on the icon"
+  },
+  "badgeHint": {
+    "message": "While Purple blocks an ad on a tab"
+  },
+  "rate": {
+    "message": "Rate Purple"
+  },
+  "reportIssue": {
+    "message": "Report a bug"
+  },
+  "back": {
+    "message": "Back"
+  },
+  "exportHolds": {
+    "message": "The .txt holds the channel's last 7 days: ad breaks and how Purple handled them, stalls, audio and video sync, player errors and quality, the player version, whether Twitch marked your session ad-free, extensions touching the player, your browser and changed settings."
+  },
+  "exportNot": {
+    "message": "It holds no Twitch account, password, token, cookie, IP address or video address."
+  },
+  "exportPublic": {
+    "message": "The log stays on this computer: Purple never sends it. Anyone can read a file attached to a public GitHub issue, so check it before you attach it."
+  },
+  "consent": {
+    "message": "I understand what the file holds"
+  },
+  "pickLabel": {
+    "message": "Channel"
+  },
+  "pickNone": {
+    "message": "Choose a channel"
+  },
+  "pickThisTab": {
+    "message": "this tab"
+  },
+  "pickEmpty": {
+    "message": "No log yet. Purple keeps one for each channel you watch."
+  },
+  "reportTitle": {
+    "message": "Report a bug"
+  },
+  "reportDownload": {
+    "message": "Download the log and open the report"
+  },
+  "reportWithoutLog": {
+    "message": "Report without a log"
+  },
+  "exportPageTitle": {
+    "message": "Purple log"
+  },
+  "exportSummary": {
+    "message": "$COUNT$ lines from the last 7 days",
+    "placeholders": {
+      "count": {
+        "content": "$1",
+        "example": "120"
+      }
+    }
+  },
+  "exportSaved": {
+    "message": "The file is in your downloads. Open it and check it before you attach it to a bug report."
+  },
+  "exportSavedReport": {
+    "message": "The file is in your downloads, and the bug report opened in a new tab: open the file, check it, then drag it into the report's \"Purple log\" field."
+  },
+  "saveAgain": {
+    "message": "Download again"
+  },
+  "report": {
+    "message": "Open a bug report on GitHub"
+  },
+  "exportMissing": {
+    "message": "No channel was chosen. Open the export from the Purple popup."
+  }
+}

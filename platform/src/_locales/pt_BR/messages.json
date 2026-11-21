@@ -1,0 +1,140 @@
+{
+  "awayText": {
+    "message": "O Purple bloqueia anúncios nas lives da Twitch."
+  },
+  "goTwitch": {
+    "message": "Ir para a Twitch"
+  },
+  "noChannel": {
+    "message": "Abra um canal para ligar ou desligar o Purple nele."
+  },
+  "twitchOn": {
+    "message": "O Purple está ligado na Twitch"
+  },
+  "statusOn": {
+    "message": "Bloqueando anúncios neste canal"
+  },
+  "statusOff": {
+    "message": "Desligado neste canal: os anúncios passam"
+  },
+  "powerTurnOff": {
+    "message": "Desligar o Purple em $CHANNEL$",
+    "placeholders": {
+      "channel": {
+        "content": "$1",
+        "example": "somechannel"
+      }
+    }
+  },
+  "powerTurnOn": {
+    "message": "Ligar o Purple em $CHANNEL$",
+    "placeholders": {
+      "channel": {
+        "content": "$1",
+        "example": "somechannel"
+      }
+    }
+  },
+  "todayTitle": {
+    "message": "Hoje neste canal"
+  },
+  "figureBreaks": {
+    "message": "intervalos"
+  },
+  "figureBlocked": {
+    "message": "bloqueados"
+  },
+  "figurePassed": {
+    "message": "passaram"
+  },
+  "figureStalls": {
+    "message": "travamentos"
+  },
+  "figureBreaksHint": {
+    "message": "Intervalos de anúncio que a Twitch começou neste canal hoje: anúncios costurados no vídeo e anúncios pedidos pela página"
+  },
+  "figureBlockedHint": {
+    "message": "Intervalos que o Purple segurou: nenhum anúncio chegou ao player"
+  },
+  "figurePassedHint": {
+    "message": "Anúncios que chegaram ao player e apareceram"
+  },
+  "figureStallsHint": {
+    "message": "Vezes em que o vídeo parou sozinho enquanto tocava: carregando por meio segundo ou mais, ou imagem congelada com som"
+  },
+  "badgeName": {
+    "message": "Selo AD no ícone"
+  },
+  "badgeHint": {
+    "message": "Enquanto o Purple bloqueia um anúncio numa aba"
+  },
+  "rate": {
+    "message": "Avaliar"
+  },
+  "reportIssue": {
+    "message": "Relatar bug"
+  },
+  "back": {
+    "message": "Voltar"
+  },
+  "exportHolds": {
+    "message": "O .txt traz os últimos 7 dias do canal: intervalos de anúncio e como o Purple lidou com eles, travamentos, sincronia de áudio e vídeo, erros e qualidade do player, a versão do player, se a Twitch marcou sua sessão como sem anúncios, extensões mexendo no player, seu navegador e configurações alteradas."
+  },
+  "exportNot": {
+    "message": "Ele não tem conta da Twitch, senha, token, cookie, endereço IP nem endereço do vídeo."
+  },
+  "exportPublic": {
+    "message": "O log fica neste computador: o Purple nunca o envia. Qualquer pessoa lê um arquivo anexado a uma issue pública do GitHub, então confira antes de anexar."
+  },
+  "consent": {
+    "message": "Entendo o que o arquivo contém"
+  },
+  "pickLabel": {
+    "message": "Canal"
+  },
+  "pickNone": {
+    "message": "Escolha um canal"
+  },
+  "pickThisTab": {
+    "message": "esta aba"
+  },
+  "pickEmpty": {
+    "message": "Ainda não há log. O Purple guarda um para cada canal que você assiste."
+  },
+  "reportTitle": {
+    "message": "Relatar bug"
+  },
+  "reportDownload": {
+    "message": "Baixar o log e abrir o relato"
+  },
+  "reportWithoutLog": {
+    "message": "Relatar sem log"
+  },
+  "exportPageTitle": {
+    "message": "Log do Purple"
+  },
+  "exportSummary": {
+    "message": "$COUNT$ linhas dos últimos 7 dias",
+    "placeholders": {
+      "count": {
+        "content": "$1",
+        "example": "120"
+      }
+    }
+  },
+  "exportSaved": {
+    "message": "O arquivo está nos seus downloads. Abra e confira antes de anexar a um relato de bug."
+  },
+  "exportSavedReport": {
+    "message": "O arquivo está nos seus downloads e o relato abriu numa nova aba: abra o arquivo, confira e arraste para o campo \"Purple log\" do relato."
+  },
+  "saveAgain": {
+    "message": "Baixar de novo"
+  },
+  "report": {
+    "message": "Abrir um relato de bug no GitHub"
+  },
+  "exportMissing": {
+    "message": "Nenhum canal foi escolhido. Abra a exportação pelo popup do Purple."
+  }
+}

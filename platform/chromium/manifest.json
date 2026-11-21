@@ -15,6 +15,7 @@
     },
     "name": "Purple Ads Blocker",
     "description": "An adblocker for the Twitch.tv using server side signature and local m3u8 manipulation",
+    "default_locale": "en",
     "manifest_version": 3,
     "permissions": [
         "activeTab",

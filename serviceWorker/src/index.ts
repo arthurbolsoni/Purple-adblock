@@ -8,6 +8,7 @@ import { installBufferRemovalWidening } from "./page/buffer-removal";
 import { reloadTwitchPlayer } from "./page/player-reload";
 import { WorkerRegistry } from "./page/worker-registry";
 import { AdState } from "./page/ad-state";
+import { Diagnostics } from "./page/diagnostics";
 
 declare global {
   var request: any;
@@ -33,6 +34,10 @@ const csaiBlocked: Record<string, number> = {};
   const registry = new WorkerRegistry();
   // F-30 (T-605): the content script hears when the page starts and stops blocking an ad (the icon's badge)
   const adState = new AdState<object>((blocking) => window.postMessage({ type: "adState", value: blocking }, "*"));
+  // F-31 (T-606): the diagnostic log's entries, for the content script (with `diagnostics` off nothing is posted)
+  const diagnostics = new Diagnostics({ window, document, post: (entries) => window.postMessage({ type: "purpleDiag", entries }, "*") });
+  // F-31: what another script replaced before Purple's hooks below
+  diagnostics.noteNatives({ worker: window.Worker, fetch: window.fetch, xhr: window.XMLHttpRequest?.prototype?.open });
 
   // the original worker script, or null when it cannot be downloaded
   const readScript = (url: string): string | null => {
@@ -64,6 +69,7 @@ const csaiBlocked: Record<string, number> = {};
       const script = readScript(url.toString());
       if (script === null) {
         super(url, options);
+        diagnostics.workerCreated(this, null, url.toString());
         return;
       }
 
@@ -73,6 +79,7 @@ const csaiBlocked: Record<string, number> = {};
       const newBlob = URL.createObjectURL(new Blob([newBlobStr], { type: "text/javascript" }));
       super(newBlob, options);
       this.injected = true;
+      diagnostics.workerCreated(this, script, url.toString());
 
       this.addEventListener("message", (event) => onWorkerMessage(this, event));
     }
@@ -101,6 +108,7 @@ const csaiBlocked: Record<string, number> = {};
     terminate() {
       registry.remove(this.purple);
       adState.remove(this);
+      diagnostics.workerGone(this);
       super.terminate();
     }
   }
@@ -110,14 +118,18 @@ const csaiBlocked: Record<string, number> = {};
     global.request = fetch;
     // T-402: every worker may send its GQL requests through the page (replayed to workers created later)
     registry.broadcast({ funcName: "setGqlBridge", value: true });
-    global.fetch = createFetchHook(global.request, {
+    const fetchHook = createFetchHook(global.request, {
       onIntegrity: (body) => registry.broadcast({ funcName: "setIntegrity", value: body }),
       onGqlHeaders: (headers) => registry.broadcast({ funcName: "setGqlHeaders", value: headers }),
       forcePopoutToken: () => forcePopoutToken,
       blockCsai: () => blockCsai,
       onCsaiBlocked,
     });
+    global.fetch = fetchHook;
     installXhrHook(XMLHttpRequest, () => blockCsai, onCsaiBlocked);
+    // F-31: at each load, whether another script has replaced Purple's hooks since
+    const xhrOpen = XMLHttpRequest.prototype.open;
+    diagnostics.setHooked(() => ({ worker: window.Worker === WorkerInjector, fetch: window.fetch === fetchHook, xhr: XMLHttpRequest.prototype.open === xhrOpen }));
   }
 
   // T-301: blocked requests counted per break type (`bp`: preroll, midroll)
@@ -128,6 +140,8 @@ const csaiBlocked: Record<string, number> = {};
     } catch {}
     csaiBlocked[bp] = (csaiBlocked[bp] ?? 0) + 1;
     logger("CSAI request blocked:", bp, csaiBlocked);
+    // F-31: the roll of the client-side break
+    diagnostics.csaiBlocked(bp);
     recordEvent({ type: "csaiBlocked", bp, count: csaiBlocked[bp], at: Date.now() });
   }
 
@@ -136,11 +150,13 @@ const csaiBlocked: Record<string, number> = {};
     switch (event?.data?.type) {
       case "purpleEvent": {
         recordEvent(event.data.event);
+        diagnostics.workerEvent(worker, event.data.event);
         break;
       }
-      // F-30 (T-605): this worker's main playlist entered or left a break Purple blocks
+      // F-30 (T-605): this worker's main playlist entered or left a break Purple blocks; F-31: and its kind
       case "adState": {
         adState.set(worker, event.data.blocking === true);
+        diagnostics.adState(worker, event.data.blocking === true, event.data);
         break;
       }
       case "getSettings": {
@@ -154,18 +170,22 @@ const csaiBlocked: Record<string, number> = {};
       }
       case "PlayerQualityChanged": {
         registry.broadcast({ funcName: "setQuality", value: event.data.arg.name });
+        diagnostics.qualityChanged(event.data.arg?.name);
         break;
       }
       case "pause": {
+        diagnostics.purpleRestart();
         worker.sendFromPurple({ funcName: "pause", args: undefined, id: worker.playerId });
         break;
       }
       case "play": {
+        diagnostics.purpleRestart();
         worker.sendFromPurple({ funcName: "play", args: undefined, id: worker.playerId });
         break;
       }
       // T-601 (F-15): reload of the player at the end of a break; the worker pauses and plays if it was not done
       case "reload": {
+        diagnostics.purpleRestart();
         worker.sendFromPurple({ funcName: "reloadResult", value: { ok: reloadTwitchPlayer() } });
         break;
       }
@@ -176,6 +196,7 @@ const csaiBlocked: Record<string, number> = {};
         if (!event.data.arg.value.name) break;
         logger("Changed quality by player: " + event.data.arg.value.name);
         registry.broadcast({ funcName: "setQuality", value: event.data.arg.value.name });
+        diagnostics.qualityChanged(event.data.arg.value.name);
         break;
       }
       case "state": {
@@ -197,6 +218,7 @@ const csaiBlocked: Record<string, number> = {};
   declareEventWindow();
   integrity();
   installBufferRemovalWidening(window, () => widenBufferRemovals);
+  diagnostics.install();
 
   function declareEventWindow() {
     //Event listener from window and extension.
@@ -207,6 +229,8 @@ const csaiBlocked: Record<string, number> = {};
         forcePopoutToken = event.data.value?.forcePopoutToken !== false;
         widenBufferRemovals = event.data.value?.widenBufferRemovals !== false;
         if (debug && !window.__purple) window.__purple = { events: [] };
+        // F-31: `diagnostics` (default on) and the whitelist, whose channels' ads are expected
+        diagnostics.setSettings(event.data.value);
         //send settings to every worker
         registry.broadcast({ funcName: "setSettings", value: event.data.value });
       }

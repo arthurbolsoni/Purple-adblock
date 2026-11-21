@@ -15,7 +15,7 @@ Phases run in order. Inside a phase, the "Depends on" column says what must come
 | 3. CSAI blocking | T-301, T-302 | T-106 |
 | 4. Backup streams | T-401 to T-410 | T-104, T-105, T-106, T-107 |
 | 5. Playlist assembly | T-501, T-502 | T-101, T-201 |
-| 6. Player control and settings | T-601 to T-605 | T-107, T-201 |
+| 6. Player control and settings | T-601 to T-610 | T-107, T-201 |
 | 7. Build and release | T-701 to T-706 | Phase 0 |
 | 8. Investigations | T-801 to T-832 | - |
 
@@ -444,6 +444,57 @@ Runs in parallel with phases 1 to 7. Phase 1 to 6 tasks list L2/L3 scenarios tha
   - no permission is added to either manifest;
   - a failure on the way (the extension reloaded under the page) changes nothing in the page.
 - Tests: TS-605, `ad_badge_probe.py`
+
+### T-606 Diagnostic events in the worker and the page
+- [~] Status · F-31 · level 1 done 2026-11-21, not yet run in a browser: the worker posts its events while `diagnostics` is not false (`debug` still alone gates `window.__purple.events`) and adds `channelLoaded`, `adPassed` and `error`; `page/diagnostics.ts` turns them, the `adState` changes (now with the break's `kind`), Purple's own pause, play and reload, the largest `<video>` and its SourceBuffers, Twitch's ad UI and error overlay into the entries of the contract below and posts them to the window as `{ type: "purpleDiag", entries }`. The usher route now catches an exception and gives the player Twitch's master (rule 5). Whether Twitch builds its MediaSource in the page, which fills the stall's `track` and the `codec`, is checked at level 2 or 3. 2026-11-21, after the maintainer's first export on Firefox (`player=<id>`, no codec): the player build is kept to the first 12 characters of the hash, a video not found by its URL takes the newest open MediaSource with SourceBuffers, and eight more signals were added (backup tries and the time to the first clean playlist, failed requests, the audio and video gap, the roll and announced length, quality, the token's ad flags, other scripts replacing the page's hooks, hidden-tab stalls; F-31). New file: `modules/player/break-info.ts`.
+- Origin: the maintainer, 2026-11-21: a log per channel, kept 7 days, of audio and video stalls, ad breaks, ads blocked and not blocked, the player version and the video decode, exported from the popup for a bug report.
+- Files: `serviceWorker/src/scope.ts`, `bootstrap.ts`, `app.controller.ts`, `index.ts`, `modules/player/player.ts`, `modules/player/m3u8.ts`, `modules/player/setting.interface.ts`, `page/buffer-removal.ts`, `page/diagnostics.ts` (new)
+- Done when:
+  - entries `load`, `breakStart`, `breakEnd` (result `blocked` or `passed`), `adPassed` (`via` segments or ui), `stall` (track `video`, `audio`, `both` or `unknown`), `restart`, `decode`, `playerError` and `error` reach the window with `diagnostics` on, and nothing with it off;
+  - no URL, host, token, id or Twitch text in any value; an exception is written by its name only;
+  - no ad entry on a whitelisted channel;
+  - a hook or watcher that throws changes nothing in the player;
+  - a level 2 scenario (L2-16) sees one `stall` entry per stall the recorder sees, and `adPassed` for ad segments the player fetched with `stripFallback` off.
+- Tests: TS-606, L2-16
+
+### T-607 The log's store, 7 days per channel
+- [~] Status · F-31 · level 1 done 2026-11-21, not yet run in a browser: the content script relays `purpleDiag` to the background script (shape check, buffer of 500, sent every 30 s, at once for an error entry and on `pagehide`); the background script checks each entry against the contract, scrubs URLs, hosts, token-like runs, UUIDs and IP addresses from strings and stores it in IndexedDB (`purple-diagnostics`), none from incognito tabs; entries older than 7 days are pruned on browser start, on install or update and at most once an hour on add; a channel keeps at most 4000 entries. Chromium's service worker loads `app/diagnostics.js` with `importScripts`, Firefox lists it before `app/background.js`.
+- Origin: as T-606.
+- Files: `platform/src/content-script.js`, `platform/src/app/background.js`, `platform/src/app/diagnostics.js` (new), `platform/firefox/manifest.json`, `package.json` (`fake-indexeddb` 6.2.8, Apache-2.0, for the tests)
+- Done when:
+  - the store keeps only entries that fit the contract, from tabs that are not incognito;
+  - 7 days and 4000 entries per channel, the oldest going first;
+  - no permission is added to either manifest;
+  - a store that cannot be opened leaves the badge working and records nothing.
+- Tests: TS-607
+
+### T-608 The log export and the bug-report form
+- [~] Status · F-31 · level 1 done 2026-11-21; the download is to be checked by hand on Firefox and on Chromium: the popup shows today's figures for the channel (breaks, blocked, got through, stalls); its "Report a bug" opens the report view, where "Download the log and open the report" appears only after the warning is accepted and a channel chosen, and "Report without a log" opens the bug-report form alone; there is no separate export entry (the maintainer, 2026-11-21). The button opens `common/html/export.html?report=1#<channel>` in a tab (Firefox closes the popup when the save dialog opens), which builds the `.txt` with `PurpleDiagFormat` (header: Purple version and store, browser, system, Twitch player build, channel, time range and time zone, the settings changed from their defaults with the whitelist as its size and the proxy URL as `set`), shows it, saves it once and opens the bug-report form with the channel, version and browser filled in (without `?report=1` it only links to it). The form has a `log` field that takes the file.
+- Origin: as T-606.
+- Files: `platform/src/common/html/popup.html`, `platform/src/common/js/popup.js`, `platform/src/common/html/export.html` (new), `platform/src/common/js/export.js` (new), `platform/src/common/js/env.js` (new: the browser's name and the bug-report form's address, shared by both), `platform/src/common/css/export.css` (new), `platform/src/common/js/diag-format.js` (new), `.github/ISSUE_TEMPLATE/bug-report.yml`
+- Done when:
+  - no download without the warning accepted and a channel chosen;
+  - the file holds nothing the store did not keep, scrubbed again when written;
+  - the bug-report form takes the file (a textarea without `render`);
+  - the download works on Firefox and on Chromium with "ask where to save" on (by hand).
+- Tests: TS-608
+
+### T-609 Rate button
+- [x] Status · F-32 · done 2026-11-21: the popup's "Rate Purple" opens Purple's Firefox Add-ons page on Firefox and its Chrome Web Store reviews on Chromium browsers.
+- Origin: the maintainer, 2026-11-21: a button that opens the store to give stars.
+- Files: `platform/src/common/html/popup.html`, `platform/src/common/js/popup.js`
+- Done when the button opens the store of the browser Purple runs in (Edge, Brave and Opera: the Chrome Web Store).
+- Tests: TS-609
+
+### T-610 The popup's new layout
+- [x] Status · done 2026-11-21: the popup follows the ad-blocker popup standard (`PRODUCT.md`; direction in `.impeccable/surfaces/`): a top bar with the logo and the version, a large power button for the channel with its status line, today's figures, the badge switch, "Rate Purple" and "Report a bug" (the channel's log, then the bug-report form, T-608); the donation link and the motto are gone (the maintainer's decision). A twitch.tv page that is not a channel (home, directory, settings, `/videos/…`) shows everything but the channel's switch; outside twitch.tv the popup is one page with "Go to Twitch". `www.twitch.tv/moderator/<channel>` counts as that channel. Text from `_locales` (English, Brazilian Portuguese) through `common/js/i18n.js`, `default_locale` `en` in both manifests. The proxy fields the old popup kept hidden (no button opened them) are gone; `toggleProxy` and `proxyUrl` are still sent to the page. Checked on renders of each state in both languages (headless Firefox, the extension's APIs stubbed).
+- Origin: the maintainer, 2026-11-21: a new look for the popup; outside Twitch only "Go to Twitch"; "Report a bug" in the place of the donation link, and no motto.
+- Files: `platform/src/common/html/popup.html`, `platform/src/common/css/popup.css` (new; `basic.css`, `toggle.css` and the empty `img/power-off.svg` removed), `platform/src/common/js/popup.js`, `platform/src/common/js/i18n.js` (new), `platform/src/_locales/en/messages.json`, `platform/src/_locales/pt_BR/messages.json` (new), `platform/chromium/manifest.json`, `platform/firefox/manifest.json`
+- Done when:
+  - each state shows what it should and nothing else, in both languages;
+  - every key in the markup and the scripts exists in both locales, with the same placeholders;
+  - nothing in the popup is loaded from the network.
+- Tests: TS-610
 
 ## Phase 7: build and release
 

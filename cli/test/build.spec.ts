@@ -202,4 +202,12 @@ describe("store listing (T-707)", () => {
     expect(description).toContain("\n- ");
     expect(description).not.toContain("<");
   });
+
+  // the maintainer, 2026-11-21: no donation in the store texts
+  test.each(["en-US", "pt-BR"])("%s: no donation link or request in the summary and the description", (locale) => {
+    const row = listing.split("\n").find((line) => line.startsWith(`| ${locale} | `)) ?? "";
+    const description = listing.split(`## Description, ${locale}\n\n\`\`\`markdown\n`)[1]?.split("\n```")[0] ?? "";
+    expect(description.length).toBeGreaterThan(0);
+    for (const text of [row, description]) expect(text).not.toMatch(/donat|doa[çc][ãa]o|doar|stripe|paypal|ko-fi|patreon|sponsor/i);
+  });
 });

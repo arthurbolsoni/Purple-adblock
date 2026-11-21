@@ -82,7 +82,9 @@ describe("worker pipeline", () => {
 
     expect(uris(out)).toEqual(uris(live));
     expect(worker.twitch.callsOf("gql")).toEqual([]);
-    expect(worker.posted).toEqual([{ type: "getSettings" }]);
+    // F-31: the only event is the usher's channelLoaded, for the diagnostic log
+    expect(worker.posted.filter((m) => m.type !== "purpleEvent")).toEqual([{ type: "getSettings" }]);
+    expect(worker.posted.filter((m) => m.type === "purpleEvent").map((m) => m.event.type)).toEqual(["channelLoaded"]);
   });
 
   // T-101
