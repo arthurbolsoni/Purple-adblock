@@ -33,7 +33,8 @@ Purple with their segments titled as ads for LENGTH s every EVERY s (FAKE_BREAKS
 switches to a backup and back; --pauses also clicks the player's pause and play button inside them (PAUSES). Each
 window and click is a note (fake.jsonl). --fake-behind SHARE (T-833) answers that share of Purple's backup playlists
 inside the windows with the text the URL got two answers before (a backup behind, B-048; "fakeBehind" in
-workerLog.jsonl). --build installs another unpacked Firefox build (e.g. an earlier version, to compare); --profile runs
+workerLog.jsonl). --fake-merge MS (T-836) gives every backup playlist inside the windows an ad segment and moves the
+page's dates by MS, so Purple gives the page's playlist merged with the backups (E5). --build installs another unpacked Firefox build (e.g. an earlier version, to compare); --profile runs
 on a kept profile, e.g. firefox.LOGIN_PROFILE (logged in to Twitch).
 
 Errors go to the session log as notes as they come (T-829): the page player's error events (playerEvents.jsonl also
@@ -224,7 +225,7 @@ PAUSES = [[8, 3], [0.5, 3], ['end', 3], None]  # the middle; the change to the b
 FAKE_BREAKS_JS = """() => {
   const config = __CONFIG__;
   const start = Date.now() + config.warmUp * 1000;
-  window.__e2eFakeBreaks = { start, every: config.every, length: config.length, behind: config.behind };
+  window.__e2eFakeBreaks = { start, every: config.every, length: config.length, behind: config.behind, merge: config.merge };
   const fake = (window.__e2eFake = { events: [] });
   const push = (type, extra) => fake.events.length < 2000 && fake.events.push(Object.assign({ wall: Date.now(), type }, extra));
   const done = new Set();
@@ -489,7 +490,7 @@ async def soak(args, recorder, end):
             if args.fake_breaks:
                 every, length = (float(x) for x in args.fake_breaks.split(':'))
                 config = {'warmUp': FAKE_WARM_UP, 'every': every, 'length': length, 'pauses': PAUSES if args.pauses else [],
-                          'behind': args.fake_behind}
+                          'behind': args.fake_behind, 'merge': args.fake_merge}
                 preloads.append(FAKE_BREAKS_JS.replace("__CONFIG__", json.dumps(config)))
             session = await firefox.Firefox.launch(None if args.mode == 'record' else (args.build or firefox.BUILD), visible=args.visible,
                                                    settings=forced or None, env=env, audio=args.audio, preloads=preloads,
@@ -614,6 +615,8 @@ def main():
     ap.add_argument('--fake-breaks', metavar='EVERY:LENGTH',
                     help='Firefox: the player\'s own playlists titled as ads for LENGTH s every EVERY s (Purple switches to a backup)')
     ap.add_argument('--pauses', action='store_true', help='with --fake-breaks: click pause and play inside the windows (PAUSES)')
+    ap.add_argument('--fake-merge', type=float, default=0, metavar='MS',
+                    help="with --fake-breaks: inside the windows every backup playlist has an ad segment and the page's dates move by MS, so Purple merges (T-836)")
     ap.add_argument('--fake-behind', type=float, default=0, metavar='SHARE',
                     help='with --fake-breaks: that share of the backup playlists inside the windows answered with the text before (T-833)')
     ap.add_argument('--audio', action='store_true', help='Firefox: sound on (the runs are muted otherwise)')

@@ -31,6 +31,15 @@ pub struct Timeline {
     pub earlier_ms: i64,
     /// How much further ahead its `MEDIA-SEQUENCE` runs after each of its breaks is over (`aheadAfterBreak`, B-054).
     pub ahead_after_break: i64,
+    /// How many segments sooner than counted from its first poll its breaks come (`breaksSooner`, B-012).
+    pub breaks_sooner: i64,
+}
+
+impl Timeline {
+    /// The global segment its breaks' `at` is counted from: its first poll's, less `breaks_sooner`.
+    fn origin(&self) -> i64 {
+        self.first - self.breaks_sooner
+    }
 }
 
 /// Number of files in a rendition folder, for the media loop (a discontinuity where it wraps).
@@ -87,7 +96,7 @@ fn classify(scenario: &Scenario, t: &Timeline, g: i64) -> (Kind, Option<usize>) 
     if !t.breaks {
         return (Kind::Live, None);
     }
-    let local = g - t.first;
+    let local = g - t.origin();
     for (i, b) in scenario.breaks.iter().enumerate() {
         if local >= b.at as i64 && local < (b.at + b.segments) as i64 {
             return match b.kind {
@@ -127,7 +136,7 @@ pub fn media(scenario: &Scenario, v: &Variant, t: &Timeline, counts: Counts, now
     // the positions the ads took included: the broadcast went on under the break
     let over = |g: i64| {
         scenario.breaks.iter().any(|b| {
-            let (start, end) = (t.first + b.at as i64, t.first + (b.at + b.segments) as i64);
+            let (start, end) = (t.origin() + b.at as i64, t.origin() + (b.at + b.segments) as i64);
             g >= start && g < end && last >= end
         })
     };
@@ -142,7 +151,7 @@ pub fn media(scenario: &Scenario, v: &Variant, t: &Timeline, counts: Counts, now
     out += &format!("#EXT-X-VERSION:{}\n", if v.fmp4 { 6 } else { 3 });
     out += "#EXT-X-TARGETDURATION:6\n";
     // B-054: the numbers move further ahead once each of the token's breaks is over
-    let ended = if t.breaks { scenario.breaks.iter().filter(|b| last >= t.first + (b.at + b.segments) as i64).count() as i64 } else { 0 };
+    let ended = if t.breaks { scenario.breaks.iter().filter(|b| last >= t.origin() + (b.at + b.segments) as i64).count() as i64 } else { 0 };
     out += &format!("#EXT-X-MEDIA-SEQUENCE:{}\n", 1000 + first + t.ahead + t.ahead_after_break * ended);
     out += &format!("#EXT-X-TWITCH-LIVE-SEQUENCE:{}\n", 1000 + first);
     out += &format!("#EXT-X-TWITCH-ELAPSED-SECS:{:.3}\n", (first * seg) as f64 / 1000.0);
@@ -166,7 +175,7 @@ pub fn media(scenario: &Scenario, v: &Variant, t: &Timeline, counts: Counts, now
         }
         seen.push(index);
         let b = &scenario.breaks[index];
-        let start_g = t.first + b.at as i64;
+        let start_g = t.origin() + b.at as i64;
         let start = t.epoch_ms - t.earlier_ms + start_g * seg;
         let duration = b.segments as f64 * scenario.segment_seconds;
         let _ = g;
@@ -312,7 +321,7 @@ mod tests {
     const COUNTS: Counts = Counts { live: 30, ad: 15 };
 
     fn timeline(breaks: bool) -> Timeline {
-        Timeline { session: 7, epoch_ms: EPOCH, first: 100, breaks, lag: 0, ahead: 0, from_zero: false, earlier_ms: 0, ahead_after_break: 0 }
+        Timeline { session: 7, epoch_ms: EPOCH, first: 100, breaks, lag: 0, ahead: 0, from_zero: false, earlier_ms: 0, ahead_after_break: 0, breaks_sooner: 0 }
     }
 
     fn preroll() -> Break {
@@ -430,7 +439,7 @@ mod tests {
     fn backups_share_the_stream_clock() {
         let s = scenario(vec![preroll()], false);
         let main = media(&s, &s.variants[0], &timeline(true), COUNTS, EPOCH + 112 * 2000).0;
-        let backup = media(&s, &s.variants[0], &Timeline { session: 8, epoch_ms: EPOCH, first: 110, breaks: false, lag: 0, ahead: 0, from_zero: false, earlier_ms: 0, ahead_after_break: 0 }, COUNTS, EPOCH + 112 * 2000).0;
+        let backup = media(&s, &s.variants[0], &Timeline { session: 8, epoch_ms: EPOCH, first: 110, breaks: false, lag: 0, ahead: 0, from_zero: false, earlier_ms: 0, ahead_after_break: 0, breaks_sooner: 0 }, COUNTS, EPOCH + 112 * 2000).0;
         let dates = |t: &str| t.lines().filter(|l| l.starts_with("#EXT-X-PROGRAM-DATE-TIME")).map(String::from).collect::<Vec<_>>();
         assert_eq!(dates(&main), dates(&backup));
     }
@@ -440,7 +449,7 @@ mod tests {
         let s = scenario(vec![], false);
         let now = EPOCH + 130 * 2000;
         let sequence = |lag: i64| {
-            let t = Timeline { session: 9, epoch_ms: EPOCH, first: 100, breaks: false, lag, ahead: 0, from_zero: false, earlier_ms: 0, ahead_after_break: 0 };
+            let t = Timeline { session: 9, epoch_ms: EPOCH, first: 100, breaks: false, lag, ahead: 0, from_zero: false, earlier_ms: 0, ahead_after_break: 0, breaks_sooner: 0 };
             let text = media(&s, &s.variants[0], &t, COUNTS, now).0;
             text.lines().find_map(|l| l.strip_prefix("#EXT-X-MEDIA-SEQUENCE:")).unwrap().parse::<i64>().unwrap()
         };
@@ -451,7 +460,7 @@ mod tests {
     fn a_token_ahead_numbers_the_same_segments_higher_and_keeps_the_live_sequence() {
         let s = scenario(vec![], false);
         let now = EPOCH + 130 * 2000;
-        let text = |ahead: i64| media(&s, &s.variants[0], &Timeline { session: 9, epoch_ms: EPOCH, first: 100, breaks: false, lag: 0, ahead, from_zero: false, earlier_ms: 0, ahead_after_break: 0 }, COUNTS, now).0;
+        let text = |ahead: i64| media(&s, &s.variants[0], &Timeline { session: 9, epoch_ms: EPOCH, first: 100, breaks: false, lag: 0, ahead, from_zero: false, earlier_ms: 0, ahead_after_break: 0, breaks_sooner: 0 }, COUNTS, now).0;
         let tag = |t: &str, name: &str| t.lines().find_map(|l| l.strip_prefix(name)).unwrap().parse::<i64>().unwrap();
         let (page, backup) = (text(2), text(0));
         assert_eq!(tag(&page, "#EXT-X-MEDIA-SEQUENCE:") - tag(&backup, "#EXT-X-MEDIA-SEQUENCE:"), 2);
@@ -464,7 +473,7 @@ mod tests {
     fn a_token_dated_earlier_lists_the_same_segments_and_live_numbers_with_earlier_date_times() {
         let s = scenario(vec![], false);
         let now = EPOCH + 130 * 2000;
-        let text = |earlier_ms: i64| media(&s, &s.variants[0], &Timeline { session: 9, epoch_ms: EPOCH, first: 100, breaks: false, lag: 0, ahead: 0, from_zero: false, earlier_ms, ahead_after_break: 0 }, COUNTS, now).0;
+        let text = |earlier_ms: i64| media(&s, &s.variants[0], &Timeline { session: 9, epoch_ms: EPOCH, first: 100, breaks: false, lag: 0, ahead: 0, from_zero: false, earlier_ms, ahead_after_break: 0, breaks_sooner: 0 }, COUNTS, now).0;
         let (page, backup) = (text(1000), text(0));
         let dates = |t: &str| t.lines().filter_map(|l| l.strip_prefix("#EXT-X-PROGRAM-DATE-TIME:")).map(|d| chrono::DateTime::parse_from_rfc3339(d).unwrap().timestamp_millis()).collect::<Vec<_>>();
         assert!(dates(&page).iter().zip(dates(&backup)).all(|(p, b)| b - p == 1000));
@@ -473,9 +482,22 @@ mod tests {
     }
 
     #[test]
+    fn breaks_sooner_brings_a_token_its_break_that_many_segments_earlier() {
+        // the midroll comes `at` segments after the token's first poll (100); 13 sooner, 2 segments after it
+        let s = scenario(vec![midroll()], false);
+        let at = s.breaks[0].at as i64;
+        let ads = |sooner: i64, g: i64| {
+            let t = Timeline { session: 9, epoch_ms: EPOCH, first: 100, breaks: true, lag: 0, ahead: 0, from_zero: false, earlier_ms: 0, ahead_after_break: 0, breaks_sooner: sooner };
+            media(&s, &s.variants[0], &t, COUNTS, EPOCH + g * 2000).1.iter().filter(|l| l.ad).count()
+        };
+        assert_eq!((ads(0, 100 + at - 1), ads(0, 100 + at)), (0, 1));
+        assert_eq!((ads(at - 2, 101), ads(at - 2, 102), ads(at - 2, 103)), (0, 1, 2));
+    }
+
+    #[test]
     fn a_token_numbers_further_ahead_once_its_break_is_over() {
         let s = scenario(vec![midroll()], false);
-        let t = Timeline { session: 9, epoch_ms: EPOCH, first: 100, breaks: true, lag: 0, ahead: 2, from_zero: false, earlier_ms: 0, ahead_after_break: 4 };
+        let t = Timeline { session: 9, epoch_ms: EPOCH, first: 100, breaks: true, lag: 0, ahead: 2, from_zero: false, earlier_ms: 0, ahead_after_break: 4, breaks_sooner: 0 };
         let offset = |now: i64| {
             let text = media(&s, &s.variants[0], &t, COUNTS, now).0;
             let tag = |name: &str| text.lines().find_map(|l| l.strip_prefix(name)).unwrap().parse::<i64>().unwrap();
@@ -489,7 +511,7 @@ mod tests {
     #[test]
     fn a_from_zero_token_starts_its_playlist_at_its_first_segment_numbered_0() {
         let s = scenario(vec![preroll()], false);
-        let t = Timeline { session: 9, epoch_ms: EPOCH, first: 100, breaks: true, lag: 0, ahead: -1100, from_zero: true, earlier_ms: 0, ahead_after_break: 0 };
+        let t = Timeline { session: 9, epoch_ms: EPOCH, first: 100, breaks: true, lag: 0, ahead: -1100, from_zero: true, earlier_ms: 0, ahead_after_break: 0, breaks_sooner: 0 };
         let tag = |text: &str, name: &str| text.lines().find_map(|l| l.strip_prefix(name)).unwrap().parse::<i64>().unwrap();
         let first = media(&s, &s.variants[0], &t, COUNTS, EPOCH + 100 * 2000).0;
         assert_eq!((tag(&first, "#EXT-X-MEDIA-SEQUENCE:"), first.matches("#EXTINF").count()), (0, 1));

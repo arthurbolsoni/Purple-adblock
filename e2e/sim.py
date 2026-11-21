@@ -139,7 +139,9 @@ async def running(scenario):
     # 2026-10-08 and 09 without the scenario's `lag` (T-815)
     build()
     port = _free_port()
-    process = subprocess.Popen([BINARY, '--port', str(port)], stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT)
+    # PURPLE_BUNDLE: another build of Purple's page bundle for the isolated page (an older commit's serviceWorker/dist/bundle.js)
+    bundle = ['--purple', os.environ['PURPLE_BUNDLE']] if os.environ.get('PURPLE_BUNDLE') else []
+    process = subprocess.Popen([BINARY, '--port', str(port), *bundle], stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT)
     sim = Sim(port, process)
     try:
         deadline = time.time() + 15

@@ -103,6 +103,11 @@ pub struct PlayerType {
     /// the page token's numbers move at each stitched midroll (B-054; 4 per midroll on `/channel-d`, 2026-10-31).
     #[serde(default)]
     pub ahead_after_break: i64,
+    /// How many segments sooner than counted from its first poll this type's breaks come. A backup token asked when the
+    /// page's break starts counts the scenario's `at` from then; with `at` - 2 here it gets the break itself 2 segments
+    /// later, as the backup types that carry the page's break do (B-012, B-052).
+    #[serde(default)]
+    pub breaks_sooner: i64,
 }
 
 #[derive(Clone, Debug, Default, Deserialize, Serialize, PartialEq)]
@@ -176,6 +181,11 @@ impl Scenario {
     /// How much further ahead `player_type` numbers the stream after each break (0 unless the scenario sets `aheadAfterBreak`).
     pub fn ahead_after_break_for(&self, player_type: &str) -> i64 {
         self.player_types.get(player_type).or_else(|| self.player_types.get("default")).map(|p| p.ahead_after_break).unwrap_or(0)
+    }
+
+    /// How many segments sooner `player_type`'s breaks come (0 unless the scenario sets `breaksSooner`).
+    pub fn breaks_sooner_for(&self, player_type: &str) -> i64 {
+        self.player_types.get(player_type).or_else(|| self.player_types.get("default")).map(|p| p.breaks_sooner).unwrap_or(0)
     }
 
     pub fn variant(&self, name: &str) -> Option<&Variant> {
@@ -252,6 +262,14 @@ mod tests {
         let text = MINIMAL.replace(r#""variants""#, r#""playerTypes":{"popout":{"breaks":true,"ahead":2,"earlierMs":1000}},"variants""#);
         let s = Scenario::from_json(&text).unwrap();
         assert_eq!((s.earlier_for("popout"), s.earlier_for("site")), (1000, 0));
+    }
+
+    #[test]
+    fn breaks_sooner_is_read_per_player_type_with_the_default_and_zero_otherwise() {
+        let text = MINIMAL.replace(r#""variants""#, r#""playerTypes":{"default":{"breaks":true,"breaksSooner":13},"popout":{"breaks":true}},"variants""#);
+        let s = Scenario::from_json(&text).unwrap();
+        assert_eq!((s.breaks_sooner_for("popout"), s.breaks_sooner_for("site")), (0, 13));
+        assert_eq!(Scenario::from_json(MINIMAL).unwrap().breaks_sooner_for("site"), 0);
     }
 
     #[test]

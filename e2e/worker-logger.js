@@ -18,7 +18,10 @@
 // `behind` (0 to 1, soak.py --fake-behind, T-833) is set: inside a window, that share of the answers to a media
 // playlist the player did not ask for (Purple's backups) is the text that URL got two answers before, which ends below
 // the newest segment the player got from it, as a CDN node behind (B-048); never twice in a row for one URL; each is a
-// "fakeBehind" entry.
+// "fakeBehind" entry. With `merge` (ms, soak.py --fake-merge, T-836) the windows make Purple merge instead: the
+// player's own playlists get every PROGRAM-DATE-TIME moved by that much (the page's dates apart from the backups',
+// B-057), and each backup playlist gets its last segment titled as an ad, so no backup is clean and Purple gives the
+// page's playlist with its ad segments replaced by the backups' (E5).
 (() => {
   const channel = new BroadcastChannel("purple-e2e");
   const id = Math.random().toString(36).slice(2, 8);
@@ -223,11 +226,21 @@
       } else staleLast.delete(url);
       return new Response(stale ? before : body, { status: r.status, statusText: r.statusText, headers: r.headers });
     });
+  // T-836: the dates of a playlist moved by `ms`; the last segment of a playlist titled as an ad
+  const moveDates = (body, ms) =>
+    body.replace(/^(#EXT-X-PROGRAM-DATE-TIME:)(\S+)/gm, (line, tag, time) => (Number.isNaN(Date.parse(time)) ? line : tag + new Date(Date.parse(time) + ms).toISOString()));
+  const lastAsAd = (body) => {
+    const at = body.lastIndexOf("#EXTINF:");
+    return at < 0 ? body : body.slice(0, at) + body.slice(at).replace(/^(#EXTINF:[^,\n]*,).*$/m, (line, head) => head + "Amazon|e2e-fake-break");
+  };
   const fakeBreak = (url, r) => {
+    if (fake && fake.merge && r && r.ok && url.includes("/v1/playlist/") && !playerUrls.has(url) && inFakeBreak()) {
+      return r.text().then((body) => new Response(lastAsAd(body), { status: r.status, statusText: r.statusText, headers: r.headers }));
+    }
     if (fake && fake.behind && r && r.ok && url.includes("/v1/playlist/") && !playerUrls.has(url) && inFakeBreak()) return fakeBehind(url, r);
     if (!fake || !r || !r.ok || !url.endsWith(".m3u8") || !playerUrls.has(url) || !inFakeBreak()) return Promise.resolve(r);
     return r.text().then((body) => {
-      const marked = body.includes("#EXTINF") ? asAds(body) : body;
+      const marked = body.includes("#EXTINF") ? asAds(fake.merge ? moveDates(body, fake.merge) : body) : body;
       if (marked !== body) post({ kind: "fakeBreak", url });
       return new Response(marked, { status: r.status, statusText: r.statusText, headers: r.headers });
     });
