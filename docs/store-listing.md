@@ -5,7 +5,7 @@ Texts of the Firefox Add-ons and Chrome Web Store pages, in English and Brazilia
 | Store | Where each text goes | Updated |
 | --- | --- | --- |
 | addons.mozilla.org | summary and description, through the add-on edit API (`PATCH /api/v5/addons/addon/<slug>/`, the `AMO_JWT_*` key) | 2026-10-10 |
-| Chrome Web Store | summary: `description` in `platform/chromium/manifest.json`, which the store shows and reads only from a new version; description: the Developer Dashboard, by hand (the API has no listing method) | pending (T-707) |
+| Chrome Web Store | summary: `description` in `platform/chromium/manifest.json`, which the store shows and reads only from a new version; description: the Developer Dashboard, by hand (the API has no listing method) | description 2026-11-20 (submitted for review); summary pending (T-707) |
 
 The summary fits both stores: the Chrome Web Store takes up to 132 characters in the manifest's `description`, addons.mozilla.org up to 250. The descriptions are in the Markdown addons.mozilla.org renders (bold, lists, links; it shows HTML tags as text); the Developer Dashboard takes plain text, so there the bold marks go and each link becomes its address.
 
